@@ -8,10 +8,12 @@ on:
     branches: [ "main" ]
     paths:
       - 'apps/android/**'
+      - 'apps/shared/**'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'apps/android/**'
+      - 'apps/shared/**'
   workflow_dispatch:
 
 jobs:
