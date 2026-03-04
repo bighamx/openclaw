@@ -1,4 +1,5 @@
-# 🦞 OpenClaw — Personal AI Assistant
+
+# OpenClaw Android Node Companion APK
 
 <p align="center">
     <picture>
