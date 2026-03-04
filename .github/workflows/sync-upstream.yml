@@ -1,0 +1,40 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 执行一次 (北京时间早上 8:00)
+    - cron: '0 0 * * *'
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Sync and Merge Upstream
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # 添加上游仓库
+          git remote add upstream https://github.com/openclaw/openclaw.git
+          
+          # 拉取上游最新代码
+          git fetch upstream
+          
+          # 确保在 main 分支
+          git checkout main
+          
+          # 将上游的 main 分支合并到你的分支
+          git merge upstream/main
+          
+          # 推送到你的 GitHub 仓库
+          git push origin main
