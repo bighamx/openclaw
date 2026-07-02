@@ -5234,14 +5234,14 @@
       "translated": "OpenClaw 無法判斷目前的通知權限狀態。"
     },
     {
+      "id": "native.apple.cfec8b4d042a8066",
+      "source": "Choose system, light, or dark appearance",
+      "translated": "選擇系統、淺色或深色外觀"
+    },
+    {
       "id": "native.apple.747143c7ef879774",
       "source": "Appearance",
       "translated": "外觀"
-    },
-    {
-      "id": "native.apple.80fade864c8ad242",
-      "source": "Choose system, light, or dark appearance",
-      "translated": "選擇系統、淺色或深色外觀"
     },
     {
       "id": "native.apple.0b50dca4526336be",
@@ -7182,6 +7182,16 @@
       "id": "native.apple.d2db26b3bb266491",
       "source": "Updating OpenClaw",
       "translated": "正在更新 OpenClaw"
+    },
+    {
+      "id": "native.apple.b6bc54876f20104f",
+      "source": "Off",
+      "translated": "關閉"
+    },
+    {
+      "id": "native.apple.5590d661cdc81fbf",
+      "source": "Paused",
+      "translated": "已暫停"
     },
     {
       "id": "native.apple.732051c3e897a9f1",

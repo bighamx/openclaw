@@ -239,6 +239,10 @@ struct RootTabsSourceGuardTests {
             settingsSource,
             from: "func settingsListRow(",
             to: "func destination(for route:")
+        let appearanceRow = try Self.extract(
+            settingsSource,
+            from: "var appearanceRow: some View",
+            to: "var appearanceRowLabel: some View")
 
         #expect(gatewayStatus.contains("HStack(spacing: 6)"))
         #expect(!gatewayStatus.contains("ProCapsule("))
@@ -259,8 +263,8 @@ struct RootTabsSourceGuardTests {
         #expect(!settingsList.contains("ProCard("))
         #expect(settingsRow.contains("NavigationLink(value: route)"))
         #expect(!settingsRow.contains("chevron.right"))
-        #expect(settingsSource.contains("settings-appearance-menu"))
-        #expect(!settingsSource.contains(".pickerStyle(.segmented)"))
+        #expect(settingsSource.contains("settings-appearance-row"))
+        #expect(!appearanceRow.contains(".pickerStyle(.segmented)"))
         #expect(!overviewSource.contains("ProCapsule("))
         #expect(overviewSource.contains("value: self.gatewayConnectionText"))
         #expect(overviewSource.contains("switch self.gatewayDisplayState"))

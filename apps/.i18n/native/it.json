@@ -5234,14 +5234,14 @@
       "translated": "OpenClaw non può determinare lo stato attuale dell'autorizzazione alle notifiche."
     },
     {
+      "id": "native.apple.cfec8b4d042a8066",
+      "source": "Choose system, light, or dark appearance",
+      "translated": "Scegli l'aspetto di sistema, chiaro o scuro"
+    },
+    {
       "id": "native.apple.747143c7ef879774",
       "source": "Appearance",
       "translated": "Aspetto"
-    },
-    {
-      "id": "native.apple.80fade864c8ad242",
-      "source": "Choose system, light, or dark appearance",
-      "translated": "Scegli l'aspetto di sistema, chiaro o scuro"
     },
     {
       "id": "native.apple.0b50dca4526336be",
@@ -7182,6 +7182,16 @@
       "id": "native.apple.d2db26b3bb266491",
       "source": "Updating OpenClaw",
       "translated": "Aggiornamento di OpenClaw"
+    },
+    {
+      "id": "native.apple.b6bc54876f20104f",
+      "source": "Off",
+      "translated": "Disattivato"
+    },
+    {
+      "id": "native.apple.5590d661cdc81fbf",
+      "source": "Paused",
+      "translated": "In pausa"
     },
     {
       "id": "native.apple.732051c3e897a9f1",

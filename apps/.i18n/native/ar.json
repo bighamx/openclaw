@@ -5234,14 +5234,14 @@
       "translated": "يتعذر على OpenClaw تحديد حالة إذن الإشعارات الحالية."
     },
     {
+      "id": "native.apple.cfec8b4d042a8066",
+      "source": "Choose system, light, or dark appearance",
+      "translated": "اختر مظهر النظام أو المظهر الفاتح أو الداكن"
+    },
+    {
       "id": "native.apple.747143c7ef879774",
       "source": "Appearance",
       "translated": "المظهر"
-    },
-    {
-      "id": "native.apple.80fade864c8ad242",
-      "source": "Choose system, light, or dark appearance",
-      "translated": "اختر مظهر النظام أو المظهر الفاتح أو الداكن"
     },
     {
       "id": "native.apple.0b50dca4526336be",
@@ -7182,6 +7182,16 @@
       "id": "native.apple.d2db26b3bb266491",
       "source": "Updating OpenClaw",
       "translated": "جارٍ تحديث OpenClaw"
+    },
+    {
+      "id": "native.apple.b6bc54876f20104f",
+      "source": "Off",
+      "translated": "إيقاف"
+    },
+    {
+      "id": "native.apple.5590d661cdc81fbf",
+      "source": "Paused",
+      "translated": "متوقف مؤقتًا"
     },
     {
       "id": "native.apple.732051c3e897a9f1",
