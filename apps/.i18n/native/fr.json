@@ -1764,6 +1764,26 @@
       "translated": "Mettre à jour"
     },
     {
+      "id": "native.android.13f70e22b5648308",
+      "source": "Licenses",
+      "translated": "Licences"
+    },
+    {
+      "id": "native.android.996367534eb94cc2",
+      "source": "OpenClaw appreciates its partners in the open-source community.",
+      "translated": "OpenClaw remercie ses partenaires de la communauté open source."
+    },
+    {
+      "id": "native.android.24da1d2eb750ba07",
+      "source": "No license notices are packaged in this build.",
+      "translated": "Aucun avis de licence n’est inclus dans cette version."
+    },
+    {
+      "id": "native.android.933e72cac84c571e",
+      "source": "Open ${license.title}",
+      "translated": "Ouvrir ${license.title}"
+    },
+    {
       "id": "native.android.cfffa5b838a65ca4",
       "source": "Check",
       "translated": "Vérifier"
@@ -5294,6 +5314,11 @@
       "translated": "À propos"
     },
     {
+      "id": "native.apple.529c06f7f7f6e428",
+      "source": "Licenses",
+      "translated": "Licences"
+    },
+    {
       "id": "native.apple.5c4427c5a67068d6",
       "source": "Gateway",
       "translated": "Gateway"
@@ -5472,6 +5497,21 @@
       "id": "native.apple.bbb2c589c2049217",
       "source": "iOS",
       "translated": "iOS"
+    },
+    {
+      "id": "native.apple.5abfcc15e933c483",
+      "source": "No licenses bundled",
+      "translated": "Aucune licence incluse"
+    },
+    {
+      "id": "native.apple.af22fba4150f2c1d",
+      "source": "License files are not available in this build.",
+      "translated": "Les fichiers de licence ne sont pas disponibles dans cette version."
+    },
+    {
+      "id": "native.apple.a82dc4a746268028",
+      "source": "OpenClaw appreciates its partners in the open-source community.",
+      "translated": "OpenClaw remercie ses partenaires de la communauté open source."
     },
     {
       "id": "native.apple.0f4e7486619df175",
