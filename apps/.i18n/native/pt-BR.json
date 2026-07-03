@@ -764,6 +764,21 @@
       "translated": "$remoteGatewaySecurityRule $remoteGatewaySecurityFix"
     },
     {
+      "id": "native.android.d5230e4551045851",
+      "source": "Setup code uses an IPv6 zone ID. Use an unscoped IPv6 address or a LAN hostname.",
+      "translated": "O código de configuração usa um ID de zona IPv6. Use um endereço IPv6 sem escopo ou um nome de host da LAN."
+    },
+    {
+      "id": "native.android.ca9fc2ce10f4028a",
+      "source": "QR code uses an IPv6 zone ID. Use an unscoped IPv6 address or a LAN hostname.",
+      "translated": "O código QR usa um ID de zona IPv6. Use um endereço IPv6 sem escopo ou um nome de host da LAN."
+    },
+    {
+      "id": "native.android.141236601fece71e",
+      "source": "IPv6 zone IDs are not supported. Use an unscoped IPv6 address or a LAN hostname.",
+      "translated": "IDs de zona IPv6 não são compatíveis. Use um endereço IPv6 sem escopo ou um nome de host da LAN."
+    },
+    {
       "id": "native.android.47e3c19d55f0150b",
       "source": "Setup code has invalid gateway URL.",
       "translated": "O código de configuração tem uma URL de gateway inválida."
