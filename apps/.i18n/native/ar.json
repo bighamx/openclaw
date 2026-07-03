@@ -589,9 +589,9 @@
       "translated": "فعّل هذا لـ Tailscale أو المضيفين العامين. يظل ws:// عبر شبكة LAN الخاصة مدعومًا."
     },
     {
-      "id": "native.android.60da1ba96bf1ed31",
-      "source": "token",
-      "translated": "token"
+      "id": "native.android.d56dcd9606f37263",
+      "source": "Leave blank to keep saved token",
+      "translated": "اتركه فارغًا للاحتفاظ بالرمز المميز المحفوظ"
     },
     {
       "id": "native.android.8123f2cfbe415437",
@@ -857,11 +857,6 @@
       "id": "native.android.c8ce503b95d13058",
       "source": "Linked phones and node hosts will appear here after pairing.",
       "translated": "ستظهر الهواتف المرتبطة ومضيفو العُقد هنا بعد الاقتران."
-    },
-    {
-      "id": "native.android.3df83311891719d9",
-      "source": "Device pairing admin needs elevated access. Connected nodes still work.",
-      "translated": "يحتاج مسؤول اقتران الأجهزة إلى صلاحيات مرتفعة. ستظل العُقد المتصلة تعمل."
     },
     {
       "id": "native.android.70b6f8fccd67f4ce",
@@ -1622,6 +1617,21 @@
       "id": "native.android.53928793ec65d766",
       "source": "While Using",
       "translated": "أثناء الاستخدام"
+    },
+    {
+      "id": "native.android.f3d5fd047bfdb023",
+      "source": "Replace gateway setup?",
+      "translated": "استبدال إعداد Gateway؟"
+    },
+    {
+      "id": "native.android.869c8be127ce5282",
+      "source": "Replace setup",
+      "translated": "استبدال الإعداد"
+    },
+    {
+      "id": "native.android.c6c8e0c4b8a9a7cf",
+      "source": "Cancel",
+      "translated": "إلغاء"
     },
     {
       "id": "native.android.718cb50d1bff3e32",

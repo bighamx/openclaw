@@ -589,9 +589,9 @@
       "translated": "Tailscale या सार्वजनिक होस्ट के लिए इसे चालू करें। Private LAN ws:// समर्थित रहता है।"
     },
     {
-      "id": "native.android.60da1ba96bf1ed31",
-      "source": "token",
-      "translated": "टोकन"
+      "id": "native.android.d56dcd9606f37263",
+      "source": "Leave blank to keep saved token",
+      "translated": "सहेजा गया टोकन बनाए रखने के लिए खाली छोड़ें"
     },
     {
       "id": "native.android.8123f2cfbe415437",
@@ -857,11 +857,6 @@
       "id": "native.android.c8ce503b95d13058",
       "source": "Linked phones and node hosts will appear here after pairing.",
       "translated": "पेयरिंग के बाद लिंक किए गए फ़ोन और नोड होस्ट यहाँ दिखाई देंगे।"
-    },
-    {
-      "id": "native.android.3df83311891719d9",
-      "source": "Device pairing admin needs elevated access. Connected nodes still work.",
-      "translated": "डिवाइस पेयरिंग एडमिन को उन्नत एक्सेस चाहिए। कनेक्टेड नोड फिर भी काम करते हैं।"
     },
     {
       "id": "native.android.70b6f8fccd67f4ce",
@@ -1622,6 +1617,21 @@
       "id": "native.android.53928793ec65d766",
       "source": "While Using",
       "translated": "उपयोग करते समय"
+    },
+    {
+      "id": "native.android.f3d5fd047bfdb023",
+      "source": "Replace gateway setup?",
+      "translated": "Gateway सेटअप बदलें?"
+    },
+    {
+      "id": "native.android.869c8be127ce5282",
+      "source": "Replace setup",
+      "translated": "सेटअप बदलें"
+    },
+    {
+      "id": "native.android.c6c8e0c4b8a9a7cf",
+      "source": "Cancel",
+      "translated": "रद्द करें"
     },
     {
       "id": "native.android.718cb50d1bff3e32",

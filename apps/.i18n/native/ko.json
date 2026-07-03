@@ -589,9 +589,9 @@
       "translated": "Tailscale 또는 공개 호스트의 경우 이 옵션을 켜세요. 비공개 LAN ws://는 계속 지원됩니다."
     },
     {
-      "id": "native.android.60da1ba96bf1ed31",
-      "source": "token",
-      "translated": "토큰"
+      "id": "native.android.d56dcd9606f37263",
+      "source": "Leave blank to keep saved token",
+      "translated": "저장된 토큰을 유지하려면 비워 두세요"
     },
     {
       "id": "native.android.8123f2cfbe415437",
@@ -857,11 +857,6 @@
       "id": "native.android.c8ce503b95d13058",
       "source": "Linked phones and node hosts will appear here after pairing.",
       "translated": "페어링 후 연결된 휴대폰과 노드 호스트가 여기에 표시됩니다."
-    },
-    {
-      "id": "native.android.3df83311891719d9",
-      "source": "Device pairing admin needs elevated access. Connected nodes still work.",
-      "translated": "기기 페어링 관리에는 상승된 접근 권한이 필요합니다. 연결된 노드는 계속 작동합니다."
     },
     {
       "id": "native.android.70b6f8fccd67f4ce",
@@ -1622,6 +1617,21 @@
       "id": "native.android.53928793ec65d766",
       "source": "While Using",
       "translated": "사용 중"
+    },
+    {
+      "id": "native.android.f3d5fd047bfdb023",
+      "source": "Replace gateway setup?",
+      "translated": "Gateway 설정을 교체할까요?"
+    },
+    {
+      "id": "native.android.869c8be127ce5282",
+      "source": "Replace setup",
+      "translated": "설정 교체"
+    },
+    {
+      "id": "native.android.c6c8e0c4b8a9a7cf",
+      "source": "Cancel",
+      "translated": "취소"
     },
     {
       "id": "native.android.718cb50d1bff3e32",

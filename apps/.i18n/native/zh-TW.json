@@ -589,9 +589,9 @@
       "translated": "若使用 Tailscale 或公開主機，請開啟此選項。私人 LAN ws:// 仍受支援。"
     },
     {
-      "id": "native.android.60da1ba96bf1ed31",
-      "source": "token",
-      "translated": "token"
+      "id": "native.android.d56dcd9606f37263",
+      "source": "Leave blank to keep saved token",
+      "translated": "留空以保留已儲存的權杖"
     },
     {
       "id": "native.android.8123f2cfbe415437",
@@ -857,11 +857,6 @@
       "id": "native.android.c8ce503b95d13058",
       "source": "Linked phones and node hosts will appear here after pairing.",
       "translated": "配對後，已連結的手機和節點主機會顯示在這裡。"
-    },
-    {
-      "id": "native.android.3df83311891719d9",
-      "source": "Device pairing admin needs elevated access. Connected nodes still work.",
-      "translated": "裝置配對管理員需要提高權限。已連線的節點仍可運作。"
     },
     {
       "id": "native.android.70b6f8fccd67f4ce",
@@ -1622,6 +1617,21 @@
       "id": "native.android.53928793ec65d766",
       "source": "While Using",
       "translated": "使用期間"
+    },
+    {
+      "id": "native.android.f3d5fd047bfdb023",
+      "source": "Replace gateway setup?",
+      "translated": "要取代 Gateway 設定嗎？"
+    },
+    {
+      "id": "native.android.869c8be127ce5282",
+      "source": "Replace setup",
+      "translated": "取代設定"
+    },
+    {
+      "id": "native.android.c6c8e0c4b8a9a7cf",
+      "source": "Cancel",
+      "translated": "取消"
     },
     {
       "id": "native.android.718cb50d1bff3e32",
