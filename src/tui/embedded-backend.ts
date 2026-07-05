@@ -35,8 +35,9 @@ import {
 } from "../gateway/chat-display-projection.js";
 import { augmentChatHistoryWithCliSessionImports } from "../gateway/cli-session-history.js";
 import {
-  normalizeLiveAssistantEventText,
+  normalizeLiveAssistantBufferedText,
   projectLiveAssistantBufferedText,
+  resolveAssistantLiveChatInput,
   resolveMergedAssistantText,
   shouldSuppressAssistantEventForLiveChat,
 } from "../gateway/live-chat-projector.js";
@@ -48,6 +49,7 @@ import {
   replaceOversizedChatHistoryMessages,
 } from "../gateway/server-methods/chat.js";
 import { loadGatewayModelCatalog } from "../gateway/server-model-catalog.js";
+import { createGatewaySession } from "../gateway/session-create-service.js";
 import { performGatewaySessionReset } from "../gateway/session-reset-service.js";
 import {
   capArrayByJsonBytes,
@@ -86,6 +88,7 @@ import type {
   TuiEvent,
   TuiModelChoice,
   TuiSessionList,
+  TuiSessionCreateOptions,
 } from "./tui-backend.js";
 
 type LocalRunState = {
@@ -673,6 +676,22 @@ export class EmbeddedTuiBackend implements TuiBackend {
     return { ok: true as const, key: result.key, entry: result.entry };
   }
 
+  async createSession(opts: TuiSessionCreateOptions) {
+    await this.ready;
+    const cfg = getRuntimeConfig();
+    const result = await createGatewaySession({
+      cfg,
+      ...opts,
+      emitCommandHooks: Boolean(opts.parentSessionKey),
+      commandSource: "tui:embedded",
+      loadGatewayModelCatalog: () => loadEmbeddedTuiModelCatalog(cfg),
+    });
+    if (!result.ok) {
+      throw new Error(result.error.message);
+    }
+    return { ok: true as const, key: result.key, entry: result.entry };
+  }
+
   private async runBtwTurn(params: {
     runId: string;
     sessionKey: string;
@@ -927,7 +946,8 @@ export class EmbeddedTuiBackend implements TuiBackend {
   }
 
   private emitChatDelta(runId: string, run: LocalRunState) {
-    const projected = projectLiveAssistantBufferedText(run.buffer.trim(), {
+    const normalizedText = normalizeLiveAssistantBufferedText(run.buffer).trim();
+    const projected = projectLiveAssistantBufferedText(normalizedText, {
       suppressLeadFragments: true,
     });
     const text = projected.text.trim();
@@ -965,7 +985,8 @@ export class EmbeddedTuiBackend implements TuiBackend {
     }
     run.registered = true;
     run.lastBroadcastText = undefined;
-    const projected = projectLiveAssistantBufferedText(run.buffer.trim(), {
+    const normalizedText = normalizeLiveAssistantBufferedText(run.buffer).trim();
+    const projected = projectLiveAssistantBufferedText(normalizedText, {
       suppressLeadFragments: false,
     });
     const text = projected.text.trim();
@@ -1067,20 +1088,17 @@ export class EmbeddedTuiBackend implements TuiBackend {
       data: evt.data,
     });
 
+    const assistantLiveChatInput =
+      evt.stream === "assistant" ? resolveAssistantLiveChatInput(evt.data) : undefined;
     if (
-      evt.stream === "assistant" &&
+      assistantLiveChatInput &&
       !run.isBtw &&
-      typeof evt.data?.text === "string" &&
       !shouldSuppressAssistantEventForLiveChat(evt.data)
     ) {
-      const cleaned = normalizeLiveAssistantEventText({
-        text: evt.data.text,
-        delta: evt.data.delta,
-      });
       run.buffer = resolveMergedAssistantText({
         previousText: run.buffer,
-        nextText: cleaned.text,
-        nextDelta: cleaned.delta,
+        nextText: assistantLiveChatInput.text,
+        nextDelta: assistantLiveChatInput.delta,
       });
       this.emitChatDelta(evt.runId, run);
       return;
