@@ -10,6 +10,7 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- **iOS Voice Wake cleanup:** avoid initializing the microphone audio pipeline while disabling inactive Voice Wake, preventing simulator launch aborts and unnecessary audio setup.
 - **Agent stop recovery:** prevent late-aborting prompts from reacquiring orphaned session locks after teardown, so `/stop` leaves the conversation ready for the next turn.
 - **Message delivery status:** report failed and partially failed best-effort channel delivery instead of returning a success-shaped message-tool result. (#99928) Thanks @masatohoshino.
 - **WhatsApp credential recovery:** restore malformed primary auth state from a valid backup during startup. (#99070) Thanks @LeonidasLux.
@@ -20,8 +21,14 @@ Docs: https://docs.openclaw.ai
 - **Plugin module identity:** keep OpenClaw package chunks on Node's native module graph when jiti transforms plugin entries, preventing duplicate evaluation and class identity drift. (#88384) Thanks @vincentkoc.
 - **Shell completion repair:** generate core-only caches during doctor and update repair while preserving full plugin command completion for onboarding and explicit user rebuilds. (#76235)
 - **MCP schema diagnostics:** attribute draft-2020-12 compiler failures to the external MCP schema so malformed patterns produce actionable setup errors. Thanks @vincentkoc.
+- **Windows Scheduled Task recovery:** keep clean early exits inside the existing bounded launch poll, falling back only when neither the task process nor Gateway listener becomes observable. (#76245)
 - **iMessage group warnings:** suppress the false drop-all startup warning when an effective group sender allowlist can admit groups, and point true empty-allowlist configurations at the correct remedy. (#100046)
 - **Control UI mobile login:** keep Gateway recovery guidance visible after connection failures, make the disconnected gate scroll safely on constrained screens, and improve mobile keyboard and tap-target behavior. (#100208)
+- **TUI streaming:** render delta-only assistant events in live Gateway and embedded TUI sessions instead of waiting for the final response. (#83000) Thanks @flashosophy.
+- **Model aliases:** resolve provider-qualified aliases during session and chat-command model switches without collisions when providers share a display alias. (#100209) Thanks @sahilsatralkar.
+- **TUI new-session hooks:** create `/new` sessions through the shared Gateway lifecycle so command and session hooks receive the completed parent transcript in both Gateway and embedded modes, while preventing rollover during an active turn. (#100241, #49918) Thanks @BingqingLyu.
+- **TUI abort diagnostics:** show sanitized tool argument-validation summaries for aborted runs in both Gateway and local TUI modes without exposing raw model arguments. (#91002) Thanks @wsyjh8.
+- **iOS Watch replies:** persist queued quick replies in the gateway-scoped chat outbox and submit them through idempotent chat delivery, preventing losses, duplicates, and cross-gateway sends after reconnects. (#100031) Thanks @NianJiuZst.
 
 ## 2026.7.1
 
