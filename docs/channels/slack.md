@@ -41,6 +41,10 @@ Both transports are production-ready and reach feature parity for messaging, sla
 **Pick HTTP Request URLs** when running multiple Gateway replicas behind a load balancer, when outbound WSS is blocked but inbound HTTPS is allowed, or when you already terminate Slack webhooks at a reverse proxy.
 </Note>
 
+<Warning>
+  Slack can maintain multiple Socket Mode connections for one app and may deliver each payload to any connection. Separate OpenClaw gateways that share a Slack app therefore need equivalent routing and authorization configuration. Otherwise, use a separate Slack app per gateway, a single relay ingress, or HTTP Request URLs behind a load balancer. See [Using Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode#using-multiple-connections).
+</Warning>
+
 ### Relay mode
 
 Relay mode separates Slack ingress from the OpenClaw gateway. A trusted router owns the
@@ -1031,6 +1035,7 @@ Current Slack message actions include `send`, `upload-file`, `download-file`, `r
     Per-channel controls (`channels.slack.channels.<id>`; names only via startup resolution or `dangerouslyAllowNameMatching`):
 
     - `requireMention`
+    - `ignoreOtherMentions`
     - `users` (allowlist)
     - `allowBots`
     - `skills`
@@ -1038,6 +1043,8 @@ Current Slack message actions include `send`, `upload-file`, `download-file`, `r
     - `tools`, `toolsBySender`
     - `toolsBySender` key format: `channel:`, `id:`, `e164:`, `username:`, `name:`, or `"*"` wildcard
       (legacy unprefixed keys still map to `id:` only)
+
+    `ignoreOtherMentions` defaults to `false`. When `true`, channel messages that mention another user or user group but not this bot are stored as pending context and not handled. DMs and group DMs are unaffected. The filter requires a bot user ID from `auth.test`; if that identity is unavailable, messages pass through unchanged.
 
     `allowBots` is conservative for channels and private channels: bot-authored room messages are accepted only when the sending bot is explicitly listed in that room's `users` allowlist, or when at least one explicit Slack owner ID from `channels.slack.allowFrom` is currently a room member. Wildcards and display-name owner entries do not satisfy owner presence. Owner presence uses Slack `conversations.members`; make sure the app has the matching read scope for the room type (`channels:read` for public channels, `groups:read` for private channels). If the member lookup fails, OpenClaw drops the bot-authored room message.
 
