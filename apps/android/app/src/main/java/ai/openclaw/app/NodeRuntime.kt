@@ -420,6 +420,8 @@ class NodeRuntime private constructor(
       location = location,
       json = json,
       isForeground = { _isForeground.value },
+      locationMode = { locationMode.value },
+      backgroundLocationEnabled = { SensitiveFeatureConfig.backgroundLocationEnabled },
       locationPreciseEnabled = { locationPreciseEnabled.value },
     )
 
@@ -807,6 +809,7 @@ class NodeRuntime private constructor(
       onEvent = { event, payloadJson ->
         handleGatewayEvent(event, payloadJson)
       },
+      customHeadersProvider = prefs::loadGatewayCustomHeaders,
     )
 
   private suspend fun subscribeOperatorSessionEvents() {
@@ -871,6 +874,7 @@ class NodeRuntime private constructor(
       onTlsFingerprint = { stableId, fingerprint ->
         prefs.saveGatewayTlsFingerprint(stableId, fingerprint)
       },
+      customHeadersProvider = prefs::loadGatewayCustomHeaders,
     )
 
   /**
@@ -939,6 +943,7 @@ class NodeRuntime private constructor(
       transcriptCache = chatTranscriptCache,
       cacheScope = ::chatCacheScope,
       commandOutbox = chatCommandOutbox,
+      recordModelRecent = prefs::recordModelRecent,
     ).also {
       it.applyMainSessionKey(_mainSessionKey.value)
     }
@@ -1441,6 +1446,8 @@ class NodeRuntime private constructor(
   val chatError: StateFlow<String?> = chat.errorText
   val chatHealthOk: StateFlow<Boolean> = chat.healthOk
   val chatThinkingLevel: StateFlow<String> = chat.thinkingLevel
+  val chatSelectedModelRef: StateFlow<String?> = chat.selectedModelRef
+  val chatModelCatalog: StateFlow<List<GatewayModelSummary>> = chat.modelCatalog
   val chatStreamingAssistantText: StateFlow<String?> = chat.streamingAssistantText
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = chat.pendingToolCalls
   val chatSessions: StateFlow<List<ChatSessionEntry>> = chat.sessions
@@ -2690,6 +2697,13 @@ class NodeRuntime private constructor(
     chat.setThinkingLevel(level)
   }
 
+  fun setChatSessionModel(
+    sessionKey: String,
+    modelRef: String?,
+  ) {
+    chat.setSessionModel(sessionKey = sessionKey, modelRef = modelRef)
+  }
+
   fun switchChatSession(sessionKey: String) {
     chat.switchSession(sessionKey)
   }
@@ -2810,6 +2824,36 @@ class NodeRuntime private constructor(
       // ignore
     }
   }
+
+  /** Lists one directory of the active agent's workspace (read-only RPC). */
+  suspend fun listWorkspaceFiles(
+    path: String?,
+    offset: Int? = null,
+  ): GatewayWorkspaceListing {
+    val params =
+      buildJsonObject {
+        put("agentId", JsonPrimitive(workspaceAgentId()))
+        if (!path.isNullOrEmpty()) put("path", JsonPrimitive(path))
+        if (offset != null && offset > 0) put("offset", JsonPrimitive(offset))
+      }
+    val res = operatorSession.request("agents.workspace.list", params.toString())
+    return parseWorkspaceListing(json.parseToJsonElement(res))
+      ?: throw IllegalStateException("agents.workspace.list returned no listing")
+  }
+
+  /** Fetches one workspace file preview (UTF-8 text or base64 image). */
+  suspend fun fetchWorkspaceFile(path: String): GatewayWorkspaceFile {
+    val params =
+      buildJsonObject {
+        put("agentId", JsonPrimitive(workspaceAgentId()))
+        put("path", JsonPrimitive(path))
+      }
+    val res = operatorSession.request("agents.workspace.get", params.toString(), timeoutMs = 30_000)
+    return parseWorkspaceFile(json.parseToJsonElement(res))
+      ?: throw IllegalStateException("agents.workspace.get returned no file")
+  }
+
+  private fun workspaceAgentId(): String = resolveActiveAgentId().ifEmpty { "main" }
 
   private suspend fun refreshAgentsFromGateway() {
     if (!operatorConnected) return
@@ -3373,27 +3417,6 @@ class NodeRuntime private constructor(
       _healthLogsRefreshing.value = false
     }
   }
-
-  private fun parseGatewayModels(models: JsonArray?): List<GatewayModelSummary> =
-    models
-      ?.mapNotNull { item ->
-        val obj = item.asObjectOrNull() ?: return@mapNotNull null
-        val id = obj["id"].asStringOrNull()?.trim().orEmpty()
-        if (id.isEmpty()) return@mapNotNull null
-        val provider = obj["provider"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: id.substringBefore('/', "default")
-        val inputTypes = (obj["input"] as? JsonArray)?.mapNotNull { it.asStringOrNull()?.trim()?.lowercase() }?.toSet().orEmpty()
-        GatewayModelSummary(
-          id = id,
-          name = obj["name"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: id,
-          provider = provider,
-          available = obj.optionalBoolean("available"),
-          supportsVision = "image" in inputTypes,
-          supportsAudio = "audio" in inputTypes,
-          supportsDocuments = "document" in inputTypes,
-          supportsReasoning = obj["reasoning"].toString().trim() == "true",
-          contextTokens = obj["contextWindow"].toString().toLongOrNull() ?: obj["contextTokens"].toString().toLongOrNull(),
-        )
-      }.orEmpty()
 
   private fun parseGatewayLogEntry(line: String): GatewayLogEntry {
     val sanitizedLine = sanitizeGatewayLogText(line)
@@ -4039,6 +4062,27 @@ data class GatewayModelSummary(
   val supportsReasoning: Boolean,
   val contextTokens: Long?,
 )
+
+internal fun parseGatewayModels(models: JsonArray?): List<GatewayModelSummary> =
+  models
+    ?.mapNotNull { item ->
+      val obj = item.asObjectOrNull() ?: return@mapNotNull null
+      val id = obj["id"].asStringOrNull()?.trim().orEmpty()
+      if (id.isEmpty()) return@mapNotNull null
+      val provider = obj["provider"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: id.substringBefore('/', "default")
+      val inputTypes = (obj["input"] as? JsonArray)?.mapNotNull { it.asStringOrNull()?.trim()?.lowercase() }?.toSet().orEmpty()
+      GatewayModelSummary(
+        id = id,
+        name = obj["name"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: id,
+        provider = provider,
+        available = obj.optionalBoolean("available"),
+        supportsVision = "image" in inputTypes,
+        supportsAudio = "audio" in inputTypes,
+        supportsDocuments = "document" in inputTypes,
+        supportsReasoning = obj["reasoning"].toString().trim() == "true",
+        contextTokens = obj["contextWindow"].toString().toLongOrNull() ?: obj["contextTokens"].toString().toLongOrNull(),
+      )
+    }.orEmpty()
 
 data class GatewayModelProviderSummary(
   val id: String,

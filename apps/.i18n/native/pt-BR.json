@@ -709,6 +709,11 @@
       "translated": "Senha (opcional)"
     },
     {
+      "id": "native.android.4ddaa88cd4939df2",
+      "source": "CF-Access-Client-Id",
+      "translated": "CF-Access-Client-Id"
+    },
+    {
       "id": "native.android.b735fb6c7d284ecf",
       "source": "Dreaming",
       "translated": "Sonhando"
@@ -2189,9 +2194,29 @@
       "translated": "Localização"
     },
     {
-      "id": "native.android.53928793ec65d766",
-      "source": "While Using",
-      "translated": "Durante o uso"
+      "id": "native.android.58549715b04997cc",
+      "source": "Always allows requested location checks while OpenClaw is in the background; Android shows this in the persistent node notification.",
+      "translated": "Sempre permite as verificações de localização solicitadas enquanto o OpenClaw está em segundo plano; o Android mostra isso na notificação persistente do nó."
+    },
+    {
+      "id": "native.android.d5a8d7f97a7971b1",
+      "source": "Allow background location?",
+      "translated": "Permitir localização em segundo plano?"
+    },
+    {
+      "id": "native.android.9d149d1ad66e42f9",
+      "source": "OpenClaw only checks location when your paired Gateway requests it. ",
+      "translated": "O OpenClaw só verifica a localização quando o Gateway pareado solicita. "
+    },
+    {
+      "id": "native.android.c48805f3de1d72ca",
+      "source": "Open Settings",
+      "translated": "Abrir Ajustes"
+    },
+    {
+      "id": "native.android.fd97640418602532",
+      "source": "Not Now",
+      "translated": "Agora não"
     },
     {
       "id": "native.android.f3d5fd047bfdb023",
@@ -2979,6 +3004,16 @@
       "translated": "Conversas recentes"
     },
     {
+      "id": "native.android.cbdaff5e476b7dad",
+      "source": "Browse",
+      "translated": "Navegar"
+    },
+    {
+      "id": "native.android.c093a2297a02405a",
+      "source": "Offline",
+      "translated": "Offline"
+    },
+    {
       "id": "native.android.1196e848f04a3dc1",
       "source": "Working · $pendingRunCount active ${pluralize(\"run\", pendingRunCount)}",
       "translated": "Trabalhando · $pendingRunCount ${pluralize(\"run\", pendingRunCount)} ativo(s)"
@@ -3474,6 +3509,56 @@
       "translated": "OpenClaw está pensando…"
     },
     {
+      "id": "native.android.eb6ff96aba8f67b4",
+      "source": "Files unavailable",
+      "translated": "Arquivos indisponíveis"
+    },
+    {
+      "id": "native.android.fefb4a6c1717210d",
+      "source": "Empty folder",
+      "translated": "Pasta vazia"
+    },
+    {
+      "id": "native.android.b74f90dc5f65b1da",
+      "source": "This folder has no files yet.",
+      "translated": "Esta pasta ainda não tem arquivos."
+    },
+    {
+      "id": "native.android.8f0b5317c75e334d",
+      "source": "Could not load this folder.",
+      "translated": "Não foi possível carregar esta pasta."
+    },
+    {
+      "id": "native.android.4e48916e1b0f86ab",
+      "source": "Load more",
+      "translated": "Carregar mais"
+    },
+    {
+      "id": "native.android.f26b7b179d4765b0",
+      "source": "${entries.size} of $totalEntries",
+      "translated": "${entries.size} de $totalEntries"
+    },
+    {
+      "id": "native.android.b2a525ca00a799df",
+      "source": "Back",
+      "translated": "Voltar"
+    },
+    {
+      "id": "native.android.737edf881bc586d5",
+      "source": "Share file",
+      "translated": "Compartilhar arquivo"
+    },
+    {
+      "id": "native.android.095574301bf487a1",
+      "source": "No preview",
+      "translated": "Sem pré-visualização"
+    },
+    {
+      "id": "native.android.f57b231996a10d14",
+      "source": "This image could not be decoded.",
+      "translated": "Não foi possível decodificar esta imagem."
+    },
+    {
       "id": "native.android.4949d6815387ee5c",
       "source": "Type a message…",
       "translated": "Digite uma mensagem…"
@@ -3587,6 +3672,26 @@
       "id": "native.android.a7d32e86ce4c0a17",
       "source": "No messages yet",
       "translated": "Ainda não há mensagens"
+    },
+    {
+      "id": "native.android.71ef7f8dbe2b0dbe",
+      "source": "Preview · $domain",
+      "translated": "Pré-visualização · $domain"
+    },
+    {
+      "id": "native.android.b49e81e487cdbaa3",
+      "source": "Expand link preview",
+      "translated": "Expandir pré-visualização do link"
+    },
+    {
+      "id": "native.android.986fd353169b6153",
+      "source": "Loading preview…",
+      "translated": "Carregando pré-visualização…"
+    },
+    {
+      "id": "native.android.edb04556385d80d5",
+      "source": "No preview available",
+      "translated": "Nenhuma pré-visualização disponível"
     },
     {
       "id": "native.android.a50e44d8f380f9ad",
@@ -3737,6 +3842,21 @@
       "id": "native.android.76d574acfac94fee",
       "source": "Stop",
       "translated": "Parar"
+    },
+    {
+      "id": "native.android.2cb3ec7379426dfe",
+      "source": "Default",
+      "translated": "Padrão"
+    },
+    {
+      "id": "native.android.f8d0f6ba7608abc3",
+      "source": "Pin model",
+      "translated": "Fixar modelo"
+    },
+    {
+      "id": "native.android.09a13ed8f039a9c3",
+      "source": "Unpin model",
+      "translated": "Desafixar modelo"
     },
     {
       "id": "native.android.5953c956ff208e6e",
@@ -4077,6 +4197,36 @@
       "id": "native.android.005e23b33d333f6a",
       "source": "Password",
       "translated": "Senha"
+    },
+    {
+      "id": "native.android.43900769f2cf0458",
+      "source": "Custom headers (optional)",
+      "translated": "Cabeçalhos personalizados (opcional)"
+    },
+    {
+      "id": "native.android.6d42cb48a4a32331",
+      "source": "Sent with every connection to this gateway, for example Cloudflare Access service token headers. Stored encrypted and applied on the next reconnect.",
+      "translated": "Enviados com todas as conexões a este gateway, por exemplo, cabeçalhos de token de serviço do Cloudflare Access. Armazenados criptografados e aplicados na próxima reconexão."
+    },
+    {
+      "id": "native.android.c4d4f0299965fe55",
+      "source": "Header value",
+      "translated": "Valor do cabeçalho"
+    },
+    {
+      "id": "native.android.123e497273b8586e",
+      "source": "This header is managed by the connection and cannot be overridden.",
+      "translated": "Este cabeçalho é gerenciado pela conexão e não pode ser substituído."
+    },
+    {
+      "id": "native.android.94f0633a1fb099bc",
+      "source": "Add header",
+      "translated": "Adicionar cabeçalho"
+    },
+    {
+      "id": "native.android.ff4c8c3b56827d8e",
+      "source": "Remove %1$s",
+      "translated": "Remover %1$s"
     },
     {
       "id": "native.android.a43f43c1338a6960",
@@ -6649,6 +6799,11 @@
       "translated": "Senha do Gateway"
     },
     {
+      "id": "native.apple.438ae7e5b8544548",
+      "source": "Custom Headers",
+      "translated": "Cabeçalhos personalizados"
+    },
+    {
       "id": "native.apple.c9cd035bc39af480",
       "source": "Reset Onboarding",
       "translated": "Redefinir integração inicial"
@@ -8202,6 +8357,41 @@
       "id": "native.apple.e69088f1f2dcbd99",
       "source": "Connection",
       "translated": "Conexão"
+    },
+    {
+      "id": "native.apple.41e812a22a1b042d",
+      "source": "Value",
+      "translated": "Valor"
+    },
+    {
+      "id": "native.apple.acc5936e406af08c",
+      "source": "Headers",
+      "translated": "Cabeçalhos"
+    },
+    {
+      "id": "native.apple.8896386269ac4882",
+      "source": "Sent with foreground app connections to this gateway. Changes apply on the next reconnect; Share extension delivery is not yet supported.",
+      "translated": "Enviado com conexões do app em primeiro plano para este gateway. As alterações serão aplicadas na próxima reconexão; a entrega pela extensão de compartilhamento ainda não é compatível."
+    },
+    {
+      "id": "native.apple.319594454c1ff701",
+      "source": "Header name",
+      "translated": "Nome do cabeçalho"
+    },
+    {
+      "id": "native.apple.7c4ff27cd7fa2c96",
+      "source": "Header value",
+      "translated": "Valor do cabeçalho"
+    },
+    {
+      "id": "native.apple.a1368ad2d29a1152",
+      "source": "Add Header",
+      "translated": "Adicionar cabeçalho"
+    },
+    {
+      "id": "native.apple.19fba912c31023b5",
+      "source": "Custom Headers",
+      "translated": "Cabeçalhos personalizados"
     },
     {
       "id": "native.apple.4dac301c7e0c921c",

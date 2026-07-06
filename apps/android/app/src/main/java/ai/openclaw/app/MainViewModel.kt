@@ -141,6 +141,8 @@ class MainViewModel(
   val modelAuthProviders: StateFlow<List<GatewayModelProviderSummary>> = runtimeState(initial = emptyList()) { it.modelAuthProviders }
   val modelCatalogRefreshing: StateFlow<Boolean> = runtimeState(initial = false) { it.modelCatalogRefreshing }
   val modelCatalogErrorText: StateFlow<String?> = runtimeState(initial = null) { it.modelCatalogErrorText }
+  val modelFavorites: StateFlow<List<String>> = prefs.modelFavorites
+  val modelRecents: StateFlow<List<String>> = prefs.modelRecents
   val talkSetupReadiness: StateFlow<GatewayTalkSetupReadiness> =
     runtimeState(initial = GatewayTalkSetupReadiness.unverified()) { it.talkSetupReadiness }
   val gatewayDefaultAgentId: StateFlow<String?> = runtimeState(initial = null) { it.gatewayDefaultAgentId }
@@ -220,6 +222,8 @@ class MainViewModel(
   val chatError: StateFlow<String?> = runtimeState(initial = null) { it.chatError }
   val chatHealthOk: StateFlow<Boolean> = runtimeState(initial = false) { it.chatHealthOk }
   val chatThinkingLevel: StateFlow<String> = runtimeState(initial = "off") { it.chatThinkingLevel }
+  val chatSelectedModelRef: StateFlow<String?> = runtimeState(initial = null) { it.chatSelectedModelRef }
+  val chatModelCatalog: StateFlow<List<GatewayModelSummary>> = runtimeState(initial = emptyList()) { it.chatModelCatalog }
   val chatStreamingAssistantText: StateFlow<String?> = runtimeState(initial = null) { it.chatStreamingAssistantText }
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = runtimeState(initial = emptyList()) { it.chatPendingToolCalls }
   val chatSessions: StateFlow<List<ChatSessionEntry>> = runtimeState(initial = emptyList()) { it.chatSessions }
@@ -351,6 +355,16 @@ class MainViewModel(
     }
   }
 
+  /** Per-gateway proxy credential headers; values are secrets and must never be logged. */
+  fun gatewayCustomHeaders(stableId: String): Map<String, String> = prefs.loadGatewayCustomHeaders(stableId)
+
+  fun setGatewayCustomHeaders(
+    stableId: String,
+    headers: Map<String, String>,
+  ) {
+    prefs.saveGatewayCustomHeaders(stableId, headers)
+  }
+
   /** Marks onboarding complete and starts the runtime before UI observes connected-state flows. */
   fun setOnboardingCompleted(value: Boolean) {
     if (value) {
@@ -363,6 +377,9 @@ class MainViewModel(
   fun pairNewGateway() {
     viewModelScope.launch(Dispatchers.Default) {
       if (!resetGatewaySetupAuth()) return@launch
+      // Sign out is the explicit forget boundary for proxy credentials. Ordinary same-gateway
+      // auth replacement keeps these per-endpoint values so reconnects do not require re-entry.
+      prefs.clearGatewayCustomHeaders()
       prefs.setOnboardingCompleted(false)
       _startOnboardingAtGatewaySetup.value = true
     }
@@ -662,8 +679,26 @@ class MainViewModel(
 
   suspend fun forkChatSession(parentKey: String): String? = ensureRuntime().forkChatSession(parentKey)
 
+  suspend fun listWorkspaceFiles(
+    path: String?,
+    offset: Int? = null,
+  ): GatewayWorkspaceListing = ensureRuntime().listWorkspaceFiles(path = path, offset = offset)
+
+  suspend fun fetchWorkspaceFile(path: String): GatewayWorkspaceFile = ensureRuntime().fetchWorkspaceFile(path)
+
   fun setChatThinkingLevel(level: String) {
     ensureRuntime().setChatThinkingLevel(level)
+  }
+
+  fun setChatSessionModel(
+    sessionKey: String,
+    modelRef: String?,
+  ) {
+    ensureRuntime().setChatSessionModel(sessionKey = sessionKey, modelRef = modelRef)
+  }
+
+  fun toggleModelFavorite(ref: String) {
+    prefs.toggleModelFavorite(ref)
   }
 
   fun switchChatSession(sessionKey: String) {

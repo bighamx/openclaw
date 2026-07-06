@@ -709,6 +709,11 @@
       "translated": "گذرواژه (اختیاری)"
     },
     {
+      "id": "native.android.4ddaa88cd4939df2",
+      "source": "CF-Access-Client-Id",
+      "translated": "CF-Access-Client-Id"
+    },
+    {
       "id": "native.android.b735fb6c7d284ecf",
       "source": "Dreaming",
       "translated": "در حال رؤیاپردازی"
@@ -2189,9 +2194,29 @@
       "translated": "مکان"
     },
     {
-      "id": "native.android.53928793ec65d766",
-      "source": "While Using",
-      "translated": "هنگام استفاده"
+      "id": "native.android.58549715b04997cc",
+      "source": "Always allows requested location checks while OpenClaw is in the background; Android shows this in the persistent node notification.",
+      "translated": "همیشه بررسی‌های موقعیت مکانی درخواست‌شده را زمانی که OpenClaw در پس‌زمینه است مجاز می‌کند؛ Android این را در اعلان پایدار گره نشان می‌دهد."
+    },
+    {
+      "id": "native.android.d5a8d7f97a7971b1",
+      "source": "Allow background location?",
+      "translated": "اجازه دادن به موقعیت مکانی در پس‌زمینه؟"
+    },
+    {
+      "id": "native.android.9d149d1ad66e42f9",
+      "source": "OpenClaw only checks location when your paired Gateway requests it. ",
+      "translated": "OpenClaw فقط زمانی موقعیت مکانی را بررسی می‌کند که Gateway جفت‌شده شما آن را درخواست کند. "
+    },
+    {
+      "id": "native.android.c48805f3de1d72ca",
+      "source": "Open Settings",
+      "translated": "باز کردن تنظیمات"
+    },
+    {
+      "id": "native.android.fd97640418602532",
+      "source": "Not Now",
+      "translated": "فعلاً نه"
     },
     {
       "id": "native.android.f3d5fd047bfdb023",
@@ -2979,6 +3004,16 @@
       "translated": "گفتگوهای اخیر"
     },
     {
+      "id": "native.android.cbdaff5e476b7dad",
+      "source": "Browse",
+      "translated": "مرور"
+    },
+    {
+      "id": "native.android.c093a2297a02405a",
+      "source": "Offline",
+      "translated": "آفلاین"
+    },
+    {
       "id": "native.android.1196e848f04a3dc1",
       "source": "Working · $pendingRunCount active ${pluralize(\"run\", pendingRunCount)}",
       "translated": "در حال کار · $pendingRunCount ${pluralize(\"run\", pendingRunCount)} فعال"
@@ -3474,6 +3509,56 @@
       "translated": "OpenClaw در حال فکر کردن است…"
     },
     {
+      "id": "native.android.eb6ff96aba8f67b4",
+      "source": "Files unavailable",
+      "translated": "فایل‌ها در دسترس نیستند"
+    },
+    {
+      "id": "native.android.fefb4a6c1717210d",
+      "source": "Empty folder",
+      "translated": "پوشه خالی"
+    },
+    {
+      "id": "native.android.b74f90dc5f65b1da",
+      "source": "This folder has no files yet.",
+      "translated": "این پوشه هنوز هیچ فایلی ندارد."
+    },
+    {
+      "id": "native.android.8f0b5317c75e334d",
+      "source": "Could not load this folder.",
+      "translated": "این پوشه بارگیری نشد."
+    },
+    {
+      "id": "native.android.4e48916e1b0f86ab",
+      "source": "Load more",
+      "translated": "بارگیری بیشتر"
+    },
+    {
+      "id": "native.android.f26b7b179d4765b0",
+      "source": "${entries.size} of $totalEntries",
+      "translated": "${entries.size} از $totalEntries"
+    },
+    {
+      "id": "native.android.b2a525ca00a799df",
+      "source": "Back",
+      "translated": "بازگشت"
+    },
+    {
+      "id": "native.android.737edf881bc586d5",
+      "source": "Share file",
+      "translated": "اشتراک‌گذاری فایل"
+    },
+    {
+      "id": "native.android.095574301bf487a1",
+      "source": "No preview",
+      "translated": "بدون پیش‌نمایش"
+    },
+    {
+      "id": "native.android.f57b231996a10d14",
+      "source": "This image could not be decoded.",
+      "translated": "این تصویر قابل رمزگشایی نبود."
+    },
+    {
       "id": "native.android.4949d6815387ee5c",
       "source": "Type a message…",
       "translated": "پیامی بنویسید…"
@@ -3587,6 +3672,26 @@
       "id": "native.android.a7d32e86ce4c0a17",
       "source": "No messages yet",
       "translated": "هنوز پیامی وجود ندارد"
+    },
+    {
+      "id": "native.android.71ef7f8dbe2b0dbe",
+      "source": "Preview · $domain",
+      "translated": "پیش‌نمایش · $domain"
+    },
+    {
+      "id": "native.android.b49e81e487cdbaa3",
+      "source": "Expand link preview",
+      "translated": "گسترش پیش‌نمایش پیوند"
+    },
+    {
+      "id": "native.android.986fd353169b6153",
+      "source": "Loading preview…",
+      "translated": "در حال بارگیری پیش‌نمایش…"
+    },
+    {
+      "id": "native.android.edb04556385d80d5",
+      "source": "No preview available",
+      "translated": "پیش‌نمایشی موجود نیست"
     },
     {
       "id": "native.android.a50e44d8f380f9ad",
@@ -3737,6 +3842,21 @@
       "id": "native.android.76d574acfac94fee",
       "source": "Stop",
       "translated": "توقف"
+    },
+    {
+      "id": "native.android.2cb3ec7379426dfe",
+      "source": "Default",
+      "translated": "پیش‌فرض"
+    },
+    {
+      "id": "native.android.f8d0f6ba7608abc3",
+      "source": "Pin model",
+      "translated": "سنجاق کردن مدل"
+    },
+    {
+      "id": "native.android.09a13ed8f039a9c3",
+      "source": "Unpin model",
+      "translated": "برداشتن سنجاق مدل"
     },
     {
       "id": "native.android.5953c956ff208e6e",
@@ -4077,6 +4197,36 @@
       "id": "native.android.005e23b33d333f6a",
       "source": "Password",
       "translated": "رمز عبور"
+    },
+    {
+      "id": "native.android.43900769f2cf0458",
+      "source": "Custom headers (optional)",
+      "translated": "هدرهای سفارشی (اختیاری)"
+    },
+    {
+      "id": "native.android.6d42cb48a4a32331",
+      "source": "Sent with every connection to this gateway, for example Cloudflare Access service token headers. Stored encrypted and applied on the next reconnect.",
+      "translated": "با هر اتصال به این gateway ارسال می‌شود، برای مثال هدرهای توکن سرویس Cloudflare Access. به‌صورت رمزگذاری‌شده ذخیره می‌شود و در اتصال مجدد بعدی اعمال می‌شود."
+    },
+    {
+      "id": "native.android.c4d4f0299965fe55",
+      "source": "Header value",
+      "translated": "مقدار هدر"
+    },
+    {
+      "id": "native.android.123e497273b8586e",
+      "source": "This header is managed by the connection and cannot be overridden.",
+      "translated": "این هدر توسط اتصال مدیریت می‌شود و قابل بازنویسی نیست."
+    },
+    {
+      "id": "native.android.94f0633a1fb099bc",
+      "source": "Add header",
+      "translated": "افزودن هدر"
+    },
+    {
+      "id": "native.android.ff4c8c3b56827d8e",
+      "source": "Remove %1$s",
+      "translated": "حذف %1$s"
     },
     {
       "id": "native.android.a43f43c1338a6960",
@@ -6649,6 +6799,11 @@
       "translated": "گذرواژه Gateway"
     },
     {
+      "id": "native.apple.438ae7e5b8544548",
+      "source": "Custom Headers",
+      "translated": "سربرگ‌های سفارشی"
+    },
+    {
       "id": "native.apple.c9cd035bc39af480",
       "source": "Reset Onboarding",
       "translated": "بازنشانی شروع به کار"
@@ -8202,6 +8357,41 @@
       "id": "native.apple.e69088f1f2dcbd99",
       "source": "Connection",
       "translated": "اتصال"
+    },
+    {
+      "id": "native.apple.41e812a22a1b042d",
+      "source": "Value",
+      "translated": "مقدار"
+    },
+    {
+      "id": "native.apple.acc5936e406af08c",
+      "source": "Headers",
+      "translated": "سربرگ‌ها"
+    },
+    {
+      "id": "native.apple.8896386269ac4882",
+      "source": "Sent with foreground app connections to this gateway. Changes apply on the next reconnect; Share extension delivery is not yet supported.",
+      "translated": "با اتصال‌های برنامه در پیش‌زمینه به این gateway ارسال می‌شود. تغییرات در اتصال مجدد بعدی اعمال می‌شوند؛ تحویل از طریق افزونه اشتراک‌گذاری هنوز پشتیبانی نمی‌شود."
+    },
+    {
+      "id": "native.apple.319594454c1ff701",
+      "source": "Header name",
+      "translated": "نام سربرگ"
+    },
+    {
+      "id": "native.apple.7c4ff27cd7fa2c96",
+      "source": "Header value",
+      "translated": "مقدار سربرگ"
+    },
+    {
+      "id": "native.apple.a1368ad2d29a1152",
+      "source": "Add Header",
+      "translated": "افزودن سربرگ"
+    },
+    {
+      "id": "native.apple.19fba912c31023b5",
+      "source": "Custom Headers",
+      "translated": "سربرگ‌های سفارشی"
     },
     {
       "id": "native.apple.4dac301c7e0c921c",

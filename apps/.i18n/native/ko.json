@@ -709,6 +709,11 @@
       "translated": "비밀번호(선택 사항)"
     },
     {
+      "id": "native.android.4ddaa88cd4939df2",
+      "source": "CF-Access-Client-Id",
+      "translated": "CF-Access-Client-Id"
+    },
+    {
       "id": "native.android.b735fb6c7d284ecf",
       "source": "Dreaming",
       "translated": "Dreaming"
@@ -2189,9 +2194,29 @@
       "translated": "위치"
     },
     {
-      "id": "native.android.53928793ec65d766",
-      "source": "While Using",
-      "translated": "사용 중"
+      "id": "native.android.58549715b04997cc",
+      "source": "Always allows requested location checks while OpenClaw is in the background; Android shows this in the persistent node notification.",
+      "translated": "OpenClaw가 백그라운드에 있는 동안 요청된 위치 확인을 항상 허용합니다. Android는 이를 지속적인 노드 알림에 표시합니다."
+    },
+    {
+      "id": "native.android.d5a8d7f97a7971b1",
+      "source": "Allow background location?",
+      "translated": "백그라운드 위치를 허용하시겠어요?"
+    },
+    {
+      "id": "native.android.9d149d1ad66e42f9",
+      "source": "OpenClaw only checks location when your paired Gateway requests it. ",
+      "translated": "OpenClaw는 페어링된 Gateway가 요청할 때만 위치를 확인합니다. "
+    },
+    {
+      "id": "native.android.c48805f3de1d72ca",
+      "source": "Open Settings",
+      "translated": "설정 열기"
+    },
+    {
+      "id": "native.android.fd97640418602532",
+      "source": "Not Now",
+      "translated": "나중에"
     },
     {
       "id": "native.android.f3d5fd047bfdb023",
@@ -2979,6 +3004,16 @@
       "translated": "최근 대화"
     },
     {
+      "id": "native.android.cbdaff5e476b7dad",
+      "source": "Browse",
+      "translated": "찾아보기"
+    },
+    {
+      "id": "native.android.c093a2297a02405a",
+      "source": "Offline",
+      "translated": "오프라인"
+    },
+    {
       "id": "native.android.1196e848f04a3dc1",
       "source": "Working · $pendingRunCount active ${pluralize(\"run\", pendingRunCount)}",
       "translated": "작업 중 · $pendingRunCount개 활성 ${pluralize(\"run\", pendingRunCount)}"
@@ -3474,6 +3509,56 @@
       "translated": "OpenClaw가 생각 중입니다…"
     },
     {
+      "id": "native.android.eb6ff96aba8f67b4",
+      "source": "Files unavailable",
+      "translated": "파일을 사용할 수 없음"
+    },
+    {
+      "id": "native.android.fefb4a6c1717210d",
+      "source": "Empty folder",
+      "translated": "빈 폴더"
+    },
+    {
+      "id": "native.android.b74f90dc5f65b1da",
+      "source": "This folder has no files yet.",
+      "translated": "이 폴더에는 아직 파일이 없습니다."
+    },
+    {
+      "id": "native.android.8f0b5317c75e334d",
+      "source": "Could not load this folder.",
+      "translated": "이 폴더를 불러올 수 없습니다."
+    },
+    {
+      "id": "native.android.4e48916e1b0f86ab",
+      "source": "Load more",
+      "translated": "더 불러오기"
+    },
+    {
+      "id": "native.android.f26b7b179d4765b0",
+      "source": "${entries.size} of $totalEntries",
+      "translated": "${entries.size} / $totalEntries"
+    },
+    {
+      "id": "native.android.b2a525ca00a799df",
+      "source": "Back",
+      "translated": "뒤로"
+    },
+    {
+      "id": "native.android.737edf881bc586d5",
+      "source": "Share file",
+      "translated": "파일 공유"
+    },
+    {
+      "id": "native.android.095574301bf487a1",
+      "source": "No preview",
+      "translated": "미리보기 없음"
+    },
+    {
+      "id": "native.android.f57b231996a10d14",
+      "source": "This image could not be decoded.",
+      "translated": "이 이미지를 디코딩할 수 없습니다."
+    },
+    {
       "id": "native.android.4949d6815387ee5c",
       "source": "Type a message…",
       "translated": "메시지를 입력하세요…"
@@ -3587,6 +3672,26 @@
       "id": "native.android.a7d32e86ce4c0a17",
       "source": "No messages yet",
       "translated": "아직 메시지가 없습니다"
+    },
+    {
+      "id": "native.android.71ef7f8dbe2b0dbe",
+      "source": "Preview · $domain",
+      "translated": "미리보기 · $domain"
+    },
+    {
+      "id": "native.android.b49e81e487cdbaa3",
+      "source": "Expand link preview",
+      "translated": "링크 미리보기 펼치기"
+    },
+    {
+      "id": "native.android.986fd353169b6153",
+      "source": "Loading preview…",
+      "translated": "미리보기 로드 중…"
+    },
+    {
+      "id": "native.android.edb04556385d80d5",
+      "source": "No preview available",
+      "translated": "사용 가능한 미리보기가 없습니다"
     },
     {
       "id": "native.android.a50e44d8f380f9ad",
@@ -3737,6 +3842,21 @@
       "id": "native.android.76d574acfac94fee",
       "source": "Stop",
       "translated": "중지"
+    },
+    {
+      "id": "native.android.2cb3ec7379426dfe",
+      "source": "Default",
+      "translated": "기본값"
+    },
+    {
+      "id": "native.android.f8d0f6ba7608abc3",
+      "source": "Pin model",
+      "translated": "모델 고정"
+    },
+    {
+      "id": "native.android.09a13ed8f039a9c3",
+      "source": "Unpin model",
+      "translated": "모델 고정 해제"
     },
     {
       "id": "native.android.5953c956ff208e6e",
@@ -4077,6 +4197,36 @@
       "id": "native.android.005e23b33d333f6a",
       "source": "Password",
       "translated": "비밀번호"
+    },
+    {
+      "id": "native.android.43900769f2cf0458",
+      "source": "Custom headers (optional)",
+      "translated": "사용자 지정 헤더(선택 사항)"
+    },
+    {
+      "id": "native.android.6d42cb48a4a32331",
+      "source": "Sent with every connection to this gateway, for example Cloudflare Access service token headers. Stored encrypted and applied on the next reconnect.",
+      "translated": "이 Gateway에 연결할 때마다 전송됩니다. 예: Cloudflare Access 서비스 토큰 헤더. 암호화되어 저장되며 다음 재연결 시 적용됩니다."
+    },
+    {
+      "id": "native.android.c4d4f0299965fe55",
+      "source": "Header value",
+      "translated": "헤더 값"
+    },
+    {
+      "id": "native.android.123e497273b8586e",
+      "source": "This header is managed by the connection and cannot be overridden.",
+      "translated": "이 헤더는 연결에서 관리되며 재정의할 수 없습니다."
+    },
+    {
+      "id": "native.android.94f0633a1fb099bc",
+      "source": "Add header",
+      "translated": "헤더 추가"
+    },
+    {
+      "id": "native.android.ff4c8c3b56827d8e",
+      "source": "Remove %1$s",
+      "translated": "%1$s 제거"
     },
     {
       "id": "native.android.a43f43c1338a6960",
@@ -6649,6 +6799,11 @@
       "translated": "Gateway 비밀번호"
     },
     {
+      "id": "native.apple.438ae7e5b8544548",
+      "source": "Custom Headers",
+      "translated": "사용자 지정 헤더"
+    },
+    {
       "id": "native.apple.c9cd035bc39af480",
       "source": "Reset Onboarding",
       "translated": "온보딩 재설정"
@@ -8202,6 +8357,41 @@
       "id": "native.apple.e69088f1f2dcbd99",
       "source": "Connection",
       "translated": "연결"
+    },
+    {
+      "id": "native.apple.41e812a22a1b042d",
+      "source": "Value",
+      "translated": "값"
+    },
+    {
+      "id": "native.apple.acc5936e406af08c",
+      "source": "Headers",
+      "translated": "헤더"
+    },
+    {
+      "id": "native.apple.8896386269ac4882",
+      "source": "Sent with foreground app connections to this gateway. Changes apply on the next reconnect; Share extension delivery is not yet supported.",
+      "translated": "이 Gateway에 대한 포그라운드 앱 연결과 함께 전송됩니다. 변경 사항은 다음 재연결 시 적용되며, Share extension 전달은 아직 지원되지 않습니다."
+    },
+    {
+      "id": "native.apple.319594454c1ff701",
+      "source": "Header name",
+      "translated": "헤더 이름"
+    },
+    {
+      "id": "native.apple.7c4ff27cd7fa2c96",
+      "source": "Header value",
+      "translated": "헤더 값"
+    },
+    {
+      "id": "native.apple.a1368ad2d29a1152",
+      "source": "Add Header",
+      "translated": "헤더 추가"
+    },
+    {
+      "id": "native.apple.19fba912c31023b5",
+      "source": "Custom Headers",
+      "translated": "사용자 지정 헤더"
     },
     {
       "id": "native.apple.4dac301c7e0c921c",
