@@ -175,6 +175,23 @@ export const fr: TranslationMap = {
     lastInput: "Dernière entrée {time}",
     reason: "Raison {reason}",
   },
+  worktrees: {
+    title: "Worktrees gérés",
+    subtitle: "Checkouts de dépôt isolés appartenant à OpenClaw.",
+    cleanNow: "Nettoyer maintenant",
+    name: "Nom",
+    repo: "Dépôt",
+    branch: "Branche",
+    status: "Statut",
+    lastActive: "Dernière activité",
+    actions: "Actions",
+    empty: "Aucun worktree géré.",
+    restorable: "Restaurable",
+    restore: "Restaurer",
+    confirmDelete: "Créer un instantané et supprimer {name} ?",
+    confirmForceDelete:
+      "Échec de la création de l’instantané : {error}\n\nSupprimer sans instantané ?",
+  },
   sessionsView: {
     title: "Sessions",
     subtitle: "Clés de session actives et remplacements par session.",
@@ -474,6 +491,7 @@ export const fr: TranslationMap = {
     activity: "Activité",
     overview: "Aperçu",
     workboard: "Tableau de travail",
+    worktrees: "Worktrees",
     channels: "Canaux",
     instances: "Instances",
     sessions: "Sessions",
@@ -500,6 +518,7 @@ export const fr: TranslationMap = {
     activity: "Résumés d’activité des outils locaux au navigateur.",
     overview: "Statut, points d’entrée, santé.",
     workboard: "File de travail de l’agent et transfert de session.",
+    worktrees: "Checkouts de tâches d’agent isolés et instantanés de récupération.",
     channels: "Canaux et paramètres.",
     instances: "Clients et nœuds connectés.",
     sessions: "Sessions actives et valeurs par défaut.",
@@ -1133,6 +1152,16 @@ export const fr: TranslationMap = {
       session: "session",
       sessions: "sessions",
     },
+    providerUsage: {
+      title: "Forfaits et facturation des fournisseurs",
+      subtitle:
+        "Données en temps réel sur les forfaits, quotas, soldes et budgets communiquées par les fournisseurs configurés.",
+      balance: "Solde",
+      spend: "Utilisation",
+      budget: "Budget",
+      remaining: "{percent}% restant",
+      resets: "Réinitialisation le {date}",
+    },
     presets: {
       today: "Aujourd’hui",
       last7d: "7 j",
@@ -1476,6 +1505,13 @@ export const fr: TranslationMap = {
           "Rouvrez le dashboard avec openclaw dashboard --no-open pour recopier l’URL actuelle et les détails d’authentification.",
       },
     },
+  },
+  connection: {
+    lostTitle: "Connexion au Gateway perdue",
+    reconnecting: "Reconnexion…",
+    offlineHint:
+      "Les mises à jour en direct et les actions sont en pause jusqu’au rétablissement de la connexion.",
+    retryNow: "Réessayer maintenant",
   },
   chat: {
     disconnected: "Déconnecté du Gateway.",

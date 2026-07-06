@@ -6,9 +6,6 @@ import ai.openclaw.app.chat.ChatOutboxItem
 import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.ChatSessionEntry
 import ai.openclaw.app.chat.OutgoingAttachment
-import ai.openclaw.app.chat.deleteChatTranscriptCacheDatabase
-import ai.openclaw.app.gateway.DeviceAuthStore
-import ai.openclaw.app.gateway.DeviceIdentityStore
 import ai.openclaw.app.gateway.GatewayEndpoint
 import ai.openclaw.app.gateway.GatewayUpdateAvailableSummary
 import ai.openclaw.app.node.CameraCaptureManager
@@ -54,6 +51,8 @@ class MainViewModel(
   val chatDraft: StateFlow<String?> = _chatDraft
   private val _pendingAssistantAutoSend = MutableStateFlow<String?>(null)
   val pendingAssistantAutoSend: StateFlow<String?> = _pendingAssistantAutoSend
+  private val _assistantAutoSendInFlight = MutableStateFlow(false)
+  val assistantAutoSendInFlight: StateFlow<Boolean> = _assistantAutoSendInFlight
 
   /**
    * Lazily starts NodeRuntime and preserves the current foreground bit across startup.
@@ -299,18 +298,10 @@ class MainViewModel(
   }
 
   /** Clears setup credentials without starting the runtime just to discard first-run pairing auth. */
-  private suspend fun resetGatewaySetupAuth() {
-    runtimeRef.value?.resetGatewaySetupAuth() ?: resetGatewaySetupAuthWithoutRuntime()
-  }
-
-  private fun resetGatewaySetupAuthWithoutRuntime() {
-    prefs.clearGatewaySetupAuth()
-    val deviceId = DeviceIdentityStore(nodeApp).loadOrCreate().deviceId
-    val deviceAuthStore = DeviceAuthStore(prefs)
-    deviceAuthStore.clearToken(deviceId, "node")
-    deviceAuthStore.clearToken(deviceId, "operator")
-    // No runtime means no open Room handle, so the cache file can be deleted directly.
-    deleteChatTranscriptCacheDatabase(nodeApp)
+  private suspend fun resetGatewaySetupAuth(): Boolean {
+    val reset = nodeApp.resetGatewaySetupAuth()
+    nodeApp.peekRuntime()?.let { runtimeRef.value = it }
+    return reset
   }
 
   internal fun saveGatewayConfigAndConnect(plan: GatewayConnectPlan) {
@@ -319,11 +310,7 @@ class MainViewModel(
     viewModelScope.launch(Dispatchers.Default) {
       val config = plan.config
       val replacesSavedAuth = plan.savedAuthAction != GatewaySavedAuthAction.PRESERVE
-      val hasExplicitAuth =
-        config.token.isNotEmpty() || config.bootstrapToken.isNotEmpty() || config.password.isNotEmpty()
-      if (replacesSavedAuth) {
-        resetGatewaySetupAuth()
-      }
+      if (replacesSavedAuth && !resetGatewaySetupAuth()) return@launch
       prefs.setManualEnabled(true)
       prefs.setManualHost(config.host)
       prefs.setManualPort(config.port)
@@ -331,7 +318,7 @@ class MainViewModel(
 
       // A blank same-endpoint save means "keep access". Secrets remain runtime-owned,
       // including password-only setups that Compose deliberately cannot read back.
-      if (replacesSavedAuth || hasExplicitAuth) {
+      if (replacesSavedAuth) {
         prefs.setGatewayBootstrapToken(config.bootstrapToken)
         prefs.setGatewayToken(config.token)
         prefs.setGatewayPassword(config.password)
@@ -339,7 +326,7 @@ class MainViewModel(
 
       val runtime = ensureRuntime()
       val endpoint = GatewayEndpoint.manual(host = config.host, port = config.port)
-      if (replacesSavedAuth || hasExplicitAuth) {
+      if (replacesSavedAuth) {
         runtime.connect(
           endpoint,
           NodeRuntime.GatewayConnectAuth(
@@ -365,8 +352,7 @@ class MainViewModel(
   /** Re-enters gateway setup after disconnecting and clearing one-time setup credentials. */
   fun pairNewGateway() {
     viewModelScope.launch(Dispatchers.Default) {
-      runtimeRef.value?.disconnect()
-      resetGatewaySetupAuth()
+      if (!resetGatewaySetupAuth()) return@launch
       prefs.setOnboardingCompleted(false)
       _startOnboardingAtGatewaySetup.value = true
     }
@@ -444,8 +430,33 @@ class MainViewModel(
     _chatDraft.value = null
   }
 
-  fun clearPendingAssistantAutoSend() {
-    _pendingAssistantAutoSend.value = null
+  /** Claims an assistant prompt before sending so Compose effect restarts cannot dispatch it twice. */
+  fun dispatchPendingAssistantAutoSend(
+    pendingPrompt: String,
+    thinking: String,
+  ) {
+    val prompt = pendingPrompt.trim().ifEmpty { return }
+    if (!chatHealthOk.value || pendingRunCount.value > 0) return
+    if (!_assistantAutoSendInFlight.compareAndSet(false, true)) return
+    if (_pendingAssistantAutoSend.value != pendingPrompt) {
+      _assistantAutoSendInFlight.value = false
+      return
+    }
+    viewModelScope.launch {
+      try {
+        sendChatAwaitAcceptance(
+          message = prompt,
+          thinking = thinking,
+          attachments = emptyList(),
+        )
+        // A definitive rejection is surfaced by chatError; it must not strand the
+        // one-shot assistant prompt or overwrite text typed into the composer.
+        _pendingAssistantAutoSend.compareAndSet(pendingPrompt, null)
+      } finally {
+        // Observable release wakes a newer prompt queued while this send was in flight.
+        _assistantAutoSendInFlight.value = false
+      }
+    }
   }
 
   fun setMicEnabled(enabled: Boolean) {

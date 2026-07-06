@@ -92,6 +92,10 @@ The assistant avatar override follows the same browser-local pattern: uploaded o
 
 The Control UI fetches its runtime settings from `/control-ui-config.json`, resolved relative to the gateway's Control UI base path (for example `/__openclaw__/control-ui-config.json` under base path `/__openclaw__/`). That endpoint is gated by the same gateway auth as the rest of the HTTP surface: unauthenticated browsers cannot fetch it, and a successful fetch requires a valid gateway token/password, Tailscale Serve identity, or a trusted-proxy identity.
 
+## Gateway host status
+
+Open **Settings** in Simple view to see the **Gateway Host** card with the Gateway machine, LAN address, operating system, runtime, uptime, CPU load, memory, and state-volume disk space. The card refreshes every 10 seconds while visible through the `system.info` Gateway RPC, which requires the `operator.read` scope. Older Gateways and connections without that scope omit the card.
+
 ## Language support
 
 The Control UI localizes itself on first load based on your browser locale. To override it later, open **Overview -> Gateway Access -> Language** (the picker lives in the Gateway Access card, not under Appearance).
@@ -113,9 +117,9 @@ Appearance also has a browser-local Text size setting, stored with the rest of C
 
 ## Sidebar navigation
 
-The sidebar keeps sessions first, followed by a small pinned destination set. **Overview**, **Workboard**, and **Agents** are pinned by default; expand **More** to reach every other destination. Select **Customize sidebar** under More, or right-click the navigation area, to pin or unpin destinations and restore the defaults. The pinned set and More expansion state are stored in the current browser profile and survive reloads.
+The sidebar keeps sessions first, split into **Pinned** and **Sessions** groups. Every pinned session stays visible, while unpinned sessions keep an independent nine-item recent budget. **Overview** is the only destination pinned by default; expand **More** to reach every other destination. Select **Customize sidebar** under More, or right-click the navigation area, to pin or unpin destinations and restore the defaults. The pinned set and More expansion state are stored in the current browser profile and survive reloads.
 
-**Settings** stays available in the sidebar footer next to **Docs**. On desktop, use the topbar button next to the terminal control to collapse or expand the sidebar. At drawer breakpoints, the hamburger button replaces that control.
+The compact footer keeps connection status, **Settings**, **Docs**, and mobile pairing together. On desktop, use the topbar button next to the terminal control to collapse or expand the sidebar. At drawer breakpoints, the hamburger button replaces that control.
 
 ## What it can do (today)
 
@@ -123,6 +127,7 @@ The sidebar keeps sessions first, followed by a small pinned destination set. **
   <Accordion title="Chat and Talk">
     - Chat with the model via Gateway WS (`chat.history`, `chat.send`, `chat.abort`, `chat.inject`).
     - Chat history refreshes request a bounded recent window with per-message text caps, so large sessions do not force the browser to render a full transcript payload before chat becomes usable.
+    - Hovering or keyboard-focusing a public GitHub issue or pull request link shows its state, title, author, recent activity, comments, and change statistics. The connected Gateway fetches and caches public metadata without changing the link target, including when the UI uses a remote Gateway. The Gateway uses `GH_TOKEN` or `GITHUB_TOKEN` when available, after confirming the repository is public; otherwise it uses GitHub's anonymous API with a longer cache.
     - Talk through browser realtime sessions. OpenAI uses direct WebRTC, Google Live uses a constrained one-use browser token over WebSocket, and backend-only realtime voice plugins use the Gateway relay transport. Client-owned provider sessions start with `talk.client.create`; Gateway relay sessions start with `talk.session.create`. The relay keeps provider credentials on the Gateway while the browser streams microphone PCM through `talk.session.appendAudio`, forwards `openclaw_agent_consult` provider tool calls through `talk.client.toolCall` for Gateway policy and the larger configured OpenClaw model, and routes active-run voice steering through `talk.client.steer` or `talk.session.steer`.
     - Stream tool calls and live tool output cards in Chat (agent events).
     - Activity tab with browser-local, redaction-first summaries of live tool activity from existing `session.tool` / tool event delivery.
@@ -154,6 +159,12 @@ The sidebar keeps sessions first, followed by a small pinned destination set. **
     - Schema and form rendering come from `config.schema` / `config.schema.lookup`, including field `title`/`description`, matched UI hints, immediate child summaries, docs metadata on nested object/wildcard/array/composition nodes, plus plugin and channel schemas when available. Raw JSON editor is available only when the snapshot has a safe raw round-trip; otherwise Control UI forces Form mode.
     - Raw JSON editor "Reset to saved" preserves the raw-authored shape (formatting, comments, `$include` layout) instead of re-rendering a flattened snapshot, so external edits survive a reset when the snapshot can safely round-trip.
     - Structured SecretRef object values render read-only in form text inputs, to prevent accidental object-to-string corruption.
+
+  </Accordion>
+  <Accordion title="Usage">
+    - Session-derived token and estimated-cost analysis stays separate from provider billing.
+    - Provider cards call `usage.status` and show live plan names, quota windows, balances, spend, and budgets reported by configured provider plugins.
+    - A provider usage failure does not block the session/cost dashboard; unavailable provider cards show their own error state.
 
   </Accordion>
   <Accordion title="Debug, logs, update">
@@ -261,6 +272,17 @@ The terminal is also available as a full-screen, terminal-only document at `/?vi
 
   </Accordion>
 </AccordionGroup>
+
+## Connection loss and reconnect
+
+Once a session is established, a dropped Gateway connection does not log you out. The dashboard
+stays visible with an amber "Gateway connection lost — reconnecting…" banner while the client
+retries automatically with backoff (800 ms up to 15 s). Live updates and actions pause until the
+connection returns; **Retry now** in the banner forces an immediate attempt.
+
+The login gate only appears when there is no established session yet (first open, page reload
+before connect) or when the Gateway actively rejects the credentials (bad token/password, revoked
+pairing) — states that need your input rather than waiting.
 
 ## PWA install and web push
 
@@ -439,6 +461,7 @@ In practice:
 - Avatars and images served under relative paths (for example `/avatars/<id>`) still render, including authenticated avatar routes the UI fetches and converts into local `blob:` URLs.
 - Inline `data:image/...` URLs still render.
 - Local `blob:` URLs created by the Control UI still render.
+- GitHub link preview avatars are fetched by the Gateway from GitHub's fixed avatar host and returned as bounded `data:` URLs; the operator browser never contacts the remote avatar host.
 - Remote avatar URLs emitted by channel metadata are stripped at the Control UI's avatar helpers and replaced with the built-in logo/badge, so a compromised or malicious channel cannot force arbitrary remote image fetches from an operator browser.
 
 This is always on and not configurable.
