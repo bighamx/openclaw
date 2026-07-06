@@ -114,6 +114,7 @@ export class AppSidebar extends LitElement {
     DEFAULT_SIDEBAR_PINNED_ROUTES;
   @property({ attribute: false }) sidebarMoreExpanded = false;
   @property({ attribute: false }) themeMode: ThemeMode = "system";
+  @property({ attribute: false }) onToggleCollapse?: () => void;
   @property({ attribute: false }) onToggleMore?: () => void;
   @property({ attribute: false }) onUpdatePinnedRoutes?: (routes: SidebarNavRoute[]) => void;
   @property({ attribute: false }) onPairMobile?: () => void;
@@ -938,18 +939,10 @@ export class AppSidebar extends LitElement {
       routeId === "config"
         ? this.activeRouteId !== undefined && isSettingsNavigationRoute(this.activeRouteId)
         : this.activeRouteId === routeId;
-    const enabled = this.isRouteEnabled(routeId);
-    if (!enabled) {
-      return html`
-        <span class="nav-item nav-item--disabled" aria-disabled="true">
-          <span class="nav-item__icon" aria-hidden="true"
-            >${icons[navigationIconForRoute(routeId)]}</span
-          >
-          ${!this.collapsed
-            ? html`<span class="nav-item__text">${titleForRoute(routeId)}</span>`
-            : nothing}
-        </span>
-      `;
+    // Disabled routes (e.g. Workboard with the plugin off) stay hidden rather
+    // than rendering an inert nav item.
+    if (!this.isRouteEnabled(routeId)) {
+      return nothing;
     }
     const routeSessionKey = routeId === "chat" ? this.getRouteSessionKey() : "";
     const href =
@@ -1437,6 +1430,17 @@ export class AppSidebar extends LitElement {
               <span class="sidebar-mode-switch">
                 <openclaw-theme-mode-toggle .mode=${this.themeMode}></openclaw-theme-mode-toggle>
               </span>
+              <openclaw-tooltip .content=${this.collapsed ? t("nav.expand") : t("nav.collapse")}>
+                <button
+                  class="sidebar-footer-icon sidebar-collapse-toggle"
+                  type="button"
+                  aria-label=${this.collapsed ? t("nav.expand") : t("nav.collapse")}
+                  aria-expanded=${String(!this.collapsed)}
+                  @click=${() => this.onToggleCollapse?.()}
+                >
+                  ${this.collapsed ? icons.panelLeftOpen : icons.panelLeftClose}
+                </button>
+              </openclaw-tooltip>
             </div>
           </div>
         </div>

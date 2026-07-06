@@ -196,7 +196,13 @@ describe("qa scenario catalog", () => {
 
     expect(scenarios.map((scenario) => scenario.id).toSorted()).toEqual([
       "kitchen-sink-live-openai",
+      "matrix-post-restart-room-continue",
+      "matrix-restart-replay-dedupe",
+      "matrix-restart-resume",
+      "slack-restart-resume",
       "subagent-stale-child-links",
+      "telegram-repeated-command-authorization",
+      "whatsapp-restart-resume",
     ]);
     expect(
       scenarios
@@ -791,6 +797,24 @@ describe("qa scenario catalog", () => {
     expect(scenario.execution.channel).toBe("telegram");
     expect(config?.requiredChannelDriver).toBeUndefined();
     expect(config?.requiredProviderMode).toBe("mock-openai");
+  });
+
+  it("marks channel-owned access gates with their required channel driver", () => {
+    const liveScenarioIds = [
+      "whatsapp-access-control-dm-disabled",
+      "whatsapp-access-control-dm-open",
+      "whatsapp-access-control-group-disabled",
+      "whatsapp-access-control-group-open",
+      "whatsapp-pairing-block",
+      "matrix-allowlist-hot-reload",
+    ];
+
+    for (const scenarioId of liveScenarioIds) {
+      const config = readQaScenarioExecutionConfig(scenarioId) as
+        | { requiredChannelDriver?: string }
+        | undefined;
+      expect(config?.requiredChannelDriver, scenarioId).toBe("live");
+    }
   });
 
   it("adds a dreaming shadow trial report scenario", () => {
