@@ -1522,6 +1522,7 @@ export const hi: TranslationMap = {
     },
     runControls: {
       newSession: "नया सेशन",
+      newSessionWorktree: "वर्कट्री में नई चैट",
       export: "निर्यात करें",
       exportChat: "चैट निर्यात करें",
       queue: "कतार",
@@ -1859,6 +1860,8 @@ export const hi: TranslationMap = {
       disable: "अक्षम करें",
       enable: "सक्षम करें",
       run: "चलाएँ",
+      runIfDue: "समय होने पर चलाएँ",
+      moreActions: "अधिक कार्रवाइयाँ",
       history: "इतिहास",
       remove: "हटाएँ",
     },

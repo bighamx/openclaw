@@ -1538,6 +1538,7 @@ export const id: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Chat baru di worktree",
       export: "Ekspor",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1878,6 +1879,8 @@ export const id: TranslationMap = {
       disable: "Nonaktifkan",
       enable: "Aktifkan",
       run: "Jalankan",
+      runIfDue: "Jalankan jika waktunya",
+      moreActions: "Tindakan lainnya",
       history: "Riwayat",
       remove: "Hapus",
     },

@@ -1540,6 +1540,7 @@ export const uk: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Новий чат у worktree",
       export: "Експорт",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1883,6 +1884,8 @@ export const uk: TranslationMap = {
       disable: "Вимкнути",
       enable: "Увімкнути",
       run: "Запустити",
+      runIfDue: "Запустити, якщо настав час",
+      moreActions: "Інші дії",
       history: "Історія",
       remove: "Видалити",
     },

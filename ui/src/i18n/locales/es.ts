@@ -1547,6 +1547,7 @@ export const es: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Nuevo chat en worktree",
       export: "Exportar",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1895,6 +1896,8 @@ export const es: TranslationMap = {
       disable: "Deshabilitar",
       enable: "Habilitar",
       run: "Ejecutar",
+      runIfDue: "Ejecutar si corresponde",
+      moreActions: "Más acciones",
       history: "Historial",
       remove: "Eliminar",
     },

@@ -1538,6 +1538,7 @@ export const fa: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "گفتگوی جدید در worktree",
       export: "خروجی گرفتن",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1877,6 +1878,8 @@ export const fa: TranslationMap = {
       disable: "غیرفعال کردن",
       enable: "فعال کردن",
       run: "اجرا",
+      runIfDue: "اجرا در صورت سررسید",
+      moreActions: "اقدامات بیشتر",
       history: "تاریخچه",
       remove: "حذف",
     },

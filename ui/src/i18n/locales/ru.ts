@@ -1550,6 +1550,7 @@ export const ru: TranslationMap = {
     },
     runControls: {
       newSession: "Новый сеанс",
+      newSessionWorktree: "Новый чат в worktree",
       export: "Экспорт",
       exportChat: "Экспортировать чат",
       queue: "Очередь",
@@ -1896,6 +1897,8 @@ export const ru: TranslationMap = {
       disable: "Отключить",
       enable: "Включить",
       run: "Запустить",
+      runIfDue: "Запустить, если пора",
+      moreActions: "Другие действия",
       history: "История",
       remove: "Удалить",
     },

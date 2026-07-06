@@ -2361,6 +2361,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Layout and names
   - H2: Provision ignored files
   - H2: Run repository setup
+  - H2: Session worktrees
   - H2: Snapshots, cleanup, and restore
   - H2: CLI
   - H2: Gateway methods
@@ -6907,6 +6908,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
 - Route: /plugins/sdk-channel-outbound
 - Headings:
   - H2: Adapter
+  - H2: Delivery Evidence
   - H2: Existing outbound adapters
   - H2: Durable sends
   - H2: Compatibility dispatch
@@ -8967,6 +8969,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Critical rule for the Control UI
   - H2: Validate in layers
   - H3: Layer 1: verify Chrome is serving CDP on Windows
+  - H4: Diagnose IPv4 and IPv6 before changing portproxy
   - H3: Layer 2: verify WSL2 can reach that Windows endpoint
   - H3: Layer 3: configure the correct browser profile
   - H3: Layer 4: verify the Control UI layer separately
@@ -8984,7 +8987,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Plugin control
   - H2: Agent guidance
   - H2: Missing browser command or tool
-  - H2: Profiles: openclaw vs user
+  - H2: Profiles: openclaw, user, chrome
   - H2: Configuration
   - H3: Screenshot vision (text-only model support)
   - H2: Use Brave or another Chromium-based browser
@@ -9023,6 +9026,18 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
 - Route: /tools/capability-cookbook
 - Headings:
   - H2: Related
+
+## tools/chrome-extension.md
+
+- Route: /tools/chrome-extension
+- Headings:
+  - H1: Chrome extension
+  - H2: How it works
+  - H2: Install and pair
+  - H2: Use it
+  - H2: Remote browser nodes
+  - H2: Diagnostics
+  - H2: Security model
 
 ## tools/clawhub.md
 
@@ -9217,6 +9232,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Token budgets
   - H2: Model tools
   - H2: Goal context on every turn
+  - H2: Control UI
   - H2: TUI
   - H2: Channel behavior
   - H2: Troubleshooting
@@ -9492,11 +9508,13 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Proposal content
   - H2: Support files
   - H2: Agent tool
+  - H2: Suggested skills
   - H2: Approval and autonomy
   - H2: Gateway methods
   - H2: Storage
   - H2: Limits
   - H2: Troubleshooting
+  - H3: Tool-policy diagnostic
   - H2: Related
 
 ## tools/skills-config.md

@@ -1504,6 +1504,7 @@ export const th: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "แชทใหม่ใน worktree",
       export: "ส่งออก",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1840,6 +1841,8 @@ export const th: TranslationMap = {
       disable: "ปิดใช้งาน",
       enable: "เปิดใช้งาน",
       run: "รัน",
+      runIfDue: "เรียกใช้เมื่อถึงกำหนด",
+      moreActions: "การดำเนินการเพิ่มเติม",
       history: "ประวัติ",
       remove: "ลบ",
     },

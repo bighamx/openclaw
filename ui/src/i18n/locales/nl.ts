@@ -1543,6 +1543,7 @@ export const nl: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Nieuwe chat in worktree",
       export: "Exporteren",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1885,6 +1886,8 @@ export const nl: TranslationMap = {
       disable: "Uitschakelen",
       enable: "Inschakelen",
       run: "Uitvoeren",
+      runIfDue: "Uitvoeren indien gepland",
+      moreActions: "Meer acties",
       history: "Historie",
       remove: "Verwijderen",
     },

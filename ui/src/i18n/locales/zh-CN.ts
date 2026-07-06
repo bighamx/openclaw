@@ -1499,6 +1499,7 @@ export const zh_CN: TranslationMap = {
     },
     runControls: {
       newSession: "新会话",
+      newSessionWorktree: "在工作树中新建聊天",
       export: "导出",
       exportChat: "导出聊天",
       queue: "排队",
@@ -1835,6 +1836,8 @@ export const zh_CN: TranslationMap = {
       disable: "禁用",
       enable: "启用",
       run: "运行",
+      runIfDue: "到期时运行",
+      moreActions: "更多操作",
       history: "历史",
       remove: "删除",
     },

@@ -1544,6 +1544,7 @@ export const tr: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Çalışma ağacında yeni sohbet",
       export: "Dışa aktar",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1887,6 +1888,8 @@ export const tr: TranslationMap = {
       disable: "Devre dışı bırak",
       enable: "Etkinleştir",
       run: "Çalıştır",
+      runIfDue: "Zamanı geldiyse çalıştır",
+      moreActions: "Diğer işlemler",
       history: "Geçmiş",
       remove: "Kaldır",
     },

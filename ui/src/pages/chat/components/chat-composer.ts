@@ -19,7 +19,13 @@ import {
 } from "../../../lib/chat/commands.ts";
 import type { ChatSideResult } from "../../../lib/chat/side-result.ts";
 import { formatCompactTokenCount, formatCost } from "../../../lib/format.ts";
-import { formatGoalDetail, formatGoalSummary } from "../../../lib/session-goal.ts";
+import {
+  formatGoalDetail,
+  formatGoalElapsed,
+  formatGoalStatusLabel,
+  formatGoalUsage,
+  goalElapsedMs,
+} from "../../../lib/session-goal.ts";
 import { detectTextDirection } from "../../../lib/text-direction.ts";
 import {
   getChatAttachmentPreviewUrl,
@@ -107,6 +113,7 @@ export type ChatComposerProps = {
   onClearReply?: () => void;
   onScrollToBottom?: () => void;
   onAttachmentsChange?: (attachments: ChatAttachment[]) => void;
+  onGoalCommand?: (command: string) => void;
 };
 
 type PendingClearedSubmittedDraft = {
@@ -126,6 +133,7 @@ type ChatComposerState = {
   composerComposing: boolean;
   composerInputIntentKey: string | null;
   pendingClearedSubmittedDraft: PendingClearedSubmittedDraft | null;
+  goalExpandedId: string | null;
 };
 
 function createChatComposerState(): ChatComposerState {
@@ -141,6 +149,7 @@ function createChatComposerState(): ChatComposerState {
     composerComposing: false,
     composerInputIntentKey: null,
     pendingClearedSubmittedDraft: null,
+    goalExpandedId: null,
   };
 }
 
@@ -217,6 +226,10 @@ function suppressStaleSubmittedDraftReplay(
 
 export function resetChatComposerState() {
   Object.assign(composerState, createChatComposerState());
+  for (const timer of goalElapsedTimers.values()) {
+    clearInterval(timer);
+  }
+  goalElapsedTimers.clear();
 }
 
 const composerTextareaResizeObservers = new WeakMap<HTMLTextAreaElement, ResizeObserver>();
@@ -287,21 +300,157 @@ function restoreHistoryCaret(target: HTMLTextAreaElement, direction: "up" | "dow
   });
 }
 
-function renderChatGoal(goal: SessionGoal | undefined): TemplateResult | typeof nothing {
+const goalElapsedTimers = new Map<HTMLElement, ReturnType<typeof setInterval>>();
+
+function clearGoalElapsedTimer(el: HTMLElement) {
+  const timer = goalElapsedTimers.get(el);
+  if (timer !== undefined) {
+    clearInterval(timer);
+    goalElapsedTimers.delete(el);
+  }
+}
+
+// Ticks the elapsed span in place so an idle active goal does not force
+// full chat re-renders every second.
+function createGoalElapsedRef(goal: SessionGoal) {
+  let bound: HTMLElement | null = null;
+  return (element: Element | undefined) => {
+    if (bound) {
+      clearGoalElapsedTimer(bound);
+      bound = null;
+    }
+    if (!(element instanceof HTMLElement) || goal.status !== "active") {
+      return;
+    }
+    bound = element;
+    const timer = setInterval(() => {
+      // Tests and detached renders can drop the pill without a final ref call.
+      if (!element.isConnected) {
+        clearGoalElapsedTimer(element);
+        return;
+      }
+      element.textContent = formatGoalElapsed(goalElapsedMs(goal, Date.now()));
+    }, 1000);
+    goalElapsedTimers.set(element, timer);
+  };
+}
+
+type ChatGoalActions = {
+  canAct: boolean;
+  onGoalCommand?: (command: string) => void;
+  onGoalEdit?: (goal: SessionGoal) => void;
+  requestUpdate: () => void;
+};
+
+function renderChatGoalActionButton(options: {
+  className: string;
+  label: string;
+  icon: TemplateResult;
+  onClick: () => void;
+}): TemplateResult {
+  return html`
+    <openclaw-tooltip content=${options.label}>
+      <button
+        class="agent-chat__goal-action ${options.className}"
+        type="button"
+        aria-label=${options.label}
+        @click=${options.onClick}
+      >
+        ${options.icon}
+      </button>
+    </openclaw-tooltip>
+  `;
+}
+
+function renderChatGoal(
+  goal: SessionGoal | undefined,
+  actions: ChatGoalActions,
+): TemplateResult | typeof nothing {
   if (!goal) {
     return nothing;
   }
+  const elapsed = formatGoalElapsed(goalElapsedMs(goal, Date.now()));
+  const usage = formatGoalUsage(goal);
+  const expanded = composerState.goalExpandedId === goal.id;
+  const showActions = actions.canAct && Boolean(actions.onGoalCommand);
+  const canResume =
+    goal.status === "paused" ||
+    goal.status === "blocked" ||
+    goal.status === "usage_limited" ||
+    goal.status === "budget_limited";
+  const toggleExpanded = () => {
+    composerState.goalExpandedId = expanded ? null : goal.id;
+    actions.requestUpdate();
+  };
   return html`
-    <openclaw-tooltip .content=${formatGoalDetail(goal)}>
-      <div
-        class="agent-chat__goal agent-chat__goal--${goal.status}"
-        role="status"
-        aria-label=${formatGoalDetail(goal)}
-      >
-        <span class="agent-chat__goal-label">${formatGoalSummary(goal)}</span>
+    <div
+      class="agent-chat__goal agent-chat__goal--${goal.status}"
+      role="group"
+      aria-label=${formatGoalDetail(goal)}
+    >
+      <div class="agent-chat__goal-row">
+        <span class="agent-chat__goal-icon">${icons.target}</span>
+        <span class="agent-chat__goal-label">${formatGoalStatusLabel(goal.status)}</span>
         <span class="agent-chat__goal-objective">${goal.objective}</span>
+        <span class="agent-chat__goal-elapsed" ${ref(createGoalElapsedRef(goal))}>${elapsed}</span>
+        <span class="agent-chat__goal-actions">
+          ${showActions && actions.onGoalEdit && goal.status !== "complete"
+            ? renderChatGoalActionButton({
+                className: "agent-chat__goal-edit",
+                label: "Edit goal",
+                icon: icons.penLine,
+                onClick: () => actions.onGoalEdit?.(goal),
+              })
+            : nothing}
+          ${showActions && goal.status === "active"
+            ? renderChatGoalActionButton({
+                className: "agent-chat__goal-pause",
+                label: "Pause goal",
+                icon: icons.pause,
+                onClick: () => actions.onGoalCommand?.("/goal pause"),
+              })
+            : nothing}
+          ${showActions && canResume
+            ? renderChatGoalActionButton({
+                className: "agent-chat__goal-resume",
+                label: "Resume goal",
+                icon: icons.play,
+                onClick: () => actions.onGoalCommand?.("/goal resume"),
+              })
+            : nothing}
+          ${showActions
+            ? renderChatGoalActionButton({
+                className: "agent-chat__goal-clear",
+                label: "Clear goal",
+                icon: icons.trash,
+                onClick: () => actions.onGoalCommand?.("/goal clear"),
+              })
+            : nothing}
+          <button
+            class="agent-chat__goal-action agent-chat__goal-expand"
+            type="button"
+            aria-expanded=${expanded ? "true" : "false"}
+            aria-label=${expanded ? "Hide goal details" : "Show goal details"}
+            @click=${toggleExpanded}
+          >
+            ${expanded ? icons.chevronDown : icons.chevronRight}
+          </button>
+        </span>
       </div>
-    </openclaw-tooltip>
+      ${expanded
+        ? html`
+            <div class="agent-chat__goal-detail">
+              <div class="agent-chat__goal-detail-objective">${goal.objective}</div>
+              ${goal.lastStatusNote
+                ? html`<div class="agent-chat__goal-detail-note">${goal.lastStatusNote}</div>`
+                : nothing}
+              <div class="agent-chat__goal-detail-meta">
+                ${usage ? `${usage} · ${elapsed}` : elapsed}
+              </div>
+            </div>
+          `
+        : nothing}
+    </div>
   `;
 }
 
@@ -1290,18 +1439,19 @@ export function getContextNoticeViewModel(
   bg: string;
   warning: boolean;
   compactRecommended: boolean;
+  approximate: boolean;
 } | null {
-  if (session?.totalTokensFresh === false) {
-    return null;
-  }
   const used = session?.totalTokens;
   const limit = session?.contextTokens ?? defaultContextTokens ?? 0;
   if (typeof used !== "number" || !Number.isFinite(used) || used < 0 || !limit) {
     return null;
   }
+  const approximate = session?.totalTokensFresh === false;
   const ratio = used / limit;
   const pct = Math.min(Math.round(ratio * 100), 100);
-  const warning = ratio >= CONTEXT_NOTICE_RATIO;
+  // A stale total is still useful orientation, but must not drive warning or
+  // compaction decisions because the session may already have compacted.
+  const warning = !approximate && ratio >= CONTEXT_NOTICE_RATIO;
   // Session rows expose the latest run snapshot; totalTokens is the separate context snapshot.
   const input = Number.isFinite(session?.inputTokens) ? (session?.inputTokens ?? null) : null;
   const output = Number.isFinite(session?.outputTokens) ? (session?.outputTokens ?? null) : null;
@@ -1324,11 +1474,12 @@ export function getContextNoticeViewModel(
     return {
       pct,
       ...usage,
-      detail: `${formatCompactTokenCount(used)} / ${formatCompactTokenCount(limit)}`,
+      detail: `${approximate ? "~" : ""}${formatCompactTokenCount(used)} / ${formatCompactTokenCount(limit)}`,
       color: "var(--muted)",
       bg: "color-mix(in srgb, var(--muted) 8%, transparent)",
       warning,
       compactRecommended: false,
+      approximate,
     };
   }
   const { warnRgb, dangerRgb } = getThemeNoticeColors();
@@ -1349,6 +1500,7 @@ export function getContextNoticeViewModel(
     bg,
     warning,
     compactRecommended: ratio >= CONTEXT_COMPACT_RATIO,
+    approximate,
   };
 }
 
@@ -1367,10 +1519,11 @@ export function renderContextNotice(
   const canRenderCompact = model.compactRecommended && options.onCompact;
   const compactDisabled = options.compactDisabled === true || options.compactBusy === true;
   const summary = t("chat.composer.contextUsage.summary", {
-    used: formatCompactTokenCount(model.used),
+    used: `${model.approximate ? "~" : ""}${formatCompactTokenCount(model.used)}`,
     limit: formatCompactTokenCount(model.limit),
-    pct: String(model.pct),
+    pct: `${model.approximate ? "~" : ""}${model.pct}`,
   });
+  const percentage = `${model.approximate ? "~" : ""}${model.pct}%`;
   const dashOffset = RING_CIRCUMFERENCE * (1 - model.pct / 100);
   const providerCosts = latestProviderCostStats(options.messages);
   const provider = providerCosts?.provider ?? model.provider;
@@ -1411,14 +1564,14 @@ export function renderContextNotice(
               stroke-dashoffset=${dashOffset.toFixed(2)}
             />
           </svg>
-          <span class="context-ring__pct">${model.pct}%</span>
+          <span class="context-ring__pct">${percentage}</span>
         </summary>
         <section class="context-usage__popover" aria-label=${t("chat.composer.contextUsage.title")}>
           <div class="context-usage__header">
             <span class="context-usage__title"
               >${t("chat.composer.contextUsage.contextWindow")}</span
             >
-            <strong class="context-usage__context-value">${model.detail} · ${model.pct}%</strong>
+            <strong class="context-usage__context-value">${model.detail} · ${percentage}</strong>
           </div>
           <div
             class="context-usage__bar"
@@ -1887,7 +2040,17 @@ export function renderChatComposer(props: ChatComposerProps) {
         : nothing}
       <div class="agent-chat__composer-status-stack">
         ${renderFallbackIndicator(props.fallbackStatus)}
-        ${renderCompactionIndicator(props.compactionStatus)} ${renderChatGoal(activeSession?.goal)}
+        ${renderCompactionIndicator(props.compactionStatus)}
+        ${renderChatGoal(activeSession?.goal, {
+          canAct: canCompose,
+          onGoalCommand: props.onGoalCommand,
+          onGoalEdit: (goal) => {
+            commitComposerDraft(props, `/goal edit ${goal.objective}`);
+            requestUpdate();
+            queueMicrotask(() => composerTextarea?.focus({ preventScroll: true }));
+          },
+          requestUpdate,
+        })}
       </div>
 
       <input

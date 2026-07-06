@@ -1544,6 +1544,7 @@ export const ja_JP: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "ワークツリーで新しいチャット",
       export: "エクスポート",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1888,6 +1889,8 @@ export const ja_JP: TranslationMap = {
       disable: "無効にする",
       enable: "有効にする",
       run: "実行",
+      runIfDue: "期限が来たら実行",
+      moreActions: "その他の操作",
       history: "履歴",
       remove: "削除",
     },

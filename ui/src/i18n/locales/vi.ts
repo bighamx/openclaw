@@ -1529,6 +1529,7 @@ export const vi: TranslationMap = {
     },
     runControls: {
       newSession: "New session",
+      newSessionWorktree: "Cuộc trò chuyện mới trong worktree",
       export: "Xuất",
       exportChat: "Export chat",
       queue: "Queue",
@@ -1868,6 +1869,8 @@ export const vi: TranslationMap = {
       disable: "Tắt",
       enable: "Bật",
       run: "Chạy",
+      runIfDue: "Chạy nếu đến hạn",
+      moreActions: "Thao tác khác",
       history: "Lịch sử",
       remove: "Xóa",
     },
