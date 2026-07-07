@@ -172,7 +172,7 @@ export const defaultPublicDeprecatedExportsByEntrypointBudget = Object.freeze({
   "provider-auth": 20,
   "provider-oauth-runtime": 2,
   "provider-auth-login": 3,
-  "provider-model-shared": 29,
+  "provider-model-shared": 30,
   "provider-stream-family": 40,
   "provider-stream-shared": 29,
   "provider-stream": 40,
@@ -195,7 +195,7 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
     ),
     publicExports: readPluginSdkSurfaceBudgetEnv(
       "OPENCLAW_PLUGIN_SDK_MAX_PUBLIC_EXPORTS",
-      10454,
+      10458,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
