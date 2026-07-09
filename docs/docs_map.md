@@ -4943,6 +4943,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: What it does
   - H2: Requirements
   - H2: Quick start (pair + connect)
+  - H2: Optional direct Apple Watch node
   - H2: Relay-backed push for official builds
   - H2: Background alive beacons
   - H2: Authentication and trust flow
@@ -5185,6 +5186,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
 - Headings:
   - H2: Download
   - H2: First run
+  - H2: Open dashboard links
   - H2: Choose a Gateway mode
   - H2: What the app owns
   - H2: macOS detail pages
