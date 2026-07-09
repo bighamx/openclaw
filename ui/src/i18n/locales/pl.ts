@@ -206,7 +206,6 @@ export const pl: TranslationMap = {
     globalTooltip: "Uwzględnij sesje globalne.",
     unknownTooltip: "Uwzględnij nieznane sesje.",
     archivedOnlyTooltip: "Pokaż tylko zarchiwizowane sesje.",
-    liveCount: "{count} live",
     minutesPlaceholder: "min",
     searchPlaceholder: "Filtruj według klucza, agenta, etykiety, rodzaju…",
     selected: "Wybrano: {count}",
@@ -248,6 +247,9 @@ export const pl: TranslationMap = {
     tokenRange: "{before} to {after} tokenów",
     tokensBefore: "{count} tokenów przed",
     tokenDeltaUnavailable: "zmiana liczby tokenów niedostępna",
+    contextUsage: "Wykorzystano {percent}% kontekstu ({used} / {context} tokenów)",
+    contextUsageApprox:
+      "Wykorzystano ~{percent}% kontekstu ({used} / {context} tokenów, w przybliżeniu)",
     checkpoints: "{count} punktów kontrolnych",
     checkpoint: "{count} punkt kontrolny",
     showSessionDetails: "Pokaż szczegóły sesji dla {count}",
@@ -1561,6 +1563,16 @@ export const pl: TranslationMap = {
   chat: {
     disconnected: "Rozłączono z Gateway.",
     archivedSessionDisabled: "Przywróć tę sesję, aby wysyłać wiadomości.",
+    taskSuggestions: {
+      eyebrow: "Sugerowane zadanie uzupełniające",
+      start: "Uruchom w drzewie roboczym",
+      starting: "Uruchamianie…",
+      dismiss: "Odrzuć {title}",
+      project: "Projekt",
+      instructions: "Instrukcje",
+      adminRequired:
+        "Dostęp administratora jest wymagany, aby utworzyć drzewo robocze z tego projektu.",
+    },
     refreshTitle: "Odśwież dane czatu",
     settings: "Ustawienia czatu",
     usageRemaining: "Pozostałe użycie",
