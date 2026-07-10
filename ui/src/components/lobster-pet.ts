@@ -6,7 +6,19 @@
 // every new session hatches a slightly different lobster.
 import { html, LitElement, nothing, svg, type TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
-import { recordLobsterVisit } from "./lobster-dex.ts";
+import { isLobsterDay } from "../../../src/shared/lobster-day.js";
+import { getSafeLocalStorage } from "../local-storage.ts";
+import {
+  LOBSTER_FAMILIARITY_TUNING,
+  getLobsterFamiliarity,
+  getLobsterdexEntries,
+  isLobsterFirstVisitAnniversary,
+  lobsterHonorific,
+  recordLobsterArrivalStats,
+  recordLobsterShoo,
+  recordLobsterVisit,
+  type LobsterFamiliarity,
+} from "./lobster-dex.ts";
 
 export type LobsterPetAct =
   | "wave"
@@ -21,7 +33,8 @@ export type LobsterPetAct =
   | "cheer"
   | "molt"
   | "pet"
-  | "droop";
+  | "droop"
+  | "sweep";
 
 export type LobsterPetMode = "idle" | "busy" | "offline";
 
@@ -99,6 +112,7 @@ export const LOBSTER_PET_ACT_DURATION_MS: Record<LobsterPetAct, number> = {
   molt: 2600,
   pet: 1500,
   droop: 1600,
+  sweep: 1800,
 };
 
 const PERSONALITIES: Record<LobsterPetPersonalityId, ActProfile> = {
@@ -396,6 +410,28 @@ export function strangerLookFor(seed: number, own: LobsterPetPaletteId): Lobster
   return createLobsterPetLook((seed + 1) >>> 0);
 }
 
+// The pet notices gateway upgrades: the first page load on a new version, it
+// shows up carrying a bindle (moving day). The very first version sighting
+// only records a baseline - no bindle without a previous home.
+const MOVING_DAY_KEY = "openclaw.control.lobsterpet.gatewayVersion.v1";
+
+function detectLobsterMovingDay(version: string): boolean {
+  try {
+    const storage = getSafeLocalStorage();
+    if (!storage) {
+      return false;
+    }
+    const previous = storage.getItem(MOVING_DAY_KEY);
+    if (previous === version) {
+      return false;
+    }
+    storage.setItem(MOVING_DAY_KEY, version);
+    return previous !== null;
+  } catch {
+    return false;
+  }
+}
+
 // Late-night visitors are always sleepy, whatever their daytime personality.
 export function isLobsterNightTime(now: Date = new Date()): boolean {
   const hour = now.getHours();
@@ -656,6 +692,37 @@ const TAIL_FAN = svg`
   </g>
 `;
 
+// Moving-day bindle: a stick over the shoulder with a polka-dot bundle,
+// carried for the whole first load after a gateway upgrade.
+const BINDLE = svg`
+  <g class="lob-bindle">
+    <path d="M70 62 L99 30" stroke="#8a5a2b" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="101" cy="27" r="9.5" fill="#e8b04b" />
+    <circle cx="98" cy="24" r="1.6" fill="#b6791f" />
+    <circle cx="104" cy="29" r="1.6" fill="#b6791f" />
+    <circle cx="100" cy="32" r="1.3" fill="#b6791f" />
+  </g>
+`;
+
+// On lobster days (see src/shared/lobster-day.ts, shared with the CLI
+// banner cousin) the pet wears a little sailor cap - unless the seed already
+// rolled headwear, which keeps its place.
+const HEADWEAR: ReadonlySet<LobsterPetAccessory> = new Set([
+  "crown",
+  "sprout",
+  "santa",
+  "pumpkin",
+  "party",
+]);
+
+const SAILOR_CAP = svg`
+  <g class="lob-cap">
+    <path d="M46 10 Q60 -3 74 10 L74 13 Q60 7 46 13 Z" fill="#f5f7fa" />
+    <path d="M45 12 Q60 6 75 12 L75 16 Q60 10.5 45 16 Z" fill="#dfe7ee" />
+    <circle cx="60" cy="2.5" r="1.8" fill="#3b6ea5" />
+  </g>
+`;
+
 // Shown while grumpy (poked too much): angry brows and a frown.
 const GRUMPY_FACE = svg`
   <g stroke="#0a1014" stroke-linecap="round" fill="none">
@@ -723,7 +790,14 @@ export function renderCrabSvg() {
 // with stubby legs, side claws, antennae, and teal-glint eyes.
 export function renderLobsterSvg(
   look: LobsterPetLook,
-  options: { grumpy?: boolean; shell?: boolean; sleeping?: boolean; standalone?: boolean } = {},
+  options: {
+    grumpy?: boolean;
+    shell?: boolean;
+    sleeping?: boolean;
+    standalone?: boolean;
+    bindle?: boolean;
+    sailorCap?: boolean;
+  } = {},
 ) {
   return svg`
     <svg
@@ -765,6 +839,16 @@ export function renderLobsterSvg(
         <circle cx="46.5" cy="30.5" r="2.2" fill="var(--lob-glint, #00e5cc)" />
         <circle cx="76.5" cy="30.5" r="2.2" fill="var(--lob-glint, #00e5cc)" />
       </g>
+      ${
+        options.sleeping
+          ? svg`
+            <g class="lob-eye-peek">
+              <circle cx="45" cy="32" r="4" fill="#0a1014" />
+              <circle cx="46" cy="30.8" r="1.6" fill="var(--lob-glint, #00e5cc)" />
+            </g>
+          `
+          : nothing
+      }
       <g
         class="lob-eye-closed"
         stroke="#0a1014"
@@ -788,6 +872,11 @@ export function renderLobsterSvg(
       }
       ${options.grumpy && look.palette.id !== "retro" ? GRUMPY_FACE : nothing}
       ${look.accessory === "none" || options.shell ? nothing : ACCESSORY_SPRITES[look.accessory]}
+      ${
+        // The retro grail's mega claw owns the same shoulder; it moves light.
+        options.bindle && look.palette.id !== "retro" ? BINDLE : nothing
+      }
+      ${options.sailorCap && !options.shell && !HEADWEAR.has(look.accessory) ? SAILOR_CAP : nothing}
     </svg>
   `;
 }
@@ -802,6 +891,8 @@ export class LobsterPet extends LitElement {
 
   @property({ attribute: false }) visitsEnabled = true;
   @property({ attribute: false }) runOutcome: LobsterRunOutcome = "ok";
+  @property({ attribute: false }) soundsEnabled = false;
+  @property({ attribute: false }) gatewayVersion: string | null = null;
 
   @state() private act: LobsterPetAct | null = null;
   @state() private spotPct = 80;
@@ -814,6 +905,10 @@ export class LobsterPet extends LitElement {
   @state() private grumpy = false;
   @state() private vigil = false;
   @state() private passer: LobsterPasserPlan | null = null;
+  @state() private movingDay = false;
+  private movingDayChecked = false;
+  @state() private anniversary = false;
+  private sailorDay = false;
   @state() private shellVisible = false;
   private shellSpotPct = 50;
   private shellScale = 2;
@@ -823,6 +918,9 @@ export class LobsterPet extends LitElement {
   private shellTimer: number | null = null;
   private passerTimer: number | null = null;
   private passerEndTimer: number | null = null;
+  private passerWatchTimer: number | null = null;
+  private familiarity: LobsterFamiliarity = { tier: "regular", wary: false, visits: 0, shoos: 0 };
+  private greetedThisLoad = false;
 
   private look: LobsterPetLook | null = null;
   private rng: () => number = mulberry32(0);
@@ -836,6 +934,7 @@ export class LobsterPet extends LitElement {
   private vigilTimer: number | null = null;
   private holdTimer: number | null = null;
   private holdPetted = false;
+  private audioCtx: AudioContext | null = null;
   private pokeTimes: number[] = [];
   private lastGazeAt = 0;
   private restartPending = false;
@@ -858,7 +957,13 @@ export class LobsterPet extends LitElement {
       window.clearTimeout(this.shellTimer);
       this.shellTimer = null;
     }
-    for (const timer of [this.vigilTimer, this.holdTimer, this.passerTimer, this.passerEndTimer]) {
+    for (const timer of [
+      this.vigilTimer,
+      this.holdTimer,
+      this.passerTimer,
+      this.passerEndTimer,
+      this.passerWatchTimer,
+    ]) {
       if (timer !== null) {
         window.clearTimeout(timer);
       }
@@ -867,6 +972,11 @@ export class LobsterPet extends LitElement {
     this.holdTimer = null;
     this.passerTimer = null;
     this.passerEndTimer = null;
+    this.passerWatchTimer = null;
+    if (this.audioCtx) {
+      this.audioCtx.close().catch(() => {});
+      this.audioCtx = null;
+    }
     document.removeEventListener("pointermove", this.handleGaze);
     super.disconnectedCallback();
   }
@@ -902,6 +1012,9 @@ export class LobsterPet extends LitElement {
       }
       this.moltPlanned = isLobsterMoltLoad(this.seed);
       this.twinPlanned = isLobsterTwinLoad(this.seed);
+      this.familiarity = getLobsterFamiliarity();
+      this.sailorDay = isLobsterDay(new Date());
+      this.greetedThisLoad = false;
       this.scheduleVisits();
       this.schedulePasser();
       // The first update takes this branch, so the mode-change branch below
@@ -928,6 +1041,12 @@ export class LobsterPet extends LitElement {
         this.performAct(finished ? finishAct : "startle");
       }
     }
+    // Moving day latches once per load, as soon as the gateway version is
+    // known (the hello can land after the first render).
+    if (!this.movingDayChecked && this.gatewayVersion) {
+      this.movingDayChecked = true;
+      this.movingDay = detectLobsterMovingDay(this.gatewayVersion);
+    }
     this.reconcilePresence();
   }
 
@@ -944,8 +1063,18 @@ export class LobsterPet extends LitElement {
       if (this.presence === "out") {
         this.rollPerch();
         if (this.look) {
-          // Every genuine arrival (visit or offline summon) logs the palette.
-          recordLobsterVisit(this.look.palette.id);
+          // Anniversary check reads the dex before this arrival records into
+          // it: a first-ever visit today must not celebrate itself.
+          this.anniversary = isLobsterFirstVisitAnniversary(
+            getLobsterdexEntries().get(this.look.palette.id)?.firstSeenAt ?? null,
+            new Date(),
+          );
+          // Every genuine arrival (visit or offline summon) logs the palette
+          // with the first visitor's name, and bumps the familiarity count.
+          recordLobsterVisit(this.look.palette.id, {
+            name: lobsterPetName(this.look, this.seed),
+          });
+          recordLobsterArrivalStats();
         }
       }
       this.presence = "in";
@@ -973,6 +1102,16 @@ export class LobsterPet extends LitElement {
     this.enterTimer = window.setTimeout(() => {
       this.enterTimer = null;
       this.entering = false;
+      // Old friends get a hello: the first arrival of the load waves at you.
+      if (
+        !this.greetedThisLoad &&
+        this.familiarity.tier === "friend" &&
+        this.presence === "in" &&
+        !prefersReducedMotion()
+      ) {
+        this.greetedThisLoad = true;
+        this.performAct("wave");
+      }
     }, ENTER_MS);
     this.scheduleNextAct();
   }
@@ -1002,6 +1141,7 @@ export class LobsterPet extends LitElement {
       this.holdTimer = null;
       this.holdPetted = true;
       this.grumpy = false;
+      this.playChirp("pet");
       this.performAct("pet");
     }, 600);
   };
@@ -1025,7 +1165,48 @@ export class LobsterPet extends LitElement {
     this.holdPetted = false;
   };
 
+  // Opt-in (default off) tiny synth chirps: a descending blub for pokes, a
+  // rising coo for pets. Only ever called from pointer gestures, so the
+  // AudioContext is created inside a user activation and never blocked by
+  // autoplay policy. Sound is decoration - any audio failure is swallowed.
+  private playChirp(kind: "poke" | "pet") {
+    if (!this.soundsEnabled) {
+      return;
+    }
+    try {
+      const Ctor = window.AudioContext;
+      if (!Ctor) {
+        return;
+      }
+      this.audioCtx ??= new Ctor();
+      const ctx = this.audioCtx;
+      if (ctx.state === "suspended") {
+        void ctx.resume();
+      }
+      const at = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      if (kind === "poke") {
+        osc.frequency.setValueAtTime(330, at);
+        osc.frequency.exponentialRampToValueAtTime(165, at + 0.09);
+      } else {
+        osc.frequency.setValueAtTime(392, at);
+        osc.frequency.exponentialRampToValueAtTime(523, at + 0.18);
+      }
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.05, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + (kind === "poke" ? 0.12 : 0.24));
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + 0.26);
+    } catch {
+      // never let audio break the pet
+    }
+  }
+
   private pokeNow() {
+    this.playChirp("poke");
     const now = Date.now();
     this.pokeTimes = [...this.pokeTimes.filter((at) => now - at < 6000), now];
     if (this.pokeTimes.length >= 10 && this.mode !== "offline") {
@@ -1105,6 +1286,7 @@ export class LobsterPet extends LitElement {
   private readonly handleShoo = (event: Event) => {
     event.preventDefault();
     this.dismissed = true;
+    recordLobsterShoo();
   };
 
   private clearActTimers() {
@@ -1137,7 +1319,11 @@ export class LobsterPet extends LitElement {
     if (this.visitRng() < VISIT_SHY_CHANCE) {
       return;
     }
-    this.armArrival(randomBetween(this.visitRng, VISIT_FIRST_DELAY_MS[0], VISIT_FIRST_DELAY_MS[1]));
+    const tuning = LOBSTER_FAMILIARITY_TUNING[this.familiarity.tier];
+    this.armArrival(
+      randomBetween(this.visitRng, VISIT_FIRST_DELAY_MS[0], VISIT_FIRST_DELAY_MS[1]) *
+        tuning.firstDelayMul,
+    );
   }
 
   private armArrival(delayMs: number) {
@@ -1145,7 +1331,10 @@ export class LobsterPet extends LitElement {
       this.visitTimer = null;
       this.rollPerch();
       this.scheduledVisiting = true;
-      this.armDeparture(randomBetween(this.visitRng, VISIT_STAY_MS[0], VISIT_STAY_MS[1]));
+      this.armDeparture(
+        randomBetween(this.visitRng, VISIT_STAY_MS[0], VISIT_STAY_MS[1]) *
+          LOBSTER_FAMILIARITY_TUNING[this.familiarity.tier].stayMul,
+      );
     }, delayMs);
   }
 
@@ -1153,20 +1342,25 @@ export class LobsterPet extends LitElement {
     this.visitTimer = window.setTimeout(() => {
       this.visitTimer = null;
       this.scheduledVisiting = false;
-      this.armArrival(randomBetween(this.visitRng, VISIT_GAP_MS[0], VISIT_GAP_MS[1]));
+      const tuning = LOBSTER_FAMILIARITY_TUNING[this.familiarity.tier];
+      const waryMul = this.familiarity.wary ? LOBSTER_FAMILIARITY_TUNING.waryGapMul : 1;
+      this.armArrival(
+        randomBetween(this.visitRng, VISIT_GAP_MS[0], VISIT_GAP_MS[1]) * tuning.gapMul * waryMul,
+      );
     }, stayMs);
   }
 
   // ---- Pass-through visitors (strangers and the crab) ----
 
   private schedulePasser() {
-    for (const timer of [this.passerTimer, this.passerEndTimer]) {
+    for (const timer of [this.passerTimer, this.passerEndTimer, this.passerWatchTimer]) {
       if (timer !== null) {
         window.clearTimeout(timer);
       }
     }
     this.passerTimer = null;
     this.passerEndTimer = null;
+    this.passerWatchTimer = null;
     this.passer = null;
     const plan = planLobsterPasser(this.seed);
     if (!plan || prefersReducedMotion()) {
@@ -1178,11 +1372,30 @@ export class LobsterPet extends LitElement {
         return;
       }
       this.passer = plan;
+      this.watchPasser(plan);
       this.passerEndTimer = window.setTimeout(() => {
         this.passerEndTimer = null;
         this.passer = null;
+        this.scheduleNextAct();
       }, PASSER_CROSS_MS);
     }, plan.atMs);
+  }
+
+  // The resident notices traffic: it turns toward a passer's entry side,
+  // then follows it out with a mid-crossing flip. Acts, vigil, and absence
+  // all take precedence - the pet is curious, not obsessive.
+  private watchPasser(plan: LobsterPasserPlan) {
+    const watch = (facing: 1 | -1) => {
+      // Scuttle owns facing while it walks; anything else can turn its head.
+      if (this.presence === "in" && this.act !== "scuttle" && !this.vigil) {
+        this.facing = facing;
+      }
+    };
+    watch(plan.direction === 1 ? -1 : 1);
+    this.passerWatchTimer = window.setTimeout(() => {
+      this.passerWatchTimer = null;
+      watch(plan.direction);
+    }, PASSER_CROSS_MS / 2);
   }
 
   // Each arrival re-rolls where the pet shows up: the ledge above the footer
@@ -1220,6 +1433,7 @@ export class LobsterPet extends LitElement {
       !this.look ||
       this.presence !== "in" ||
       this.vigil ||
+      this.passer !== null ||
       this.idleTimer !== null ||
       this.actEndTimer !== null ||
       prefersReducedMotion()
@@ -1234,7 +1448,9 @@ export class LobsterPet extends LitElement {
     this.idleTimer = window.setTimeout(() => {
       this.idleTimer = null;
       const nextProfile = this.actProfile();
-      if (!nextProfile || document.hidden || this.presence !== "in") {
+      // A crossing pauses the fidget loop: the pet is busy watching. The
+      // passer-end timer restarts scheduling.
+      if (!nextProfile || document.hidden || this.presence !== "in" || this.passer !== null) {
         return;
       }
       if (this.moltPlanned && !this.molted && this.mode === "idle") {
@@ -1257,6 +1473,11 @@ export class LobsterPet extends LitElement {
       this.act = null;
       if (act === "molt") {
         this.completeMolt();
+      }
+      if (act === "droop") {
+        // Bad news gets processed lobster-style: tidy the ledge, then move on.
+        this.performAct("sweep");
+        return;
       }
       this.scheduleNextAct();
     }, LOBSTER_PET_ACT_DURATION_MS[act]);
@@ -1327,12 +1548,18 @@ export class LobsterPet extends LitElement {
   }
 
   private renderSprite(look: LobsterPetLook, twin: boolean) {
+    // On the month/day anniversary of this palette's first Lobsterdex visit,
+    // the party hat overrides whatever accessory the seed rolled.
+    const dressed =
+      this.anniversary && look.accessory !== "party"
+        ? { ...look, accessory: "party" as const }
+        : look;
     const classes = [
       "lobster-pet",
       `lobster-pet--${this.mode}`,
       `lobster-pet--palette-${look.palette.id}`,
       twin ? "lobster-pet--twin" : "",
-      look.accessory === "party" ? "lobster-pet--party" : "",
+      dressed.accessory === "party" ? "lobster-pet--party" : "",
       this.presence === "leaving" ? "lobster-pet--away" : "",
       this.entering ? "lobster-pet--entering" : "",
       this.grumpy ? "lobster-pet--grumpy" : "",
@@ -1351,20 +1578,27 @@ export class LobsterPet extends LitElement {
     const style = twin
       ? `${this.spriteStyle(look, scale, spotPct, this.facing === 1 ? -1 : 1)};--lob-act-delay:0.18s`
       : this.spriteStyle(look, scale, spotPct, this.facing);
-    const name = lobsterPetName(look, this.seed);
+    // Milestone honorifics come from the load-start familiarity snapshot, so
+    // a title never pops mid-visit; it is simply there next time.
+    const honorific = lobsterHonorific(this.familiarity.visits);
+    const baseName = lobsterPetName(look, this.seed);
+    const name = honorific ? `${honorific} ${baseName}` : baseName;
+    // The twin travels light; only the resident pet hauls the moving bindle.
+    const bindle = this.movingDay && !twin;
+    const title = twin ? `${name} Jr.` : bindle ? `${name} · just moved in` : name;
     return html`
       <div
         class=${classes}
         style=${style}
         aria-hidden="true"
-        title=${twin ? `${name} Jr.` : name}
+        title=${title}
         @pointerdown=${this.handleHoldStart}
         @pointerup=${this.handleHoldEnd}
         @pointerleave=${this.handleHoldCancel}
         @contextmenu=${this.handleShoo}
       >
         <div class="lobster-pet__body">
-          ${renderLobsterSvg(look, { grumpy: this.grumpy })}
+          ${renderLobsterSvg(dressed, { grumpy: this.grumpy, bindle, sailorCap: this.sailorDay })}
           <span class="lobster-pet__z" style="--i:0">z</span>
           <span class="lobster-pet__z" style="--i:1">z</span>
           <span class="lobster-pet__z" style="--i:2">Z</span>
@@ -1372,6 +1606,15 @@ export class LobsterPet extends LitElement {
           <span class="lobster-pet__bubble" style="--i:1"></span>
           <span class="lobster-pet__bubble" style="--i:2"></span>
           <span class="lobster-pet__heart">♥</span>
+          <svg class="lobster-pet__broom" viewBox="0 0 24 40" aria-hidden="true">
+            <path d="M12 2 L12 24" stroke="#8a5a2b" stroke-width="3" stroke-linecap="round" />
+            <path d="M6 24 L18 24 L21 38 L3 38 Z" fill="#e8b04b" />
+            <path
+              d="M7.5 28 L6.5 36 M12 28 L12 36 M16.5 28 L17.5 36"
+              stroke="#b6791f"
+              stroke-width="1.5"
+            />
+          </svg>
         </div>
       </div>
     `;
