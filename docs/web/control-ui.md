@@ -172,7 +172,7 @@ The sidebar pins navigation above a scrollable session list. In multi-agent setu
 
 ## New session page
 
-The **+** in the sidebar session-list header opens a full-page draft at `/new`: nothing is created until you send the first message. A target row above the message box picks where the session works: the agent (multi-agent setups), where exec runs (**Gateway · local** or a paired node that exposes `system.run`; requires `operator.admin`), the folder (defaults to the agent workspace; other absolute host paths require `operator.admin` and a worktree), and an optional **Worktree** toggle with a base-branch picker (backed by `worktrees.branches`, so no fetch happens) and an optional worktree name (the branch becomes `openclaw/<name>`). Admins can browse the gateway host filesystem instead of typing a path: the folder chip's browse button opens an inline directory picker (backed by the admin-only `fs.listDir` method) that starts from the current folder or the gateway home directory. Browsing is unavailable when exec runs on a paired node; type the node-side path instead. Submitting calls `sessions.create` with the first message, so the run starts in the same round-trip and the UI jumps to the new session's chat.
+The **+** in the sidebar session-list header opens a full-page draft at `/new`: nothing is created until you send the first message. A target row above the message box picks where the session works: the agent (multi-agent setups), where exec runs (**Gateway · local** or a paired node that exposes `system.run`; requires `operator.admin`), the folder (defaults to the agent workspace; other absolute Gateway paths require `operator.admin` and a worktree), and an optional **Worktree** toggle with a base-branch picker (backed by `worktrees.branches`, so no fetch happens) and an optional worktree name (the branch becomes `openclaw/<name>`). The folder chip's browse button opens an inline directory picker backed by the admin-only `fs.listDir` method. Its top level shows the Gateway and every known node; offline nodes and nodes without directory-browsing support stay visible but disabled. Selecting the Gateway starts from the current folder or Gateway home. Selecting a capable node browses that node's host filesystem, binds exec to it, and uses the selected absolute node path directly (managed worktrees remain Gateway-only). Submitting calls `sessions.create` with the first message, so the run starts in the same round-trip and the UI jumps to the new session's chat.
 
 Inside **Settings**, the dedicated sidebar starts with a **Search settings** field for quickly finding settings sections.
 
@@ -201,7 +201,7 @@ A **Search** field at the top of the sidebar opens the command palette (⌘K). C
 
   </Accordion>
   <Accordion title="Cron, tasks, plugins, skills, devices, exec approvals">
-    - Cron jobs: list/add/edit/run/enable/disable plus run history (`cron.*`).
+    - Automations (cron jobs): a task list with All/Active/Paused tabs, search, and starter suggestions next to a detail pane that edits the selected task inline (prompt, details, frequency, advanced overrides) with per-task run history; with no selection the pane shows recent activity across all tasks (`cron.*`).
     - Tasks: live active and recent background task ledger with linked sessions and cancellation (`tasks.*`).
     - Plugins: browse the installed inventory and curated store, search ClawHub, install and remove plugin code, and enable or disable installed plugins (`plugins.*`); MCP server rows edit `mcp.servers` through the config methods.
     - Skills: status, enable/disable, install, API key updates (`skills.*`).
@@ -237,13 +237,13 @@ A **Search** field at the top of the sidebar opens the command palette (⌘K). C
     - Update: run a package/git update plus restart (`update.run`) with a restart report, then poll `update.status` after reconnect to verify the running gateway version.
 
   </Accordion>
-  <Accordion title="Cron jobs panel notes">
-    - The Automation ideas gallery offers curated starter automations; picking one opens the quick-create wizard pre-filled with an editable prompt, name, schedule, and delivery preset. It stays expanded until the first job exists, then collapses to a header.
-    - The quick-create wizard's final step offers **Create & run now** next to **Create**: the job is created and immediately kicked once (`cron.run`, force mode) so the first result arrives right away instead of waiting for the first scheduled tick.
-    - For isolated jobs, delivery defaults to announce summary; switch to none for internal-only runs.
+  <Accordion title="Automations panel notes">
+    - Selecting a task opens it directly in the detail pane for inline editing; Run now, pause/resume, clone, and remove live in the pane header.
+    - Suggestions under the task list prefill the create form with an editable prompt and schedule.
+    - For isolated tasks, delivery defaults to announce summary; switch to none for internal-only runs.
     - Channel/target fields appear when announce is selected.
     - Webhook mode uses `delivery.mode = "webhook"` with `delivery.to` set to a valid HTTP(S) webhook URL.
-    - For main-session jobs, webhook and none delivery modes are available.
+    - For main-session tasks, webhook and none delivery modes are available.
     - Advanced edit controls include delete-after-run, clear agent override, cron exact/stagger options, agent model/thinking overrides, and best-effort delivery toggles.
     - Form validation is inline with field-level errors; invalid values disable the save button until fixed.
     - Set `cron.webhookToken` to send a dedicated bearer token; if omitted, the webhook is sent without an auth header.
