@@ -22,7 +22,6 @@ const XAI_COMPLETE_LIVE_TIMEOUT_MS = 90_000;
 const XAI_WEB_SEARCH_LIVE_TIMEOUT_SECONDS = 60;
 
 const describeLive = LIVE && XAI_KEY ? describe : describe.skip;
-const XAI_REASONING_OUTPUT_TOKENS = 1_024;
 
 type AssistantLikeMessage = {
   content: Array<{
@@ -95,6 +94,10 @@ async function runXaiLiveCase(label: string, run: () => Promise<void>): Promise<
       console.warn(`[xai:live] skip ${label}: temporary provider capacity: ${message}`);
       return;
     }
+    if (/\b403\b/.test(message) && /model .+ is not available in your region/i.test(message)) {
+      console.warn(`[xai:live] skip ${label}: regional model availability: ${message}`);
+      return;
+    }
     if (message.includes("web_search is disabled or no provider is available")) {
       console.warn(`[xai:live] skip ${label}: web_search unavailable in this environment`);
       return;
@@ -135,8 +138,7 @@ describeLive("xai live", () => {
             },
             {
               apiKey: XAI_KEY,
-              maxTokens: XAI_REASONING_OUTPUT_TOKENS,
-              reasoning: "low",
+              maxTokens: 64,
             },
           );
 
@@ -166,7 +168,7 @@ describeLive("xai live", () => {
         let capturedPayload: Record<string, unknown> | undefined;
         const streamOptions = {
           apiKey: XAI_KEY,
-          maxTokens: XAI_REASONING_OUTPUT_TOKENS,
+          maxTokens: 128,
           reasoning: "low",
           toolChoice: { type: "function", name: "noop" },
           onPayload: (payload: unknown) => {

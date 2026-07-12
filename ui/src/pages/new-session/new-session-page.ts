@@ -5,6 +5,7 @@ import { html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { FsListDirResult } from "../../../../packages/gateway-protocol/src/index.js";
 import { applicationContext, type ApplicationContext } from "../../app/context.ts";
+import { beginNativeWindowDragFromTopInset } from "../../app/native-window-drag.ts";
 import { hasOperatorAdminAccess } from "../../app/operator-access.ts";
 import { loadSettings } from "../../app/settings.ts";
 import { icons } from "../../components/icons.ts";
@@ -13,14 +14,11 @@ import { t } from "../../i18n/index.ts";
 import { searchForSession } from "../../lib/sessions/index.ts";
 import { buildAgentMainSessionKey, normalizeAgentId } from "../../lib/sessions/session-key.ts";
 import { normalizeOptionalString } from "../../lib/string-coerce.ts";
+import { generateUUID } from "../../lib/uuid.ts";
 import { OpenClawLightDomElement } from "../../lit/openclaw-element.ts";
 import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
-import {
-  renderWelcomeHero,
-  renderWelcomeRecentSessions,
-  renderWelcomeSuggestions,
-  selectWelcomeRecentSessions,
-} from "../chat/components/chat-welcome.ts";
+import { renderWelcomeState } from "../chat/components/chat-welcome.ts";
+import { admitStoredChatComposerQueueItem } from "../chat/composer-persistence.ts";
 import { buildDraftSessionCreateParams } from "./create-params.ts";
 
 type NewSessionRouteData = { agentId?: string };
@@ -293,13 +291,14 @@ class NewSessionPage extends OpenClawLightDomElement {
     if (!context || !this.canSubmit()) {
       return;
     }
+    const message = this.message.trim();
     this.submitting = true;
     this.error = null;
     try {
-      const key = await context.sessions.create(
+      const result = await context.sessions.createResult(
         buildDraftSessionCreateParams({
           agentId: this.agentId,
-          message: this.message.trim(),
+          message,
           worktree: this.worktree,
           baseRef: this.baseRef,
           worktreeName: this.worktreeName,
@@ -308,12 +307,42 @@ class NewSessionPage extends OpenClawLightDomElement {
           execNode: this.execNode,
         }),
       );
-      if (!key) {
+      if (!result) {
         this.error = context.sessions.state.error ?? t("newSession.createFailed");
         return;
       }
-      context.gateway.setSessionKey(key);
-      context.navigate("chat", { search: searchForSession(key) });
+      if (result.initialRun.status === "rejected") {
+        const gateway = context.gateway.snapshot;
+        const persisted = admitStoredChatComposerQueueItem(
+          {
+            settings: loadSettings(),
+            assistantAgentId: gateway.assistantAgentId,
+            agentsList: context.agents.state.agentsList,
+            hello: gateway.hello,
+          },
+          result.key,
+          {
+            id: generateUUID(),
+            text: message,
+            createdAt: Date.now(),
+            kind: "queued",
+            refreshSessions: true,
+            sendAttempts: 1,
+            sendError: result.initialRun.error,
+            sendState: "failed",
+            sessionKey: result.key,
+            agentId: normalizeAgentId(this.agentId),
+          },
+        );
+        if (!persisted) {
+          // Stay on the draft when browser storage is unavailable: preserving
+          // the typed task takes priority over navigating to the partial session.
+          this.error = result.initialRun.error;
+          return;
+        }
+      }
+      context.gateway.setSessionKey(result.key);
+      context.navigate("chat", { search: searchForSession(result.key) });
     } finally {
       this.submitting = false;
     }
@@ -651,86 +680,97 @@ class NewSessionPage extends OpenClawLightDomElement {
               `
             : nothing}
         </label>
-        <label
-          class="new-session-page__target new-session-page__target--toggle"
-          title=${worktreeAvailable
-            ? t("chat.runControls.newSessionWorktree")
-            : t("newSession.worktreeUnavailable")}
-        >
-          <input
-            type="checkbox"
-            .checked=${this.worktree}
-            ?disabled=${!worktreeAvailable || customFolder}
-            @change=${(event: Event) => {
-              this.worktree = (event.target as HTMLInputElement).checked;
-              if (this.worktree) {
-                this.maybeLoadBranches();
-              }
-            }}
-          />
-          <span class="new-session-page__target-icon" aria-hidden="true">${icons.gitBranch}</span>
-          <span>${t("newSession.worktree")}</span>
-        </label>
-        ${this.worktree
-          ? html`
-              <label class="new-session-page__target" title=${t("newSession.baseBranch")}>
-                <input
-                  type="text"
-                  list="new-session-branches"
-                  class="new-session-page__branch"
-                  aria-label=${t("newSession.baseBranch")}
-                  placeholder=${this.branchesLoading
-                    ? t("common.loading")
-                    : (branches?.defaultBranch ?? t("newSession.baseBranch"))}
-                  .value=${this.baseRef}
-                  @input=${(event: Event) => {
-                    this.baseRef = (event.target as HTMLInputElement).value.trim();
-                  }}
-                />
-                <datalist id="new-session-branches">
-                  ${(branches?.branches ?? []).map(
-                    (branch) => html`<option value=${branch.name}></option>`,
-                  )}
-                </datalist>
-              </label>
-              <label class="new-session-page__target" title=${t("newSession.worktreeName")}>
-                <input
-                  type="text"
-                  class="new-session-page__branch"
-                  aria-label=${t("newSession.worktreeName")}
-                  placeholder=${t("newSession.worktreeNamePlaceholder")}
-                  .value=${this.worktreeName}
-                  @input=${(event: Event) => {
-                    this.worktreeName = (event.target as HTMLInputElement).value.trim();
-                  }}
-                />
-              </label>
-            `
-          : nothing}
+        <div class="new-session-page__target-group">
+          <label
+            class="new-session-page__target new-session-page__target--toggle"
+            title=${worktreeAvailable
+              ? t("chat.runControls.newSessionWorktree")
+              : t("newSession.worktreeUnavailable")}
+          >
+            <input
+              type="checkbox"
+              .checked=${this.worktree}
+              ?disabled=${!worktreeAvailable || customFolder}
+              @change=${(event: Event) => {
+                this.worktree = (event.target as HTMLInputElement).checked;
+                if (this.worktree) {
+                  this.maybeLoadBranches();
+                }
+              }}
+            />
+            <span class="new-session-page__target-icon" aria-hidden="true">${icons.gitBranch}</span>
+            <span>${t("newSession.worktree")}</span>
+          </label>
+          ${this.worktree
+            ? html`
+                <label class="new-session-page__target" title=${t("newSession.baseBranch")}>
+                  <input
+                    type="text"
+                    list="new-session-branches"
+                    class="new-session-page__branch"
+                    aria-label=${t("newSession.baseBranch")}
+                    placeholder=${this.branchesLoading
+                      ? t("common.loading")
+                      : (branches?.defaultBranch ?? t("newSession.baseBranch"))}
+                    .value=${this.baseRef}
+                    @input=${(event: Event) => {
+                      this.baseRef = (event.target as HTMLInputElement).value.trim();
+                    }}
+                  />
+                  <datalist id="new-session-branches">
+                    ${(branches?.branches ?? []).map(
+                      (branch) => html`<option value=${branch.name}></option>`,
+                    )}
+                  </datalist>
+                </label>
+                <label class="new-session-page__target" title=${t("newSession.worktreeName")}>
+                  <input
+                    type="text"
+                    class="new-session-page__branch"
+                    aria-label=${t("newSession.worktreeName")}
+                    placeholder=${t("newSession.worktreeNamePlaceholder")}
+                    .value=${this.worktreeName}
+                    @input=${(event: Event) => {
+                      this.worktreeName = (event.target as HTMLInputElement).value.trim();
+                    }}
+                  />
+                </label>
+              `
+            : nothing}
+        </div>
       </div>
     `;
   }
 
-  /** Same hero as the chat welcome screen, keyed to the draft's selected agent. */
-  private renderHero() {
+  /** Target row + composer, rendered mid-screen between the hero and recents. */
+  private renderDraftBlock() {
+    const worktreeNameInvalid =
+      this.worktree &&
+      this.worktreeName.trim() !== "" &&
+      !WORKTREE_NAME_PATTERN.test(this.worktreeName.trim());
+    return html`
+      <div class="new-session-page__draft">
+        ${this.renderTargetBar()} ${this.renderBrowser()}
+        ${worktreeNameInvalid
+          ? html`<div class="new-session-page__error">${t("newSession.worktreeNameInvalid")}</div>`
+          : nothing}
+        ${this.error ? html`<div class="new-session-page__error">${this.error}</div>` : nothing}
+        ${this.renderComposer()}
+      </div>
+    `;
+  }
+
+  /** Same welcome block as the empty-chat start screen, keyed to the draft's agent. */
+  private renderWelcome() {
     const agent = this.selectedAgent();
     const identity = agent?.identity;
-    return html`
-      <div class="agent-chat__welcome" style="--agent-color: var(--accent)">
-        ${renderWelcomeHero({
-          assistantName: identity?.name ?? agent?.name ?? agent?.id ?? "",
-          assistantAvatar: identity?.avatar ?? identity?.emoji ?? null,
-          assistantAvatarUrl: identity?.avatarUrl ?? null,
-          hint: t("newSession.hint"),
-        })}
-      </div>
-    `;
-  }
-
-  /** Recent chats to jump back into, or the canned starters when none exist. */
-  private renderRecents() {
     const gateway = this.context?.gateway.snapshot;
-    const recents = selectWelcomeRecentSessions({
+    return renderWelcomeState({
+      assistantName: identity?.name ?? agent?.name ?? agent?.id ?? "",
+      assistantAvatar: identity?.avatar ?? identity?.emoji ?? null,
+      assistantAvatarUrl: identity?.avatarUrl ?? null,
+      hint: t("newSession.hint"),
+      composer: this.renderDraftBlock(),
       sessions: this.context?.sessions.state.result,
       sessionKey: buildAgentMainSessionKey({
         agentId: this.agentId || "main",
@@ -741,37 +781,22 @@ class NewSessionPage extends OpenClawLightDomElement {
         agentsList: this.context?.agents.state.agentsList ?? null,
         hello: gateway?.hello ?? null,
       },
-    });
-    if (recents.length > 0) {
-      return renderWelcomeRecentSessions(recents, (sessionKey) => {
-        this.context?.gateway.setSessionKey(sessionKey);
-        this.context?.navigate("chat", { search: searchForSession(sessionKey) });
-      });
-    }
-    return renderWelcomeSuggestions({
       onDraftChange: (next) => {
         this.message = next;
       },
       onSend: () => void this.submit(),
+      onOpenSession: (sessionKey) => {
+        this.context?.gateway.setSessionKey(sessionKey);
+        this.context?.navigate("chat", { search: searchForSession(sessionKey) });
+      },
     });
   }
 
   override render() {
-    const worktreeNameInvalid =
-      this.worktree &&
-      this.worktreeName.trim() !== "" &&
-      !WORKTREE_NAME_PATTERN.test(this.worktreeName.trim());
     return html`
       <div class="new-session-page">
-        <div class="new-session-page__inner">
-          ${this.renderHero()} ${this.renderTargetBar()} ${this.renderBrowser()}
-          ${worktreeNameInvalid
-            ? html`<div class="new-session-page__error">
-                ${t("newSession.worktreeNameInvalid")}
-              </div>`
-            : nothing}
-          ${this.error ? html`<div class="new-session-page__error">${this.error}</div>` : nothing}
-          ${this.renderComposer()} ${this.renderRecents()}
+        <div class="new-session-page__scroll" @mousedown=${beginNativeWindowDragFromTopInset}>
+          ${this.renderWelcome()}
         </div>
       </div>
     `;
@@ -801,7 +826,7 @@ class NewSessionPage extends OpenClawLightDomElement {
           <div class="agent-chat__composer-combobox">
             <textarea
               class="new-session-page__message"
-              rows="4"
+              rows="3"
               placeholder=${t("newSession.messagePlaceholder")}
               .value=${this.message}
               @input=${(event: Event) => {

@@ -11,6 +11,11 @@ import {
 import { requireNodeSqlite } from "../infra/node-sqlite.js";
 import { resolveSqliteDatabaseFilePaths } from "../infra/sqlite-files.js";
 import {
+  repairCanonicalSqliteUniqueIndexes,
+  type CanonicalSqliteUniqueIndex,
+} from "../infra/sqlite-index-schema.js";
+import { assertSqliteIntegrity } from "../infra/sqlite-integrity.js";
+import {
   runSqliteImmediateTransactionSync,
   type SqliteTransactionOptions,
 } from "../infra/sqlite-transaction.js";
@@ -55,6 +60,35 @@ export const OPENCLAW_AGENT_SCHEMA_VERSION = 6;
 const OPENCLAW_AGENT_DB_DIR_MODE = 0o700;
 const OPENCLAW_AGENT_DB_FILE_MODE = 0o600;
 const OPENCLAW_AGENT_DB_SLOW_OPEN_MS = 1_000;
+const OPENCLAW_AGENT_CANONICAL_UNIQUE_INDEXES = [
+  {
+    name: "idx_agent_conversations_identity",
+    definition: `
+      ON conversations(
+        channel,
+        account_id,
+        kind,
+        peer_id,
+        IFNULL(parent_conversation_id, ''),
+        IFNULL(thread_id, '')
+      )
+    `,
+  },
+  {
+    name: "idx_agent_session_conversations_primary",
+    definition: `
+      ON session_conversations(session_id)
+      WHERE role = 'primary'
+    `,
+  },
+  {
+    name: "idx_agent_transcript_message_idempotency",
+    definition: `
+      ON transcript_event_identities(session_id, message_idempotency_key)
+      WHERE message_idempotency_key IS NOT NULL
+    `,
+  },
+] as const satisfies readonly CanonicalSqliteUniqueIndex[];
 const agentDbLog = createSubsystemLogger("state/agent-db");
 
 /** Open per-agent SQLite database handle plus lifecycle maintenance. */
@@ -138,6 +172,22 @@ function migratedSessionColumn(
   fallback: string,
 ): string {
   return columns.has(columnName) ? columnName : fallback;
+}
+
+function dropLegacySessionTranscriptSearchSchema(db: DatabaseSync): void {
+  // The pre-landing sessions_search branch tracked JSONL file watermarks and
+  // stored session_key inside the FTS table. Both are derived caches; drop
+  // them so reconcile rebuilds the row-native index shape.
+  db.exec("DROP TABLE IF EXISTS session_transcript_files;");
+  const columns = db.prepare("PRAGMA table_info(session_transcript_fts)").all() as Array<{
+    name?: unknown;
+  }>;
+  if (columns.some((row) => row.name === "session_key")) {
+    db.exec(`
+      DROP TABLE IF EXISTS session_transcript_fts;
+      DROP TABLE IF EXISTS session_transcript_index_state;
+    `);
+  }
 }
 
 function dropLegacyMemoryIndexSchema(db: DatabaseSync): void {
@@ -546,9 +596,11 @@ function ensureAgentSchema(db: DatabaseSync, agentId: string, pathname: string):
       // structure-gated, so this ordering converges every lineage — pre-flip
       // v1/v2 and pre-merge flip v1/v4 — without version-number coupling.
       dropLegacyMemoryIndexSchema(db);
+      dropLegacySessionTranscriptSearchSchema(db);
       migrateMemoryIndexSourcesIdentity(db);
       migrateOpenClawAgentSchema(db);
       db.exec(OPENCLAW_AGENT_SCHEMA_SQL);
+      repairCanonicalSqliteUniqueIndexes(db, pathname, OPENCLAW_AGENT_CANONICAL_UNIQUE_INDEXES);
       backfillOpenClawAgentSchema(db, previousVersion);
       const kysely = getNodeSqliteKysely<OpenClawAgentMetadataDatabase>(db);
       db.exec(`PRAGMA user_version = ${OPENCLAW_AGENT_SCHEMA_VERSION};`);
@@ -591,6 +643,7 @@ export function ensureOpenClawAgentDatabaseSchema(
   const databaseOptions = { ...options, agentId };
   const pathname = resolveOpenClawAgentSqlitePath(databaseOptions);
   ensureOpenClawAgentDatabasePermissions(pathname, databaseOptions);
+  assertAgentDatabaseIntegrityBeforeMutation(db, pathname);
   configureSqlitePreSchemaPragmas(db, {
     busyTimeoutMs: OPENCLAW_SQLITE_BUSY_TIMEOUT_MS,
   });
@@ -786,6 +839,16 @@ export function inspectOpenClawAgentDatabaseOwner(
   }
 }
 
+function assertAgentDatabaseIntegrityBeforeMutation(
+  database: DatabaseSync,
+  pathname: string,
+): void {
+  database.exec(`PRAGMA busy_timeout = ${OPENCLAW_SQLITE_BUSY_TIMEOUT_MS};`);
+  // Writable open permits interrupted journal recovery. Schema and connection
+  // setup must wait until full table/index consistency is proven afterward.
+  assertSqliteIntegrity(database, pathname);
+}
+
 /** Open or return a cached per-agent database after schema and owner validation. */
 export function openOpenClawAgentDatabase(
   options: OpenClawAgentDatabaseOptions,
@@ -816,6 +879,7 @@ export function openOpenClawAgentDatabase(
   const walMaintenance = (() => {
     let maintenance: SqliteWalMaintenance | undefined;
     try {
+      assertAgentDatabaseIntegrityBeforeMutation(db, pathname);
       configureSqlitePreSchemaPragmas(db, {
         busyTimeoutMs: OPENCLAW_SQLITE_BUSY_TIMEOUT_MS,
       });

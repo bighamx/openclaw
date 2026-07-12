@@ -302,6 +302,10 @@ import {
   ApprovalResolveResultSchema,
   type ApprovalSnapshot,
   ApprovalSnapshotSchema,
+  type SessionApprovalEvent,
+  SessionApprovalEventSchema,
+  type SessionApprovalReplay,
+  SessionApprovalReplaySchema,
   type ApprovalTerminalReason,
   ApprovalTerminalReasonSchema,
   type CancelledApprovalSnapshot,
@@ -517,6 +521,8 @@ import {
   NodePresenceAlivePayloadSchema,
   type NodePresenceAliveReason,
   NodePresenceAliveReasonSchema,
+  type NodePresenceActivityPayload,
+  NodePresenceActivityPayloadSchema,
   type NodeInvokeParams,
   NodeInvokeParamsSchema,
   type NodeInvokeResultParams,
@@ -674,6 +680,12 @@ import {
   SessionsResetParamsSchema,
   type SessionsResolveParams,
   SessionsResolveParamsSchema,
+  type SessionsSearchHit,
+  SessionsSearchHitSchema,
+  type SessionsSearchParams,
+  SessionsSearchParamsSchema,
+  type SessionsSearchResult,
+  SessionsSearchResultSchema,
   type SessionsSendParams,
   SessionsSendParamsSchema,
   type SessionsUsageParams,
@@ -1110,6 +1122,9 @@ export const validateNodeEventResult = lazyCompile<NodeEventResult>(NodeEventRes
 export const validateNodePresenceAlivePayload = lazyCompile<NodePresenceAlivePayload>(
   NodePresenceAlivePayloadSchema,
 );
+export const validateNodePresenceActivityPayload = lazyCompile<NodePresenceActivityPayload>(
+  NodePresenceActivityPayloadSchema,
+);
 export const validateNodePendingDrainParams = lazyCompile<NodePendingDrainParams>(
   NodePendingDrainParamsSchema,
 );
@@ -1145,6 +1160,12 @@ export const validateSessionsCatalogContinueParams = lazyCompile<SessionsCatalog
 );
 export const validateSessionsCatalogArchiveParams = lazyCompile<SessionsCatalogArchiveParams>(
   SessionsCatalogArchiveParamsSchema,
+);
+export const validateSessionsSearchParams = lazyCompile<SessionsSearchParams>(
+  SessionsSearchParamsSchema,
+);
+export const validateSessionsSearchResult = lazyCompile<SessionsSearchResult>(
+  SessionsSearchResultSchema,
 );
 export const validateSessionsCleanupParams = lazyCompile<SessionsCleanupParams>(
   SessionsCleanupParamsSchema,
@@ -1666,6 +1687,7 @@ export {
   NodeEventResultSchema,
   NodePresenceAlivePayloadSchema,
   NodePresenceAliveReasonSchema,
+  NodePresenceActivityPayloadSchema,
   NodePendingDrainParamsSchema,
   NodePendingDrainResultSchema,
   NodePendingEnqueueParamsSchema,
@@ -1685,6 +1707,9 @@ export {
   SessionsCatalogContinueResultSchema,
   SessionsCatalogArchiveParamsSchema,
   SessionsCatalogArchiveResultSchema,
+  SessionsSearchHitSchema,
+  SessionsSearchParamsSchema,
+  SessionsSearchResultSchema,
   SessionsCleanupParamsSchema,
   SessionsPreviewParamsSchema,
   SessionsDescribeParamsSchema,
@@ -1944,6 +1969,8 @@ export {
   ApprovalGetResultSchema,
   ApprovalResolveParamsSchema,
   ApprovalResolveResultSchema,
+  SessionApprovalEventSchema,
+  SessionApprovalReplaySchema,
   ExecApprovalsGetParamsSchema,
   ExecApprovalsSetParamsSchema,
   ExecApprovalGetParamsSchema,
@@ -2224,11 +2251,15 @@ export type {
   NodeEventResult,
   NodePresenceAlivePayload,
   NodePresenceAliveReason,
+  NodePresenceActivityPayload,
   NodePendingDrainParams,
   NodePendingDrainResult,
   NodePendingEnqueueParams,
   NodePendingEnqueueResult,
   SessionsListParams,
+  SessionsSearchHit,
+  SessionsSearchParams,
+  SessionsSearchResult,
   SessionsCleanupParams,
   SessionsPreviewParams,
   SessionsDescribeParams,
@@ -2301,6 +2332,8 @@ export type {
   ApprovalGetResult,
   ApprovalResolveParams,
   ApprovalResolveResult,
+  SessionApprovalEvent,
+  SessionApprovalReplay,
   ExecApprovalsGetParams,
   ExecApprovalsNodeSnapshot,
   ExecApprovalsSetParams,

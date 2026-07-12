@@ -101,7 +101,24 @@ describeControlUiE2e("Control UI new-session page mocked Gateway E2E", () => {
       // "+" navigates to the same route with ?agent=<id>).
       const response = await page.goto(`${server.baseUrl}new`);
       expect(response?.status()).toBe(200);
+      // The draft page shows the start-screen welcome hero for the agent.
+      await page.getByRole("heading", { name: "Main" }).waitFor();
       await page.locator(".new-session-page__message").waitFor();
+
+      // Unified layout: the draft block (target row above the composer) sits
+      // inside the start-screen welcome, below the hero.
+      const heroBox = await page.locator(".agent-chat__welcome h2").boundingBox();
+      const targetsBox = await page.locator(".new-session-page__targets").boundingBox();
+      const composerBox = await page.locator(".new-session-page__composer").boundingBox();
+      expect(heroBox).not.toBeNull();
+      expect(targetsBox).not.toBeNull();
+      expect(composerBox).not.toBeNull();
+      expect((heroBox?.y ?? 0) + (heroBox?.height ?? 0)).toBeLessThanOrEqual(
+        (targetsBox?.y ?? 0) + 1,
+      );
+      expect((targetsBox?.y ?? 0) + (targetsBox?.height ?? 0)).toBeLessThanOrEqual(
+        (composerBox?.y ?? 0) + 1,
+      );
 
       const folderInput = page.getByRole("textbox", { name: "Folder", exact: true });
       await expect.poll(() => folderInput.inputValue()).toBe(WORKSPACE);
@@ -139,6 +156,94 @@ describeControlUiE2e("Control UI new-session page mocked Gateway E2E", () => {
       await expect
         .poll(() => new URL(page.url()).search)
         .toContain(`session=${encodeURIComponent("agent:main:draft-e2e")}`);
+    } finally {
+      await context.close();
+    }
+  });
+
+  it("keeps a rejected first message visible and retryable after reload", async () => {
+    const context = await browser.newContext({
+      locale: "en-US",
+      serviceWorkers: "block",
+      viewport: { height: 900, width: 1280 },
+    });
+    const page = await context.newPage();
+    const sessionKey = "agent:main:rejected-first-message";
+    const message = "keep this rejected first message";
+    const runError = "send blocked by session policy";
+    const gateway = await installMockGateway(page, {
+      methodResponses: {
+        "agents.list": {
+          agents: [
+            {
+              id: "main",
+              identity: { name: "Main" },
+              name: "Main",
+              workspace: WORKSPACE,
+              workspaceGit: true,
+            },
+          ],
+          defaultId: "main",
+          mainKey: "main",
+          scope: "agent",
+        },
+        "worktrees.branches": {
+          branches: [{ kind: "local", name: "main" }],
+          defaultBranch: "main",
+        },
+        "sessions.list": {
+          count: 1,
+          path: "",
+          sessions: [
+            {
+              hasActiveRun: false,
+              key: sessionKey,
+              kind: "direct",
+              status: "done",
+              updatedAt: Date.now(),
+            },
+          ],
+          ts: Date.now(),
+        },
+        "sessions.create": {
+          key: sessionKey,
+          runStarted: false,
+          runError: { code: "INVALID_REQUEST", message: runError },
+        },
+        "chat.history": {
+          messages: [],
+          sessionId: "rejected-first-message",
+          sessionInfo: { hasActiveRun: false, key: sessionKey, status: "done" },
+        },
+        "chat.send": { runId: "retry-run", status: "started" },
+      },
+    });
+
+    try {
+      await page.goto(`${server.baseUrl}new`);
+      await page.locator(".new-session-page__message").fill(message);
+      await page.getByRole("button", { name: "Start session" }).click();
+      const create = await gateway.waitForRequest("sessions.create");
+      expect(create.params).toMatchObject({ message });
+
+      await page.waitForURL((url) => url.searchParams.get("session") === sessionKey, {
+        timeout: 30_000,
+      });
+      await expect.poll(() => page.locator(".chat-queue__text").allInnerTexts()).toContain(message);
+      await expect
+        .poll(() => page.locator(".chat-queue__error").allInnerTexts())
+        .toContain(runError);
+
+      await page.reload();
+      await expect.poll(() => page.locator(".chat-queue__text").allInnerTexts()).toContain(message);
+      await expect
+        .poll(() => page.locator(".chat-queue__error").allInnerTexts())
+        .toContain(runError);
+
+      await page.getByRole("button", { name: "Retry queued message" }).click();
+      const retry = await gateway.waitForRequest("chat.send");
+      expect(retry.params).toMatchObject({ sessionKey, message });
+      expect(await gateway.getRequests("sessions.create")).toHaveLength(0);
     } finally {
       await context.close();
     }
