@@ -82,6 +82,7 @@ export const ar: TranslationMap = {
     relink: "إعادة الربط",
     waitForScan: "انتظار المسح",
     logout: "تسجيل الخروج",
+    skipToMainContent: "تخطَّ إلى المحتوى الرئيسي",
   },
   nativeLinkMenu: {
     label: "إجراءات الرابط",
@@ -125,6 +126,7 @@ export const ar: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}، بواسطة {author}",
   },
   channels: {
+    lastError: "آخر خطأ",
     refreshingStaleSnapshot: "جارٍ تحديث حالة القناة في الخلفية؛ يتم عرض آخر لقطة ناجحة.",
     config: {
       schemaUnavailable: "المخطط غير متاح. استخدم Raw.",
@@ -380,7 +382,6 @@ export const ar: TranslationMap = {
   },
   worktrees: {
     newWorktree: "شجرة عمل جديدة",
-    owner: "المالك",
     ownerManual: "يدوي",
     ownerSession: "الجلسة",
     ownerWorkboard: "Workboard",
@@ -401,10 +402,6 @@ export const ar: TranslationMap = {
     cleanupSaveFailed: "فشل حفظ حدود التنظيف.",
     name: "الاسم",
     repo: "المستودع",
-    branch: "الفرع",
-    status: "الحالة",
-    lastActive: "آخر نشاط",
-    actions: "الإجراءات",
     empty: "لا توجد مساحات عمل مُدارة.",
     restorable: "قابل للاستعادة",
     restore: "استعادة",
@@ -457,6 +454,7 @@ export const ar: TranslationMap = {
     start: "بدء الجلسة",
     starting: "جارٍ البدء…",
     createFailed: "تعذّر إنشاء الجلسة.",
+    catalogUnavailable: "هدف هذه الجلسة غير متاح.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -819,6 +817,7 @@ export const ar: TranslationMap = {
     },
     manualRpcTitle: "RPC يدوي",
     manualRpcSubtitle: "أرسل طريقة Gateway أولية مع معلمات JSON.",
+    callFailed: "فشل الاتصال",
     method: "الطريقة",
     selectMethod: "اختر طريقة…",
     paramsJson: "المعلمات (JSON)",
@@ -1116,6 +1115,7 @@ export const ar: TranslationMap = {
     settingsView: "عرض الإعدادات",
     simple: "بسيط",
     advanced: "متقدم",
+    content: "محتوى الإعدادات",
     themeImported: "تم استيراد {name}.",
     themeRemoved: "تمت إزالة السمة المخصصة.",
     channels: {
@@ -1403,6 +1403,7 @@ export const ar: TranslationMap = {
     moreLiveTitle: "تتوفر {count} أداة مباشرة إضافية في المجموعات أدناه.",
     moreLive: "+{count} أداة مباشرة إضافية",
     quickPresets: "إعدادات مسبقة سريعة",
+    catalogTitle: "كتالوج الأدوات",
     inherit: "توريث",
     profile: "الملف الشخصي",
     source: "المصدر",
@@ -1467,6 +1468,8 @@ export const ar: TranslationMap = {
     platforms: "المنصات: {platforms}",
     installNamed: "تثبيت {name}",
     notFound: "لم يتم العثور على المهارة.",
+    openDetails: "فتح تفاصيل {name}",
+    enabledNamed: "تم تفعيل {name}",
     invalidLink: "رابط ClawHub غير صالح",
     overview: "نظرة عامة",
     skillCard: "بطاقة المهارة",
@@ -1738,7 +1741,6 @@ export const ar: TranslationMap = {
     filterAll: "الكل",
     filterIssues: "المشكلات",
     filterLabel: "تصفية المكونات الإضافية المثبتة",
-    pulseLabel: "{enabled} مفعّل، {disabled} معطّل، {issues} به مشكلات",
     categoryChannels: "القنوات",
     categoryProviders: "موفرو النماذج",
     categoryMemory: "الذاكرة",
@@ -2476,6 +2478,7 @@ export const ar: TranslationMap = {
       uptime: "مدة التشغيل",
       tickInterval: "الفاصل الزمني للنبضات",
       lastChannelsRefresh: "آخر تحديث للقنوات",
+      lastError: "آخر خطأ",
     },
     help: {
       title: "كيفية الاتصال",
@@ -3500,11 +3503,13 @@ export const ar: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "حالة الأتمتة",
       all: "الكل",
       active: "نشط",
       paused: "متوقفة مؤقتًا",
     },
     list: {
+      viewLabel: "عروض الأتمتة",
       searchPlaceholder: "البحث في المهام المجدولة",
       newTask: "مهمة جديدة",
       filters: "عوامل التصفية",
@@ -3575,6 +3580,7 @@ export const ar: TranslationMap = {
       nextWake: "التشغيل التالي",
     },
     detail: {
+      tabsLabel: "تفاصيل الأتمتة",
       newTitle: "مهمة مجدولة جديدة",
       newSubtitle: "صِف ما ينبغي أن يفعله OpenClaw، ثم اختر وقت تشغيله.",
       back: "كل عمليات الأتمتة",

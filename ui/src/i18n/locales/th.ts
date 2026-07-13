@@ -82,6 +82,7 @@ export const th: TranslationMap = {
     relink: "เชื่อมโยงใหม่",
     waitForScan: "รอการสแกน",
     logout: "ออกจากระบบ",
+    skipToMainContent: "ข้ามไปยังเนื้อหาหลัก",
   },
   nativeLinkMenu: {
     label: "การดำเนินการลิงก์",
@@ -125,6 +126,7 @@ export const th: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, โดย {author}",
   },
   channels: {
+    lastError: "ข้อผิดพลาดล่าสุด",
     refreshingStaleSnapshot: "กำลังรีเฟรชสถานะช่องในเบื้องหลัง กำลังแสดงสแนปช็อตล่าสุดที่สำเร็จ",
     config: {
       schemaUnavailable: "ไม่มีสคีมา ใช้ Raw",
@@ -378,7 +380,6 @@ export const th: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Worktree ใหม่",
-    owner: "เจ้าของ",
     ownerManual: "กำหนดเอง",
     ownerSession: "เซสชัน",
     ownerWorkboard: "Workboard",
@@ -399,10 +400,6 @@ export const th: TranslationMap = {
     cleanupSaveFailed: "บันทึกขีดจำกัดการล้างข้อมูลไม่สำเร็จ",
     name: "ชื่อ",
     repo: "คลัง",
-    branch: "บรานช์",
-    status: "สถานะ",
-    lastActive: "ใช้งานล่าสุด",
-    actions: "การดำเนินการ",
     empty: "ไม่มี worktrees ที่จัดการ",
     restorable: "กู้คืนได้",
     restore: "กู้คืน",
@@ -455,6 +452,7 @@ export const th: TranslationMap = {
     start: "เริ่มเซสชัน",
     starting: "กำลังเริ่ม…",
     createFailed: "ไม่สามารถสร้างเซสชันได้",
+    catalogUnavailable: "เป้าหมายของเซสชันนี้ไม่พร้อมใช้งาน",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -814,6 +812,7 @@ export const th: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "การเรียกใช้ล้มเหลว",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1111,6 +1110,7 @@ export const th: TranslationMap = {
     settingsView: "มุมมองการตั้งค่า",
     simple: "แบบง่าย",
     advanced: "ขั้นสูง",
+    content: "เนื้อหาการตั้งค่า",
     themeImported: "นำเข้า {name} แล้ว",
     themeRemoved: "ลบธีมที่กำหนดเองแล้ว",
     channels: {
@@ -1396,6 +1396,7 @@ export const th: TranslationMap = {
     moreLiveTitle: "มีเครื่องมือแบบ live อีก {count} รายการในกลุ่มด้านล่าง",
     moreLive: "+{count} เครื่องมือ live เพิ่มเติม",
     quickPresets: "พรีเซ็ตด่วน",
+    catalogTitle: "แค็ตตาล็อกเครื่องมือ",
     inherit: "สืบทอด",
     profile: "โปรไฟล์",
     source: "แหล่งที่มา",
@@ -1460,6 +1461,8 @@ export const th: TranslationMap = {
     platforms: "แพลตฟอร์ม: {platforms}",
     installNamed: "ติดตั้ง {name}",
     notFound: "ไม่พบ Skill",
+    openDetails: "เปิดรายละเอียดของ {name}",
+    enabledNamed: "เปิดใช้งาน {name} แล้ว",
     invalidLink: "ลิงก์ ClawHub ไม่ถูกต้อง",
     overview: "ภาพรวม",
     skillCard: "Skill Card",
@@ -1726,7 +1729,6 @@ export const th: TranslationMap = {
     filterAll: "ทั้งหมด",
     filterIssues: "ปัญหา",
     filterLabel: "กรองปลั๊กอินที่ติดตั้ง",
-    pulseLabel: "เปิดใช้งาน {enabled} รายการ, ปิดใช้งาน {disabled} รายการ, มีปัญหา {issues} รายการ",
     categoryChannels: "ช่องทาง",
     categoryProviders: "ผู้ให้บริการโมเดล",
     categoryMemory: "หน่วยความจำ",
@@ -2463,6 +2465,7 @@ export const th: TranslationMap = {
       uptime: "ระยะเวลาทำงาน",
       tickInterval: "ช่วงเวลาการอัปเดต",
       lastChannelsRefresh: "การรีเฟรชช่องครั้งล่าสุด",
+      lastError: "ข้อผิดพลาดล่าสุด",
     },
     help: {
       title: "วิธีเชื่อมต่อ",
@@ -3471,11 +3474,13 @@ export const th: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "สถานะระบบอัตโนมัติ",
       all: "ทั้งหมด",
       active: "ใช้งานอยู่",
       paused: "หยุดชั่วคราว",
     },
     list: {
+      viewLabel: "มุมมองระบบอัตโนมัติ",
       searchPlaceholder: "ค้นหางานที่ตั้งเวลาไว้",
       newTask: "งานใหม่",
       filters: "ตัวกรอง",
@@ -3546,6 +3551,7 @@ export const th: TranslationMap = {
       nextWake: "ปลุกครั้งถัดไป",
     },
     detail: {
+      tabsLabel: "รายละเอียดระบบอัตโนมัติ",
       newTitle: "งานตามกำหนดเวลาใหม่",
       newSubtitle: "อธิบายสิ่งที่ OpenClaw ควรทำ แล้วเลือกเวลาที่จะให้ทำงาน",
       back: "การทำงานอัตโนมัติทั้งหมด",

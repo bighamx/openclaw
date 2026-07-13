@@ -82,6 +82,7 @@ export const uk: TranslationMap = {
     relink: "Пов’язати знову",
     waitForScan: "Очікування сканування",
     logout: "Вийти",
+    skipToMainContent: "Перейти до основного вмісту",
   },
   nativeLinkMenu: {
     label: "Дії з посиланням",
@@ -125,6 +126,7 @@ export const uk: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, від {author}",
   },
   channels: {
+    lastError: "Остання помилка",
     refreshingStaleSnapshot:
       "Оновлення статусу каналу у фоновому режимі; показано останній успішний знімок.",
     config: {
@@ -383,7 +385,6 @@ export const uk: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Новий worktree",
-    owner: "Власник",
     ownerManual: "Вручну",
     ownerSession: "Сесія",
     ownerWorkboard: "Workboard",
@@ -404,10 +405,6 @@ export const uk: TranslationMap = {
     cleanupSaveFailed: "Не вдалося зберегти обмеження очищення.",
     name: "Назва",
     repo: "Репозиторій",
-    branch: "Гілка",
-    status: "Статус",
-    lastActive: "Остання активність",
-    actions: "Дії",
     empty: "Немає керованих worktrees.",
     restorable: "Можна відновити",
     restore: "Відновити",
@@ -460,6 +457,7 @@ export const uk: TranslationMap = {
     start: "Почати сеанс",
     starting: "Запуск…",
     createFailed: "Не вдалося створити сеанс.",
+    catalogUnavailable: "Ціль цього сеансу недоступна.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -825,6 +823,7 @@ export const uk: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "Виклик не виконано",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1126,6 +1125,7 @@ export const uk: TranslationMap = {
     settingsView: "Перегляд налаштувань",
     simple: "Простий",
     advanced: "Розширений",
+    content: "Вміст налаштувань",
     themeImported: "Імпортовано {name}.",
     themeRemoved: "Користувацьку тему видалено.",
     channels: {
@@ -1417,6 +1417,7 @@ export const uk: TranslationMap = {
     moreLiveTitle: "Ще {count} активних інструментів доступно в групах нижче.",
     moreLive: "+{count} активних інструментів",
     quickPresets: "Швидкі шаблони",
+    catalogTitle: "Каталог інструментів",
     inherit: "Успадкувати",
     profile: "Профіль",
     source: "Джерело",
@@ -1481,6 +1482,8 @@ export const uk: TranslationMap = {
     platforms: "Платформи: {platforms}",
     installNamed: "Встановити {name}",
     notFound: "Skill не знайдено.",
+    openDetails: "Відкрити відомості про {name}",
+    enabledNamed: "{name} увімкнено",
     invalidLink: "Недійсне посилання ClawHub",
     overview: "Огляд",
     skillCard: "Картка Skill",
@@ -1759,7 +1762,6 @@ export const uk: TranslationMap = {
     filterAll: "Усі",
     filterIssues: "Проблеми",
     filterLabel: "Фільтрувати встановлені плагіни",
-    pulseLabel: "{enabled} увімкнено, {disabled} вимкнено, {issues} з проблемами",
     categoryChannels: "Канали",
     categoryProviders: "Постачальники моделей",
     categoryMemory: "Пам’ять",
@@ -2501,6 +2503,7 @@ export const uk: TranslationMap = {
       uptime: "Час роботи",
       tickInterval: "Інтервал оновлення",
       lastChannelsRefresh: "Останнє оновлення каналів",
+      lastError: "Остання помилка",
     },
     help: {
       title: "Як підключитися",
@@ -3536,11 +3539,13 @@ export const uk: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Стан автоматизації",
       all: "Усі",
       active: "Активні",
       paused: "Призупинено",
     },
     list: {
+      viewLabel: "Подання автоматизації",
       searchPlaceholder: "Пошук запланованих завдань",
       newTask: "Нове завдання",
       filters: "Фільтри",
@@ -3611,6 +3616,7 @@ export const uk: TranslationMap = {
       nextWake: "Наступне пробудження",
     },
     detail: {
+      tabsLabel: "Відомості про автоматизацію",
       newTitle: "Нове заплановане завдання",
       newSubtitle: "Опишіть, що має зробити OpenClaw, потім виберіть час запуску.",
       back: "Усі автоматизації",

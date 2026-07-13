@@ -82,6 +82,7 @@ export const zh_TW: TranslationMap = {
     relink: "重新連結",
     waitForScan: "等待掃描",
     logout: "登出",
+    skipToMainContent: "跳至主要內容",
   },
   nativeLinkMenu: {
     label: "連結動作",
@@ -125,6 +126,7 @@ export const zh_TW: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}：{title}，由 {author} 提交",
   },
   channels: {
+    lastError: "上次錯誤",
     refreshingStaleSnapshot: "正在背景重新整理頻道狀態；顯示上次成功的快照。",
     config: {
       schemaUnavailable: "結構描述無法使用。請使用 Raw。",
@@ -378,7 +380,6 @@ export const zh_TW: TranslationMap = {
   },
   worktrees: {
     newWorktree: "新增 worktree",
-    owner: "擁有者",
     ownerManual: "手動",
     ownerSession: "工作階段",
     ownerWorkboard: "Workboard",
@@ -397,10 +398,6 @@ export const zh_TW: TranslationMap = {
     cleanupSaveFailed: "無法儲存清理限制。",
     name: "名稱",
     repo: "儲存庫",
-    branch: "分支",
-    status: "狀態",
-    lastActive: "上次活動",
-    actions: "操作",
     empty: "沒有受管理的 worktrees。",
     restorable: "可還原",
     restore: "還原",
@@ -453,6 +450,7 @@ export const zh_TW: TranslationMap = {
     start: "啟動工作階段",
     starting: "正在啟動…",
     createFailed: "無法建立工作階段。",
+    catalogUnavailable: "此工作階段目標無法使用。",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -813,6 +811,7 @@ export const zh_TW: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "呼叫失敗",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1110,6 +1109,7 @@ export const zh_TW: TranslationMap = {
     settingsView: "設定檢視",
     simple: "簡易",
     advanced: "進階",
+    content: "設定內容",
     themeImported: "已匯入 {name}。",
     themeRemoved: "已移除自訂佈景主題。",
     channels: {
@@ -1392,6 +1392,7 @@ export const zh_TW: TranslationMap = {
     moreLiveTitle: "下方群組中還有 {count} 個可用的即時工具。",
     moreLive: "+{count} 個更多即時工具",
     quickPresets: "快速預設",
+    catalogTitle: "工具目錄",
     inherit: "繼承",
     profile: "設定檔",
     source: "來源",
@@ -1456,6 +1457,8 @@ export const zh_TW: TranslationMap = {
     platforms: "平台：{platforms}",
     installNamed: "安裝 {name}",
     notFound: "找不到 skill。",
+    openDetails: "開啟 {name} 詳細資料",
+    enabledNamed: "{name} 已啟用",
     invalidLink: "ClawHub 連結無效",
     overview: "總覽",
     skillCard: "Skill 卡片",
@@ -1722,7 +1725,6 @@ export const zh_TW: TranslationMap = {
     filterAll: "全部",
     filterIssues: "問題",
     filterLabel: "篩選已安裝的外掛",
-    pulseLabel: "{enabled} 個已啟用，{disabled} 個已停用，{issues} 個有問題",
     categoryChannels: "頻道",
     categoryProviders: "模型供應商",
     categoryMemory: "記憶體",
@@ -2457,6 +2459,7 @@ export const zh_TW: TranslationMap = {
       uptime: "運作時間",
       tickInterval: "更新間隔",
       lastChannelsRefresh: "上次重新整理頻道",
+      lastError: "上次錯誤",
     },
     help: {
       title: "如何連線",
@@ -3461,11 +3464,13 @@ export const zh_TW: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "自動化狀態",
       all: "全部",
       active: "進行中",
       paused: "已暫停",
     },
     list: {
+      viewLabel: "自動化檢視",
       searchPlaceholder: "搜尋排程工作",
       newTask: "新工作",
       filters: "篩選條件",
@@ -3536,6 +3541,7 @@ export const zh_TW: TranslationMap = {
       nextWake: "下次喚醒",
     },
     detail: {
+      tabsLabel: "自動化詳細資料",
       newTitle: "新排程任務",
       newSubtitle: "描述 OpenClaw 應執行的內容，然後選擇執行時間。",
       back: "所有自動化",

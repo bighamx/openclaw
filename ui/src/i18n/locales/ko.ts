@@ -82,6 +82,7 @@ export const ko: TranslationMap = {
     relink: "다시 연결",
     waitForScan: "스캔 대기",
     logout: "로그아웃",
+    skipToMainContent: "주요 콘텐츠로 건너뛰기",
   },
   nativeLinkMenu: {
     label: "링크 작업",
@@ -125,6 +126,7 @@ export const ko: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, 작성자 {author}",
   },
   channels: {
+    lastError: "마지막 오류",
     refreshingStaleSnapshot:
       "백그라운드에서 채널 상태를 새로 고치는 중입니다. 마지막으로 성공한 스냅샷을 표시합니다.",
     config: {
@@ -381,7 +383,6 @@ export const ko: TranslationMap = {
   },
   worktrees: {
     newWorktree: "새 worktree",
-    owner: "소유자",
     ownerManual: "수동",
     ownerSession: "세션",
     ownerWorkboard: "Workboard",
@@ -402,10 +403,6 @@ export const ko: TranslationMap = {
     cleanupSaveFailed: "정리 한도를 저장하지 못했습니다.",
     name: "이름",
     repo: "저장소",
-    branch: "브랜치",
-    status: "상태",
-    lastActive: "마지막 활성",
-    actions: "작업",
     empty: "관리되는 worktree가 없습니다.",
     restorable: "복원 가능",
     restore: "복원",
@@ -458,6 +455,7 @@ export const ko: TranslationMap = {
     start: "세션 시작",
     starting: "시작 중…",
     createFailed: "세션을 만들 수 없습니다.",
+    catalogUnavailable: "이 세션 대상을 사용할 수 없습니다.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -820,6 +818,7 @@ export const ko: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "호출 실패",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1117,6 +1116,7 @@ export const ko: TranslationMap = {
     settingsView: "설정 보기",
     simple: "간단",
     advanced: "고급",
+    content: "설정 콘텐츠",
     themeImported: "{name}을(를) 가져왔습니다.",
     themeRemoved: "사용자 지정 테마가 제거되었습니다.",
     channels: {
@@ -1406,6 +1406,7 @@ export const ko: TranslationMap = {
     moreLiveTitle: "아래 그룹에서 {count}개의 라이브 도구를 추가로 사용할 수 있습니다.",
     moreLive: "라이브 도구 +{count}개",
     quickPresets: "빠른 프리셋",
+    catalogTitle: "도구 카탈로그",
     inherit: "상속",
     profile: "프로필",
     source: "소스",
@@ -1470,6 +1471,8 @@ export const ko: TranslationMap = {
     platforms: "플랫폼: {platforms}",
     installNamed: "{name} 설치",
     notFound: "Skill을 찾을 수 없습니다.",
+    openDetails: "{name} 세부 정보 열기",
+    enabledNamed: "{name} 활성화됨",
     invalidLink: "ClawHub 링크가 잘못되었습니다",
     overview: "개요",
     skillCard: "Skill Card",
@@ -1741,7 +1744,6 @@ export const ko: TranslationMap = {
     filterAll: "전체",
     filterIssues: "문제",
     filterLabel: "설치된 플러그인 필터링",
-    pulseLabel: "활성화 {enabled}개, 비활성화 {disabled}개, 문제 있음 {issues}개",
     categoryChannels: "채널",
     categoryProviders: "모델 제공업체",
     categoryMemory: "메모리",
@@ -2485,6 +2487,7 @@ export const ko: TranslationMap = {
       uptime: "가동 시간",
       tickInterval: "틱 간격",
       lastChannelsRefresh: "마지막 채널 새로고침",
+      lastError: "마지막 오류",
     },
     help: {
       title: "연결 방법",
@@ -3513,11 +3516,13 @@ export const ko: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "자동화 상태",
       all: "전체",
       active: "활성",
       paused: "일시중지됨",
     },
     list: {
+      viewLabel: "자동화 보기",
       searchPlaceholder: "예약된 작업 검색",
       newTask: "새 작업",
       filters: "필터",
@@ -3588,6 +3593,7 @@ export const ko: TranslationMap = {
       nextWake: "다음 실행",
     },
     detail: {
+      tabsLabel: "자동화 세부 정보",
       newTitle: "새 예약 작업",
       newSubtitle: "OpenClaw가 수행할 작업을 설명한 후 실행 시점을 선택하세요.",
       back: "모든 자동화",

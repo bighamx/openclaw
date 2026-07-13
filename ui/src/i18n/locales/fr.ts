@@ -82,6 +82,7 @@ export const fr: TranslationMap = {
     relink: "Relier à nouveau",
     waitForScan: "Attendre le scan",
     logout: "Se déconnecter",
+    skipToMainContent: "Accéder au contenu principal",
   },
   nativeLinkMenu: {
     label: "Actions de lien",
@@ -125,6 +126,7 @@ export const fr: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number} : {title}, par {author}",
   },
   channels: {
+    lastError: "Dernière erreur",
     refreshingStaleSnapshot:
       "Actualisation du statut du canal en arrière-plan ; affichage du dernier instantané réussi.",
     config: {
@@ -386,7 +388,6 @@ export const fr: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Nouveau worktree",
-    owner: "Propriétaire",
     ownerManual: "Manuel",
     ownerSession: "Session",
     ownerWorkboard: "Workboard",
@@ -407,10 +408,6 @@ export const fr: TranslationMap = {
     cleanupSaveFailed: "Échec de l’enregistrement des limites de nettoyage.",
     name: "Nom",
     repo: "Dépôt",
-    branch: "Branche",
-    status: "Statut",
-    lastActive: "Dernière activité",
-    actions: "Actions",
     empty: "Aucun worktree géré.",
     restorable: "Restaurable",
     restore: "Restaurer",
@@ -465,6 +462,7 @@ export const fr: TranslationMap = {
     start: "Démarrer la session",
     starting: "Démarrage…",
     createFailed: "Impossible de créer la session.",
+    catalogUnavailable: "La cible de cette session est indisponible.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -833,6 +831,7 @@ export const fr: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "Échec de l’appel",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1132,6 +1131,7 @@ export const fr: TranslationMap = {
     settingsView: "Vue des paramètres",
     simple: "Simple",
     advanced: "Avancé",
+    content: "Contenu des paramètres",
     themeImported: "{name} importé.",
     themeRemoved: "Thème personnalisé supprimé.",
     channels: {
@@ -1425,6 +1425,7 @@ export const fr: TranslationMap = {
       "{count} outils en direct supplémentaires sont disponibles dans les groupes ci-dessous.",
     moreLive: "+{count} outils en direct supplémentaires",
     quickPresets: "Préréglages rapides",
+    catalogTitle: "Catalogue d’outils",
     inherit: "Hériter",
     profile: "Profil",
     source: "Source",
@@ -1490,6 +1491,8 @@ export const fr: TranslationMap = {
     platforms: "Plateformes : {platforms}",
     installNamed: "Installer {name}",
     notFound: "Skill introuvable.",
+    openDetails: "Ouvrir les détails de {name}",
+    enabledNamed: "{name} activé",
     invalidLink: "Lien ClawHub invalide",
     overview: "Aperçu",
     skillCard: "Carte du skill",
@@ -1776,7 +1779,6 @@ export const fr: TranslationMap = {
     filterAll: "Tous",
     filterIssues: "Problèmes",
     filterLabel: "Filtrer les plugins installés",
-    pulseLabel: "{enabled} activés, {disabled} désactivés, {issues} avec des problèmes",
     categoryChannels: "Canaux",
     categoryProviders: "Fournisseurs de modèles",
     categoryMemory: "Mémoire",
@@ -2534,6 +2536,7 @@ export const fr: TranslationMap = {
       uptime: "Durée de fonctionnement",
       tickInterval: "Intervalle de rafraîchissement",
       lastChannelsRefresh: "Dernière actualisation des canaux",
+      lastError: "Dernière erreur",
     },
     help: {
       title: "Comment se connecter",
@@ -3583,11 +3586,13 @@ export const fr: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "État de l’automatisation",
       all: "Tous",
       active: "Actives",
       paused: "En pause",
     },
     list: {
+      viewLabel: "Vues des automatisations",
       searchPlaceholder: "Rechercher des tâches planifiées",
       newTask: "Nouvelle tâche",
       filters: "Filtres",
@@ -3658,6 +3663,7 @@ export const fr: TranslationMap = {
       nextWake: "Prochain réveil",
     },
     detail: {
+      tabsLabel: "Détails de l’automatisation",
       newTitle: "Nouvelle tâche planifiée",
       newSubtitle: "Décrivez ce qu'OpenClaw doit faire, puis choisissez quand l'exécuter.",
       back: "Toutes les automatisations",

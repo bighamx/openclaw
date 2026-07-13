@@ -82,6 +82,7 @@ export const ja_JP: TranslationMap = {
     relink: "再リンク",
     waitForScan: "スキャンを待機",
     logout: "ログアウト",
+    skipToMainContent: "メインコンテンツにスキップ",
   },
   nativeLinkMenu: {
     label: "リンクのアクション",
@@ -125,6 +126,7 @@ export const ja_JP: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}、作成者 {author}",
   },
   channels: {
+    lastError: "直近のエラー",
     refreshingStaleSnapshot:
       "バックグラウンドでチャンネルの状態を更新しています。最後に成功したスナップショットを表示しています。",
     config: {
@@ -387,7 +389,6 @@ export const ja_JP: TranslationMap = {
   },
   worktrees: {
     newWorktree: "新しいワークツリー",
-    owner: "所有者",
     ownerManual: "手動",
     ownerSession: "セッション",
     ownerWorkboard: "Workboard",
@@ -408,10 +409,6 @@ export const ja_JP: TranslationMap = {
     cleanupSaveFailed: "クリーンアップ制限の保存に失敗しました。",
     name: "名前",
     repo: "リポジトリ",
-    branch: "ブランチ",
-    status: "ステータス",
-    lastActive: "最終アクティブ",
-    actions: "アクション",
     empty: "管理対象のワークツリーはありません。",
     restorable: "復元可能",
     restore: "復元",
@@ -465,6 +462,7 @@ export const ja_JP: TranslationMap = {
     start: "セッションを開始",
     starting: "開始中…",
     createFailed: "セッションを作成できませんでした。",
+    catalogUnavailable: "このセッションのターゲットは利用できません。",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -829,6 +827,7 @@ export const ja_JP: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "呼び出しに失敗しました",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1127,6 +1126,7 @@ export const ja_JP: TranslationMap = {
     settingsView: "設定ビュー",
     simple: "シンプル",
     advanced: "詳細",
+    content: "設定内容",
     themeImported: "{name} をインポートしました。",
     themeRemoved: "カスタムテーマを削除しました。",
     channels: {
@@ -1418,6 +1418,7 @@ export const ja_JP: TranslationMap = {
     moreLiveTitle: "さらに {count} 個のライブツールが下記のグループで利用可能です。",
     moreLive: "+{count} 個のライブツール",
     quickPresets: "クイックプリセット",
+    catalogTitle: "ツールカタログ",
     inherit: "継承",
     profile: "プロファイル",
     source: "ソース",
@@ -1482,6 +1483,8 @@ export const ja_JP: TranslationMap = {
     platforms: "プラットフォーム: {platforms}",
     installNamed: "{name} をインストール",
     notFound: "Skill が見つかりません。",
+    openDetails: "{name}の詳細を開く",
+    enabledNamed: "{name}が有効",
     invalidLink: "ClawHub リンクが無効です",
     overview: "概要",
     skillCard: "Skill カード",
@@ -1756,7 +1759,6 @@ export const ja_JP: TranslationMap = {
     filterAll: "すべて",
     filterIssues: "問題",
     filterLabel: "インストール済みプラグインをフィルター",
-    pulseLabel: "有効 {enabled} 件、無効 {disabled} 件、問題あり {issues} 件",
     categoryChannels: "チャンネル",
     categoryProviders: "モデルプロバイダー",
     categoryMemory: "メモリ",
@@ -2502,6 +2504,7 @@ export const ja_JP: TranslationMap = {
       uptime: "稼働時間",
       tickInterval: "更新間隔",
       lastChannelsRefresh: "最終チャンネル更新",
+      lastError: "直近のエラー",
     },
     help: {
       title: "接続方法",
@@ -3537,11 +3540,13 @@ export const ja_JP: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "自動化ステータス",
       all: "すべて",
       active: "アクティブ",
       paused: "一時停止中",
     },
     list: {
+      viewLabel: "自動化ビュー",
       searchPlaceholder: "スケジュールされたタスクを検索",
       newTask: "新規タスク",
       filters: "フィルター",
@@ -3612,6 +3617,7 @@ export const ja_JP: TranslationMap = {
       nextWake: "次回の起動",
     },
     detail: {
+      tabsLabel: "自動化の詳細",
       newTitle: "新規スケジュールタスク",
       newSubtitle: "OpenClaw に何をさせるかを記述し、実行するタイミングを選択します。",
       back: "すべての自動化",

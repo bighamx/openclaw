@@ -82,6 +82,7 @@ export const tr: TranslationMap = {
     relink: "Yeniden bağla",
     waitForScan: "Tarama için bekle",
     logout: "Çıkış yap",
+    skipToMainContent: "Ana içeriğe geç",
   },
   nativeLinkMenu: {
     label: "Bağlantı eylemleri",
@@ -125,6 +126,7 @@ export const tr: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, {author} tarafından",
   },
   channels: {
+    lastError: "Son hata",
     refreshingStaleSnapshot:
       "Kanal durumu arka planda yenileniyor; son başarılı anlık görüntü gösteriliyor.",
     config: {
@@ -384,7 +386,6 @@ export const tr: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Yeni worktree",
-    owner: "Sahip",
     ownerManual: "Manuel",
     ownerSession: "Oturum",
     ownerWorkboard: "Workboard",
@@ -405,10 +406,6 @@ export const tr: TranslationMap = {
     cleanupSaveFailed: "Temizleme sınırları kaydedilemedi.",
     name: "Ad",
     repo: "Depo",
-    branch: "Dal",
-    status: "Durum",
-    lastActive: "Son etkinlik",
-    actions: "Eylemler",
     empty: "Yönetilen worktree yok.",
     restorable: "Geri yüklenebilir",
     restore: "Geri yükle",
@@ -462,6 +459,7 @@ export const tr: TranslationMap = {
     start: "Oturumu başlat",
     starting: "Başlatılıyor…",
     createFailed: "Oturum oluşturulamadı.",
+    catalogUnavailable: "Bu oturum hedefi kullanılamıyor.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -827,6 +825,7 @@ export const tr: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "Çağrı başarısız oldu",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1126,6 +1125,7 @@ export const tr: TranslationMap = {
     settingsView: "Ayarlar görünümü",
     simple: "Basit",
     advanced: "Gelişmiş",
+    content: "Ayarlar içeriği",
     themeImported: "{name} içe aktarıldı.",
     themeRemoved: "Özel tema kaldırıldı.",
     channels: {
@@ -1415,6 +1415,7 @@ export const tr: TranslationMap = {
     moreLiveTitle: "Aşağıdaki gruplarda {count} canlı araç daha kullanılabilir.",
     moreLive: "+{count} canlı araç daha",
     quickPresets: "Hızlı Ön Ayarlar",
+    catalogTitle: "Araç Kataloğu",
     inherit: "Devral",
     profile: "Profil",
     source: "Kaynak",
@@ -1479,6 +1480,8 @@ export const tr: TranslationMap = {
     platforms: "Platformlar: {platforms}",
     installNamed: "{name} yükle",
     notFound: "Beceri bulunamadı.",
+    openDetails: "{name} ayrıntılarını aç",
+    enabledNamed: "{name} etkin",
     invalidLink: "ClawHub bağlantısı geçersiz",
     overview: "Genel bakış",
     skillCard: "Skill Card",
@@ -1763,7 +1766,6 @@ export const tr: TranslationMap = {
     filterAll: "Tümü",
     filterIssues: "Sorunlar",
     filterLabel: "Yüklü eklentileri filtrele",
-    pulseLabel: "{enabled} etkin, {disabled} devre dışı, {issues} sorunlu",
     categoryChannels: "Kanallar",
     categoryProviders: "Model sağlayıcıları",
     categoryMemory: "Bellek",
@@ -2510,6 +2512,7 @@ export const tr: TranslationMap = {
       uptime: "Çalışma Süresi",
       tickInterval: "Tik Aralığı",
       lastChannelsRefresh: "Son Kanal Yenileme",
+      lastError: "Son hata",
     },
     help: {
       title: "Nasıl bağlanılır",
@@ -3547,11 +3550,13 @@ export const tr: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Otomasyon durumu",
       all: "Tümü",
       active: "Etkin",
       paused: "Duraklatıldı",
     },
     list: {
+      viewLabel: "Otomasyon görünümleri",
       searchPlaceholder: "Zamanlanmış görevleri ara",
       newTask: "Yeni görev",
       filters: "Filtreler",
@@ -3623,6 +3628,7 @@ export const tr: TranslationMap = {
       nextWake: "Sonraki uyanma",
     },
     detail: {
+      tabsLabel: "Otomasyon ayrıntıları",
       newTitle: "Yeni zamanlanmış görev",
       newSubtitle:
         "OpenClaw'ın ne yapması gerektiğini açıklayın, ardından ne zaman çalışacağını seçin.",

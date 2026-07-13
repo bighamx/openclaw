@@ -82,6 +82,7 @@ export const zh_CN: TranslationMap = {
     relink: "重新关联",
     waitForScan: "等待扫描",
     logout: "退出登录",
+    skipToMainContent: "跳转到主要内容",
   },
   nativeLinkMenu: {
     label: "链接操作",
@@ -125,6 +126,7 @@ export const zh_CN: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}：{title}，作者 {author}",
   },
   channels: {
+    lastError: "最近一次错误",
     refreshingStaleSnapshot: "正在后台刷新频道状态；显示上次成功的快照。",
     config: {
       schemaUnavailable: "架构不可用。请使用 Raw。",
@@ -378,7 +380,6 @@ export const zh_CN: TranslationMap = {
   },
   worktrees: {
     newWorktree: "新建 worktree",
-    owner: "所有者",
     ownerManual: "手动",
     ownerSession: "会话",
     ownerWorkboard: "Workboard",
@@ -397,10 +398,6 @@ export const zh_CN: TranslationMap = {
     cleanupSaveFailed: "保存清理限制失败。",
     name: "名称",
     repo: "代码库",
-    branch: "分支",
-    status: "状态",
-    lastActive: "上次活跃",
-    actions: "操作",
     empty: "没有托管的 worktree。",
     restorable: "可恢复",
     restore: "恢复",
@@ -453,6 +450,7 @@ export const zh_CN: TranslationMap = {
     start: "启动会话",
     starting: "正在启动…",
     createFailed: "无法创建会话。",
+    catalogUnavailable: "此会话目标不可用。",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -812,6 +810,7 @@ export const zh_CN: TranslationMap = {
     },
     manualRpcTitle: "手动 RPC",
     manualRpcSubtitle: "发送带 JSON 参数的原始 Gateway 方法。",
+    callFailed: "调用失败",
     method: "方法",
     selectMethod: "选择方法…",
     paramsJson: "参数 (JSON)",
@@ -1109,6 +1108,7 @@ export const zh_CN: TranslationMap = {
     settingsView: "设置视图",
     simple: "简单",
     advanced: "高级",
+    content: "设置内容",
     themeImported: "已导入 {name}。",
     themeRemoved: "已移除自定义主题。",
     channels: {
@@ -1391,6 +1391,7 @@ export const zh_CN: TranslationMap = {
     moreLiveTitle: "下方分组中还有 {count} 个可用的实时工具。",
     moreLive: "+{count} 个实时工具",
     quickPresets: "快速预设",
+    catalogTitle: "工具目录",
     inherit: "继承",
     profile: "配置文件",
     source: "来源",
@@ -1455,6 +1456,8 @@ export const zh_CN: TranslationMap = {
     platforms: "平台：{platforms}",
     installNamed: "安装 {name}",
     notFound: "未找到 Skill。",
+    openDetails: "打开 {name} 的详细信息",
+    enabledNamed: "{name} 已启用",
     invalidLink: "ClawHub 链接无效",
     overview: "概览",
     skillCard: "Skill 卡片",
@@ -1719,7 +1722,6 @@ export const zh_CN: TranslationMap = {
     filterAll: "全部",
     filterIssues: "问题",
     filterLabel: "筛选已安装插件",
-    pulseLabel: "{enabled} 个已启用，{disabled} 个已禁用，{issues} 个存在问题",
     categoryChannels: "渠道",
     categoryProviders: "模型提供商",
     categoryMemory: "记忆",
@@ -2454,6 +2456,7 @@ export const zh_CN: TranslationMap = {
       uptime: "运行时间",
       tickInterval: "更新间隔",
       lastChannelsRefresh: "上次刷新频道",
+      lastError: "最近一次错误",
     },
     help: {
       title: "如何连接",
@@ -3455,11 +3458,13 @@ export const zh_CN: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "自动化状态",
       all: "全部",
       active: "活跃",
       paused: "已暂停",
     },
     list: {
+      viewLabel: "自动化视图",
       searchPlaceholder: "搜索计划任务",
       newTask: "新建任务",
       filters: "筛选",
@@ -3530,6 +3535,7 @@ export const zh_CN: TranslationMap = {
       nextWake: "下次唤醒",
     },
     detail: {
+      tabsLabel: "自动化详细信息",
       newTitle: "新建计划任务",
       newSubtitle: "描述 OpenClaw 应该做什么，然后选择运行时间。",
       back: "所有自动化",

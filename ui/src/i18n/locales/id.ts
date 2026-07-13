@@ -82,6 +82,7 @@ export const id: TranslationMap = {
     relink: "Tautkan ulang",
     waitForScan: "Tunggu pemindaian",
     logout: "Keluar",
+    skipToMainContent: "Lewati ke konten utama",
   },
   nativeLinkMenu: {
     label: "Tindakan tautan",
@@ -125,6 +126,7 @@ export const id: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, oleh {author}",
   },
   channels: {
+    lastError: "Kesalahan terakhir",
     refreshingStaleSnapshot:
       "Menyegarkan status channel di latar belakang; menampilkan snapshot terakhir yang berhasil.",
     config: {
@@ -382,7 +384,6 @@ export const id: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Worktree baru",
-    owner: "Pemilik",
     ownerManual: "Manual",
     ownerSession: "Sesi",
     ownerWorkboard: "Workboard",
@@ -403,10 +404,6 @@ export const id: TranslationMap = {
     cleanupSaveFailed: "Gagal menyimpan batas pembersihan.",
     name: "Nama",
     repo: "Repositori",
-    branch: "Branch",
-    status: "Status",
-    lastActive: "Terakhir aktif",
-    actions: "Tindakan",
     empty: "Tidak ada worktree terkelola.",
     restorable: "Dapat dipulihkan",
     restore: "Pulihkan",
@@ -459,6 +456,7 @@ export const id: TranslationMap = {
     start: "Mulai sesi",
     starting: "Memulai…",
     createFailed: "Tidak dapat membuat sesi.",
+    catalogUnavailable: "Target sesi ini tidak tersedia.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -823,6 +821,7 @@ export const id: TranslationMap = {
     },
     manualRpcTitle: "Manual RPC",
     manualRpcSubtitle: "Send a raw gateway method with JSON params.",
+    callFailed: "Panggilan gagal",
     method: "Method",
     selectMethod: "Select a method…",
     paramsJson: "Params (JSON)",
@@ -1121,6 +1120,7 @@ export const id: TranslationMap = {
     settingsView: "Tampilan pengaturan",
     simple: "Sederhana",
     advanced: "Lanjutan",
+    content: "Konten pengaturan",
     themeImported: "Mengimpor {name}.",
     themeRemoved: "Tema kustom dihapus.",
     channels: {
@@ -1412,6 +1412,7 @@ export const id: TranslationMap = {
     moreLiveTitle: "{count} alat langsung lainnya tersedia di grup di bawah.",
     moreLive: "+{count} alat langsung lainnya",
     quickPresets: "Preset Cepat",
+    catalogTitle: "Katalog Alat",
     inherit: "Warisi",
     profile: "Profil",
     source: "Sumber",
@@ -1476,6 +1477,8 @@ export const id: TranslationMap = {
     platforms: "Platform: {platforms}",
     installNamed: "Pasang {name}",
     notFound: "Skill tidak ditemukan.",
+    openDetails: "Buka detail {name}",
+    enabledNamed: "{name} diaktifkan",
     invalidLink: "Tautan ClawHub tidak valid",
     overview: "Ikhtisar",
     skillCard: "Kartu Skill",
@@ -1748,7 +1751,6 @@ export const id: TranslationMap = {
     filterAll: "Semua",
     filterIssues: "Masalah",
     filterLabel: "Filter plugin terinstal",
-    pulseLabel: "{enabled} diaktifkan, {disabled} dinonaktifkan, {issues} bermasalah",
     categoryChannels: "Saluran",
     categoryProviders: "Penyedia model",
     categoryMemory: "Memori",
@@ -2495,6 +2497,7 @@ export const id: TranslationMap = {
       uptime: "Waktu aktif",
       tickInterval: "Interval tick",
       lastChannelsRefresh: "Penyegaran saluran terakhir",
+      lastError: "Kesalahan terakhir",
     },
     help: {
       title: "Cara menghubungkan",
@@ -3530,11 +3533,13 @@ export const id: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Status otomatisasi",
       all: "Semua",
       active: "Aktif",
       paused: "Dijeda",
     },
     list: {
+      viewLabel: "Tampilan otomatisasi",
       searchPlaceholder: "Cari tugas terjadwal",
       newTask: "Tugas baru",
       filters: "Filter",
@@ -3606,6 +3611,7 @@ export const id: TranslationMap = {
       nextWake: "Bangun berikutnya",
     },
     detail: {
+      tabsLabel: "Detail otomatisasi",
       newTitle: "Tugas terjadwal baru",
       newSubtitle: "Jelaskan apa yang harus dilakukan OpenClaw, lalu pilih kapan ia berjalan.",
       back: "Semua otomatisasi",

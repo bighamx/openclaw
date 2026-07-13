@@ -82,6 +82,7 @@ export const hi: TranslationMap = {
     relink: "फिर से लिंक करें",
     waitForScan: "स्कैन की प्रतीक्षा करें",
     logout: "लॉग आउट",
+    skipToMainContent: "मुख्य सामग्री पर जाएँ",
   },
   nativeLinkMenu: {
     label: "लिंक कार्रवाइयाँ",
@@ -125,6 +126,7 @@ export const hi: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, द्वारा {author}",
   },
   channels: {
+    lastError: "पिछली त्रुटि",
     refreshingStaleSnapshot:
       "चैनल स्थिति पृष्ठभूमि में रीफ्रेश की जा रही है; अंतिम सफल स्नैपशॉट दिखाया जा रहा है।",
     config: {
@@ -381,7 +383,6 @@ export const hi: TranslationMap = {
   },
   worktrees: {
     newWorktree: "नया worktree",
-    owner: "स्वामी",
     ownerManual: "मैन्युअल",
     ownerSession: "सत्र",
     ownerWorkboard: "वर्कबोर्ड",
@@ -402,10 +403,6 @@ export const hi: TranslationMap = {
     cleanupSaveFailed: "सफ़ाई की सीमाएँ सहेजना विफल रहा।",
     name: "नाम",
     repo: "Repository",
-    branch: "Branch",
-    status: "स्थिति",
-    lastActive: "अंतिम सक्रिय",
-    actions: "कार्रवाइयाँ",
     empty: "कोई प्रबंधित worktrees नहीं हैं.",
     restorable: "पुनर्स्थापित करने योग्य",
     restore: "पुनर्स्थापित करें",
@@ -458,6 +455,7 @@ export const hi: TranslationMap = {
     start: "Session शुरू करें",
     starting: "शुरू हो रहा है…",
     createFailed: "Session नहीं बनाया जा सका।",
+    catalogUnavailable: "यह सत्र लक्ष्य उपलब्ध नहीं है।",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -819,6 +817,7 @@ export const hi: TranslationMap = {
     },
     manualRpcTitle: "मैन्युअल RPC",
     manualRpcSubtitle: "JSON पैराम्स के साथ एक raw gateway method भेजें।",
+    callFailed: "कॉल विफल रही",
     method: "मेथड",
     selectMethod: "एक मेथड चुनें…",
     paramsJson: "पैराम्स (JSON)",
@@ -1117,6 +1116,7 @@ export const hi: TranslationMap = {
     settingsView: "सेटिंग्स दृश्य",
     simple: "सरल",
     advanced: "उन्नत",
+    content: "सेटिंग्स की सामग्री",
     themeImported: "{name} आयात किया गया।",
     themeRemoved: "कस्टम थीम हटा दी गई।",
     channels: {
@@ -1404,6 +1404,7 @@ export const hi: TranslationMap = {
     moreLiveTitle: "नीचे दिए गए समूहों में {count} और लाइव टूल उपलब्ध हैं।",
     moreLive: "+{count} और लाइव टूल",
     quickPresets: "क्विक प्रीसेट",
+    catalogTitle: "टूल कैटलॉग",
     inherit: "इनहेरिट",
     profile: "प्रोफ़ाइल",
     source: "स्रोत",
@@ -1468,6 +1469,8 @@ export const hi: TranslationMap = {
     platforms: "प्लेटफ़ॉर्म: {platforms}",
     installNamed: "{name} इंस्टॉल करें",
     notFound: "Skill नहीं मिली।",
+    openDetails: "{name} का विवरण खोलें",
+    enabledNamed: "{name} सक्षम है",
     invalidLink: "ClawHub लिंक अमान्य है",
     overview: "ओवरव्यू",
     skillCard: "Skill Card",
@@ -1735,7 +1738,6 @@ export const hi: TranslationMap = {
     filterAll: "सभी",
     filterIssues: "समस्याएँ",
     filterLabel: "इंस्टॉल किए गए प्लगइन्स फ़िल्टर करें",
-    pulseLabel: "{enabled} सक्षम, {disabled} अक्षम, {issues} में समस्याएँ",
     categoryChannels: "चैनल",
     categoryProviders: "मॉडल प्रदाता",
     categoryMemory: "मेमोरी",
@@ -2472,6 +2474,7 @@ export const hi: TranslationMap = {
       uptime: "अपटाइम",
       tickInterval: "टिक अंतराल",
       lastChannelsRefresh: "अंतिम चैनल रिफ्रेश",
+      lastError: "पिछली त्रुटि",
     },
     help: {
       title: "कैसे connect करें",
@@ -3495,11 +3498,13 @@ export const hi: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "ऑटोमेशन की स्थिति",
       all: "सभी",
       active: "सक्रिय",
       paused: "रोका गया",
     },
     list: {
+      viewLabel: "ऑटोमेशन दृश्य",
       searchPlaceholder: "अनुसूचित कार्य खोजें",
       newTask: "नया कार्य",
       filters: "फ़िल्टर",
@@ -3570,6 +3575,7 @@ export const hi: TranslationMap = {
       nextWake: "अगला वेक",
     },
     detail: {
+      tabsLabel: "ऑटोमेशन का विवरण",
       newTitle: "नया शेड्यूल किया गया कार्य",
       newSubtitle: "बताएं कि OpenClaw को क्या करना चाहिए, फिर चुनें कि यह कब चले।",
       back: "सभी ऑटोमेशन",

@@ -82,6 +82,7 @@ export const ru: TranslationMap = {
     relink: "Повторно привязать",
     waitForScan: "Ожидание сканирования",
     logout: "Выйти",
+    skipToMainContent: "Перейти к основному содержимому",
   },
   nativeLinkMenu: {
     label: "Действия со ссылкой",
@@ -125,6 +126,7 @@ export const ru: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, автор {author}",
   },
   channels: {
+    lastError: "Последняя ошибка",
     refreshingStaleSnapshot:
       "Статус канала обновляется в фоновом режиме; показан последний успешный снимок.",
     config: {
@@ -385,7 +387,6 @@ export const ru: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Новое рабочее дерево",
-    owner: "Владелец",
     ownerManual: "Вручную",
     ownerSession: "Сеанс",
     ownerWorkboard: "Рабочая доска",
@@ -406,10 +407,6 @@ export const ru: TranslationMap = {
     cleanupSaveFailed: "Не удалось сохранить ограничения очистки.",
     name: "Имя",
     repo: "Репозиторий",
-    branch: "Ветка",
-    status: "Статус",
-    lastActive: "Последняя активность",
-    actions: "Действия",
     empty: "Нет управляемых рабочих деревьев.",
     restorable: "Доступно для восстановления",
     restore: "Восстановить",
@@ -462,6 +459,7 @@ export const ru: TranslationMap = {
     start: "Начать сессию",
     starting: "Запуск…",
     createFailed: "Не удалось создать сессию.",
+    catalogUnavailable: "Целевой объект этого сеанса недоступен.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -830,6 +828,7 @@ export const ru: TranslationMap = {
     },
     manualRpcTitle: "Ручной RPC",
     manualRpcSubtitle: "Отправьте необработанный метод шлюза с параметрами JSON.",
+    callFailed: "Вызов завершился с ошибкой",
     method: "Метод",
     selectMethod: "Выберите метод…",
     paramsJson: "Параметры (JSON)",
@@ -1130,6 +1129,7 @@ export const ru: TranslationMap = {
     settingsView: "Просмотр настроек",
     simple: "Простой",
     advanced: "Расширенные",
+    content: "Содержимое настроек",
     themeImported: "Импортировано: {name}.",
     themeRemoved: "Пользовательская тема удалена.",
     channels: {
@@ -1422,6 +1422,7 @@ export const ru: TranslationMap = {
     moreLiveTitle: "Ещё {count} активных инструментов доступно в группах ниже.",
     moreLive: "+{count} активных инструментов",
     quickPresets: "Быстрые пресеты",
+    catalogTitle: "Каталог инструментов",
     inherit: "Наследовать",
     profile: "Профиль",
     source: "Источник",
@@ -1487,6 +1488,8 @@ export const ru: TranslationMap = {
     platforms: "Платформы: {platforms}",
     installNamed: "Установить {name}",
     notFound: "Skill не найден.",
+    openDetails: "Открыть сведения о {name}",
+    enabledNamed: "{name} включено",
     invalidLink: "Недействительная ссылка ClawHub",
     overview: "Обзор",
     skillCard: "Карточка Skill",
@@ -1766,7 +1769,6 @@ export const ru: TranslationMap = {
     filterAll: "Все",
     filterIssues: "Проблемы",
     filterLabel: "Фильтр установленных плагинов",
-    pulseLabel: "{enabled} включено, {disabled} отключено, {issues} с проблемами",
     categoryChannels: "Каналы",
     categoryProviders: "Поставщики моделей",
     categoryMemory: "Память",
@@ -2511,6 +2513,7 @@ export const ru: TranslationMap = {
       uptime: "Время работы",
       tickInterval: "Интервал тика",
       lastChannelsRefresh: "Последнее обновление каналов",
+      lastError: "Последняя ошибка",
     },
     help: {
       title: "Как подключиться",
@@ -3553,11 +3556,13 @@ export const ru: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Статус автоматизации",
       all: "Все",
       active: "Активно",
       paused: "Приостановлено",
     },
     list: {
+      viewLabel: "Представления автоматизации",
       searchPlaceholder: "Поиск запланированных задач",
       newTask: "Новая задача",
       filters: "Фильтры",
@@ -3629,6 +3634,7 @@ export const ru: TranslationMap = {
       nextWake: "Следующее пробуждение",
     },
     detail: {
+      tabsLabel: "Сведения об автоматизации",
       newTitle: "Новая запланированная задача",
       newSubtitle: "Опишите, что должен делать OpenClaw, затем выберите время запуска.",
       back: "Все автоматизации",

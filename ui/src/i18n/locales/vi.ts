@@ -82,6 +82,7 @@ export const vi: TranslationMap = {
     relink: "Liên kết lại",
     waitForScan: "Chờ quét",
     logout: "Đăng xuất",
+    skipToMainContent: "Chuyển đến nội dung chính",
   },
   nativeLinkMenu: {
     label: "Hành động liên kết",
@@ -125,6 +126,7 @@ export const vi: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, bởi {author}",
   },
   channels: {
+    lastError: "Lỗi gần nhất",
     refreshingStaleSnapshot:
       "Đang làm mới trạng thái kênh ở chế độ nền; hiển thị ảnh chụp thành công gần nhất.",
     config: {
@@ -384,7 +386,6 @@ export const vi: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Worktree mới",
-    owner: "Chủ sở hữu",
     ownerManual: "Thủ công",
     ownerSession: "Phiên",
     ownerWorkboard: "Workboard",
@@ -405,10 +406,6 @@ export const vi: TranslationMap = {
     cleanupSaveFailed: "Không thể lưu các giới hạn dọn dẹp.",
     name: "Tên",
     repo: "Kho lưu trữ",
-    branch: "Nhánh",
-    status: "Trạng thái",
-    lastActive: "Hoạt động lần cuối",
-    actions: "Hành động",
     empty: "Không có worktree được quản lý.",
     restorable: "Có thể khôi phục",
     restore: "Khôi phục",
@@ -461,6 +458,7 @@ export const vi: TranslationMap = {
     start: "Bắt đầu phiên",
     starting: "Đang bắt đầu…",
     createFailed: "Không thể tạo phiên.",
+    catalogUnavailable: "Đích của phiên này hiện không khả dụng.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -825,6 +823,7 @@ export const vi: TranslationMap = {
     },
     manualRpcTitle: "RPC thủ công",
     manualRpcSubtitle: "Gửi phương thức gateway thô với tham số JSON.",
+    callFailed: "Cuộc gọi thất bại",
     method: "Phương thức",
     selectMethod: "Chọn một phương thức…",
     paramsJson: "Tham số (JSON)",
@@ -1122,6 +1121,7 @@ export const vi: TranslationMap = {
     settingsView: "Chế độ xem cài đặt",
     simple: "Đơn giản",
     advanced: "Nâng cao",
+    content: "Nội dung cài đặt",
     themeImported: "Đã nhập {name}.",
     themeRemoved: "Đã xóa chủ đề tùy chỉnh.",
     channels: {
@@ -1412,6 +1412,7 @@ export const vi: TranslationMap = {
     moreLiveTitle: "{count} công cụ trực tiếp khác có sẵn trong các nhóm bên dưới.",
     moreLive: "+{count} công cụ trực tiếp khác",
     quickPresets: "Cài đặt sẵn nhanh",
+    catalogTitle: "Danh mục công cụ",
     inherit: "Kế thừa",
     profile: "Hồ sơ",
     source: "Nguồn",
@@ -1476,6 +1477,8 @@ export const vi: TranslationMap = {
     platforms: "Nền tảng: {platforms}",
     installNamed: "Cài đặt {name}",
     notFound: "Không tìm thấy skill.",
+    openDetails: "Mở thông tin chi tiết về {name}",
+    enabledNamed: "Đã bật {name}",
     invalidLink: "Liên kết ClawHub không hợp lệ",
     overview: "Tổng quan",
     skillCard: "Thẻ Skill",
@@ -1750,7 +1753,6 @@ export const vi: TranslationMap = {
     filterAll: "Tất cả",
     filterIssues: "Sự cố",
     filterLabel: "Lọc plugin đã cài đặt",
-    pulseLabel: "{enabled} đã bật, {disabled} đã tắt, {issues} có sự cố",
     categoryChannels: "Kênh",
     categoryProviders: "Nhà cung cấp mô hình",
     categoryMemory: "Bộ nhớ",
@@ -2494,6 +2496,7 @@ export const vi: TranslationMap = {
       uptime: "Thời gian hoạt động",
       tickInterval: "Khoảng thời gian cập nhật",
       lastChannelsRefresh: "Lần làm mới kênh gần nhất",
+      lastError: "Lỗi gần nhất",
     },
     help: {
       title: "Cách kết nối",
@@ -3522,11 +3525,13 @@ export const vi: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Trạng thái tự động hóa",
       all: "Tất cả",
       active: "Đang hoạt động",
       paused: "Đã tạm dừng",
     },
     list: {
+      viewLabel: "Chế độ xem tự động hóa",
       searchPlaceholder: "Tìm kiếm tác vụ theo lịch",
       newTask: "Tác vụ mới",
       filters: "Bộ lọc",
@@ -3597,6 +3602,7 @@ export const vi: TranslationMap = {
       nextWake: "Lần chạy tiếp theo",
     },
     detail: {
+      tabsLabel: "Chi tiết tự động hóa",
       newTitle: "Tác vụ theo lịch mới",
       newSubtitle: "Mô tả những gì OpenClaw nên làm, sau đó chọn thời điểm chạy.",
       back: "Tất cả tác vụ tự động",

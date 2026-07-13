@@ -82,6 +82,7 @@ export const nl: TranslationMap = {
     relink: "Opnieuw koppelen",
     waitForScan: "Wachten op scan",
     logout: "Uitloggen",
+    skipToMainContent: "Ga naar hoofdinhoud",
   },
   nativeLinkMenu: {
     label: "Linkacties",
@@ -125,6 +126,7 @@ export const nl: TranslationMap = {
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, door {author}",
   },
   channels: {
+    lastError: "Laatste fout",
     refreshingStaleSnapshot:
       "Kanaalstatus wordt op de achtergrond vernieuwd; de laatste succesvolle momentopname wordt getoond.",
     config: {
@@ -384,7 +386,6 @@ export const nl: TranslationMap = {
   },
   worktrees: {
     newWorktree: "Nieuwe worktree",
-    owner: "Eigenaar",
     ownerManual: "Handmatig",
     ownerSession: "Sessie",
     ownerWorkboard: "Workboard",
@@ -405,10 +406,6 @@ export const nl: TranslationMap = {
     cleanupSaveFailed: "Opslaan van opschoningslimieten is mislukt.",
     name: "Naam",
     repo: "Repository",
-    branch: "Branch",
-    status: "Status",
-    lastActive: "Laatst actief",
-    actions: "Acties",
     empty: "Geen beheerde worktrees.",
     restorable: "Herstelbaar",
     restore: "Herstellen",
@@ -461,6 +458,7 @@ export const nl: TranslationMap = {
     start: "Sessie starten",
     starting: "Starten…",
     createFailed: "Kan de sessie niet maken.",
+    catalogUnavailable: "Dit sessiedoel is niet beschikbaar.",
   },
   sessionsView: {
     deletePreservedWorktrees:
@@ -827,6 +825,7 @@ export const nl: TranslationMap = {
     },
     manualRpcTitle: "Handmatige RPC",
     manualRpcSubtitle: "Stuur een ruwe gateway-methode met JSON-params.",
+    callFailed: "Aanroep mislukt",
     method: "Methode",
     selectMethod: "Selecteer een methode…",
     paramsJson: "Params (JSON)",
@@ -1126,6 +1125,7 @@ export const nl: TranslationMap = {
     settingsView: "Instellingenweergave",
     simple: "Eenvoudig",
     advanced: "Geavanceerd",
+    content: "Instellingen",
     themeImported: "{name} geïmporteerd.",
     themeRemoved: "Aangepast thema verwijderd.",
     channels: {
@@ -1417,6 +1417,7 @@ export const nl: TranslationMap = {
     moreLiveTitle: "{count} extra live tools zijn beschikbaar in de onderstaande groepen.",
     moreLive: "+{count} extra live tools",
     quickPresets: "Snelle presets",
+    catalogTitle: "Toolcatalogus",
     inherit: "Overnemen",
     profile: "Profiel",
     source: "Bron",
@@ -1481,6 +1482,8 @@ export const nl: TranslationMap = {
     platforms: "Platforms: {platforms}",
     installNamed: "{name} installeren",
     notFound: "Skill niet gevonden.",
+    openDetails: "Details van {name} openen",
+    enabledNamed: "{name} ingeschakeld",
     invalidLink: "ClawHub-link ongeldig",
     overview: "Overzicht",
     skillCard: "Skill-kaart",
@@ -1754,7 +1757,6 @@ export const nl: TranslationMap = {
     filterAll: "Alle",
     filterIssues: "Problemen",
     filterLabel: "Geïnstalleerde plugins filteren",
-    pulseLabel: "{enabled} ingeschakeld, {disabled} uitgeschakeld, {issues} met problemen",
     categoryChannels: "Kanalen",
     categoryProviders: "Modelproviders",
     categoryMemory: "Geheugen",
@@ -2503,6 +2505,7 @@ export const nl: TranslationMap = {
       uptime: "Bedrijfstijd",
       tickInterval: "Tickinterval",
       lastChannelsRefresh: "Laatste vernieuwing van kanalen",
+      lastError: "Laatste fout",
     },
     help: {
       title: "Verbinding maken",
@@ -3542,11 +3545,13 @@ export const nl: TranslationMap = {
   },
   cron: {
     tabs: {
+      filterLabel: "Automatiseringsstatus",
       all: "Alle",
       active: "Actief",
       paused: "Gepauzeerd",
     },
     list: {
+      viewLabel: "Automatiseringsweergaven",
       searchPlaceholder: "Geplande taken zoeken",
       newTask: "Nieuwe taak",
       filters: "Filters",
@@ -3617,6 +3622,7 @@ export const nl: TranslationMap = {
       nextWake: "Volgende activering",
     },
     detail: {
+      tabsLabel: "Automatiseringsdetails",
       newTitle: "Nieuwe geplande taak",
       newSubtitle: "Beschrijf wat OpenClaw moet doen en kies wanneer het wordt uitgevoerd.",
       back: "Alle automatiseringen",
