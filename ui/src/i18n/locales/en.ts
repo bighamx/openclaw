@@ -1,5 +1,6 @@
 // Control UI English locale strings are the i18n source bundle.
 import type { TranslationMap } from "../lib/types.ts";
+import * as agentEn from "./en-agents.ts";
 
 export const en: TranslationMap = {
   common: {
@@ -386,6 +387,18 @@ export const en: TranslationMap = {
     title: "Managed Worktrees",
     subtitle: "Isolated repository checkouts owned by OpenClaw.",
     cleanNow: "Clean up now",
+    cleanupTitle: "Cleanup",
+    cleanupSubtitle:
+      "OpenClaw periodically removes old worktrees to free disk space. Tune how aggressively cleanup runs.",
+    cleanupMaxCount: "Max worktrees",
+    cleanupMaxCountHelp:
+      "Maximum number of managed worktrees to retain across all repositories. Older worktrees are snapshotted and removed first. Set to 0 to disable the count limit.",
+    cleanupMaxSize: "Max total size (GB)",
+    cleanupMaxSizeHelp:
+      "Maximum total size in GB across all managed worktrees. Set to 0 to disable the size limit.",
+    cleanupDecrease: "Decrease {label}",
+    cleanupIncrease: "Increase {label}",
+    cleanupSaveFailed: "Saving cleanup limits failed.",
     name: "Name",
     repo: "Repository",
     branch: "Branch",
@@ -398,16 +411,8 @@ export const en: TranslationMap = {
     confirmDelete: "Snapshot and delete {name}?",
     confirmForceDelete: "Snapshot failed: {error}\n\nDelete without a snapshot?",
   },
-  agentChip: {
-    menuLabel: "Agent menu",
-    agents: "Agents",
-    working: "Working…",
-    ready: "Ready to chat",
-    whatCanAgentDo: "What can {name} do?",
-    getHelp: "Get help",
-    discord: "Discord community",
-    viewChangelog: "View changelog",
-  },
+  agentChip: agentEn.agentChip,
+  agentScope: agentEn.agentScope,
   newSession: {
     title: "New session",
     hint: "Pick where this session works, then say what to do.",
@@ -615,6 +620,7 @@ export const en: TranslationMap = {
     setDefault: "Set Default",
     alreadyDefaultTitle: "Already the default agent",
     setDefaultTitle: "Set as the default agent",
+    ...agentEn.pinning,
     selectTitle: "Select an agent",
     selectSubtitle: "Pick an agent to inspect its workspace and tools.",
     tabs: {
@@ -640,6 +646,7 @@ export const en: TranslationMap = {
       configurationSubtitle: "Workspace, identity, and model configuration.",
       schedulingSubtitle: "Workspace and scheduling targets.",
     },
+    identity: agentEn.identity,
     overview: {
       title: "Overview",
       subtitle: "Workspace paths and identity metadata.",

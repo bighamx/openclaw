@@ -391,6 +391,18 @@ export const es: TranslationMap = {
     title: "Worktrees administrados",
     subtitle: "Checkouts de repositorios aislados propiedad de OpenClaw.",
     cleanNow: "Limpiar ahora",
+    cleanupTitle: "Limpieza",
+    cleanupSubtitle:
+      "OpenClaw elimina periódicamente los worktrees antiguos para liberar espacio en disco. Ajusta la intensidad de la limpieza.",
+    cleanupMaxCount: "Máximo de worktrees",
+    cleanupMaxCountHelp:
+      "Número máximo de worktrees administrados que se conservarán en todos los repositorios. Primero se crean instantáneas de los worktrees más antiguos y luego se eliminan. Establécelo en 0 para desactivar el límite de cantidad.",
+    cleanupMaxSize: "Tamaño total máximo (GB)",
+    cleanupMaxSizeHelp:
+      "Tamaño total máximo en GB de todos los worktrees administrados. Establécelo en 0 para desactivar el límite de tamaño.",
+    cleanupDecrease: "Reducir {label}",
+    cleanupIncrease: "Aumentar {label}",
+    cleanupSaveFailed: "No se pudieron guardar los límites de limpieza.",
     name: "Nombre",
     repo: "Repositorio",
     branch: "Rama",
@@ -409,9 +421,17 @@ export const es: TranslationMap = {
     working: "Procesando…",
     ready: "Listo para chatear",
     whatCanAgentDo: "¿Qué puede hacer {name}?",
+    help: "Ayuda",
     getHelp: "Obtener ayuda",
     discord: "Comunidad de Discord",
     viewChangelog: "Ver registro de cambios",
+    agentSettings: "Configuración del agente",
+    filterAgents: "Buscar agente…",
+    noAgentMatches: "No hay agentes coincidentes",
+  },
+  agentScope: {
+    label: "Ámbito del agente",
+    allAgents: "Todos los agentes",
   },
   newSession: {
     title: "Nueva sesión",
@@ -621,6 +641,8 @@ export const es: TranslationMap = {
     setDefault: "Set Default",
     alreadyDefaultTitle: "Already the default agent",
     setDefaultTitle: "Set as the default agent",
+    pinToSwitcher: "Fijar en el selector",
+    unpinFromSwitcher: "Desfijar del selector",
     selectTitle: "Select an agent",
     selectSubtitle: "Pick an agent to inspect its workspace and tools.",
     tabs: {
@@ -645,6 +667,18 @@ export const es: TranslationMap = {
       default: "Default",
       configurationSubtitle: "Workspace, identity, and model configuration.",
       schedulingSubtitle: "Workspace and scheduling targets.",
+    },
+    identity: {
+      title: "Identidad",
+      subtitle: "Nombre, emoji y avatar que se muestran en los chats y en la barra lateral.",
+      name: "Nombre para mostrar",
+      namePlaceholder: "Nombre del agente",
+      emoji: "Emoji",
+      chooseImage: "Elegir imagen…",
+      replaceImage: "Reemplazar imagen…",
+      imageUnusable: "No se puede usar esa imagen. Elige un archivo de imagen de hasta 2 MB.",
+      fileHint:
+        "Los agentes pueden configurar esto por sí mismos editando IDENTITY.md en su espacio de trabajo.",
     },
     overview: {
       title: "Resumen",

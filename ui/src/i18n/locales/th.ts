@@ -385,6 +385,18 @@ export const th: TranslationMap = {
     title: "Worktrees ที่จัดการ",
     subtitle: "การ checkout คลังแยกที่เป็นของ OpenClaw",
     cleanNow: "ล้างข้อมูลตอนนี้",
+    cleanupTitle: "การล้างข้อมูล",
+    cleanupSubtitle:
+      "OpenClaw จะลบ worktree เก่าเป็นระยะเพื่อเพิ่มพื้นที่ว่างในดิสก์ ปรับระดับความเข้มงวดในการล้างข้อมูลได้",
+    cleanupMaxCount: "จำนวน worktree สูงสุด",
+    cleanupMaxCountHelp:
+      "จำนวน worktree ที่มีการจัดการสูงสุดที่จะเก็บไว้ในทุก repository ระบบจะสร้าง snapshot และลบ worktree ที่เก่ากว่าก่อน ตั้งค่าเป็น 0 เพื่อปิดใช้งานขีดจำกัดจำนวน",
+    cleanupMaxSize: "ขนาดรวมสูงสุด (GB)",
+    cleanupMaxSizeHelp:
+      "ขนาดรวมสูงสุดเป็น GB ของ worktree ที่มีการจัดการทั้งหมด ตั้งค่าเป็น 0 เพื่อปิดใช้งานขีดจำกัดขนาด",
+    cleanupDecrease: "ลด {label}",
+    cleanupIncrease: "เพิ่ม {label}",
+    cleanupSaveFailed: "บันทึกขีดจำกัดการล้างข้อมูลไม่สำเร็จ",
     name: "ชื่อ",
     repo: "คลัง",
     branch: "บรานช์",
@@ -403,9 +415,17 @@ export const th: TranslationMap = {
     working: "กำลังทำงาน…",
     ready: "พร้อมแชต",
     whatCanAgentDo: "{name} ทำอะไรได้บ้าง?",
+    help: "วิธีใช้",
     getHelp: "ขอความช่วยเหลือ",
     discord: "ชุมชน Discord",
     viewChangelog: "ดูบันทึกการเปลี่ยนแปลง",
+    agentSettings: "การตั้งค่าเอเจนต์",
+    filterAgents: "ค้นหาเอเจนต์…",
+    noAgentMatches: "ไม่พบเอเจนต์ที่ตรงกัน",
+  },
+  agentScope: {
+    label: "ขอบเขตเอเจนต์",
+    allAgents: "เอเจนต์ทั้งหมด",
   },
   newSession: {
     title: "เซสชันใหม่",
@@ -612,6 +632,8 @@ export const th: TranslationMap = {
     setDefault: "Set Default",
     alreadyDefaultTitle: "Already the default agent",
     setDefaultTitle: "Set as the default agent",
+    pinToSwitcher: "ปักหมุดไว้ที่ตัวสลับ",
+    unpinFromSwitcher: "เลิกปักหมุดจากตัวสลับ",
     selectTitle: "Select an agent",
     selectSubtitle: "Pick an agent to inspect its workspace and tools.",
     tabs: {
@@ -636,6 +658,17 @@ export const th: TranslationMap = {
       default: "Default",
       configurationSubtitle: "Workspace, identity, and model configuration.",
       schedulingSubtitle: "Workspace and scheduling targets.",
+    },
+    identity: {
+      title: "ข้อมูลประจำตัว",
+      subtitle: "ชื่อ อีโมจิ และรูปประจำตัวที่แสดงในแชตและแถบด้านข้าง",
+      name: "ชื่อที่แสดง",
+      namePlaceholder: "ชื่อเอเจนต์",
+      emoji: "อีโมจิ",
+      chooseImage: "เลือกรูปภาพ…",
+      replaceImage: "เปลี่ยนรูปภาพ…",
+      imageUnusable: "ไม่สามารถใช้รูปภาพนั้นได้ โปรดเลือกไฟล์รูปภาพที่มีขนาดไม่เกิน 2 MB",
+      fileHint: "เอเจนต์สามารถตั้งค่านี้ได้เองโดยแก้ไข IDENTITY.md ในพื้นที่ทำงานของตน",
     },
     overview: {
       title: "ภาพรวม",

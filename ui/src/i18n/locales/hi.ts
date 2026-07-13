@@ -388,6 +388,18 @@ export const hi: TranslationMap = {
     title: "प्रबंधित Worktrees",
     subtitle: "OpenClaw के स्वामित्व वाले पृथक repository checkouts.",
     cleanNow: "अभी साफ़ करें",
+    cleanupTitle: "सफ़ाई",
+    cleanupSubtitle:
+      "डिस्क स्थान खाली करने के लिए OpenClaw समय-समय पर पुराने worktrees हटाता है। तय करें कि सफ़ाई कितनी सख़्ती से की जाए।",
+    cleanupMaxCount: "अधिकतम worktrees",
+    cleanupMaxCountHelp:
+      "सभी repositories में रखे जाने वाले प्रबंधित worktrees की अधिकतम संख्या। पुराने worktrees का पहले snapshot लिया जाता है और फिर उन्हें हटा दिया जाता है। संख्या सीमा अक्षम करने के लिए इसे 0 पर सेट करें।",
+    cleanupMaxSize: "अधिकतम कुल आकार (GB)",
+    cleanupMaxSizeHelp:
+      "सभी प्रबंधित worktrees का अधिकतम कुल आकार GB में। आकार सीमा अक्षम करने के लिए इसे 0 पर सेट करें।",
+    cleanupDecrease: "{label} घटाएँ",
+    cleanupIncrease: "{label} बढ़ाएँ",
+    cleanupSaveFailed: "सफ़ाई की सीमाएँ सहेजना विफल रहा।",
     name: "नाम",
     repo: "Repository",
     branch: "Branch",
@@ -406,9 +418,17 @@ export const hi: TranslationMap = {
     working: "काम हो रहा है…",
     ready: "चैट के लिए तैयार",
     whatCanAgentDo: "{name} क्या कर सकता है?",
+    help: "सहायता",
     getHelp: "सहायता प्राप्त करें",
     discord: "Discord समुदाय",
     viewChangelog: "परिवर्तन सूची देखें",
+    agentSettings: "Agent सेटिंग्स",
+    filterAgents: "Agent खोजें…",
+    noAgentMatches: "कोई मेल खाने वाला Agent नहीं",
+  },
+  agentScope: {
+    label: "एजेंट का दायरा",
+    allAgents: "सभी एजेंट",
   },
   newSession: {
     title: "नया सेशन",
@@ -617,6 +637,8 @@ export const hi: TranslationMap = {
     setDefault: "डिफ़ॉल्ट सेट करें",
     alreadyDefaultTitle: "पहले से ही डिफ़ॉल्ट एजेंट",
     setDefaultTitle: "डिफ़ॉल्ट एजेंट के रूप में सेट करें",
+    pinToSwitcher: "स्विचर पर पिन करें",
+    unpinFromSwitcher: "स्विचर से अनपिन करें",
     selectTitle: "एजेंट चुनें",
     selectSubtitle: "इसके वर्कस्पेस और टूल्स की जांच करने के लिए एक एजेंट चुनें।",
     tabs: {
@@ -641,6 +663,17 @@ export const hi: TranslationMap = {
       default: "डिफ़ॉल्ट",
       configurationSubtitle: "वर्कस्पेस, पहचान, और मॉडल कॉन्फ़िगरेशन।",
       schedulingSubtitle: "वर्कस्पेस और शेड्यूलिंग लक्ष्य।",
+    },
+    identity: {
+      title: "पहचान",
+      subtitle: "चैट और साइडबार में दिखाया जाने वाला नाम, इमोजी और अवतार।",
+      name: "प्रदर्शित नाम",
+      namePlaceholder: "Agent का नाम",
+      emoji: "इमोजी",
+      chooseImage: "इमेज चुनें…",
+      replaceImage: "इमेज बदलें…",
+      imageUnusable: "उस इमेज का उपयोग नहीं किया जा सकता। अधिकतम 2 MB की इमेज फ़ाइल चुनें।",
+      fileHint: "Agents अपने वर्कस्पेस में IDENTITY.md को संपादित करके इसे स्वयं सेट कर सकते हैं।",
     },
     overview: {
       title: "ओवरव्यू",

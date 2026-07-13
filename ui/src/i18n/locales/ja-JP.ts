@@ -394,6 +394,18 @@ export const ja_JP: TranslationMap = {
     title: "管理対象ワークツリー",
     subtitle: "OpenClaw が所有する分離されたリポジトリのチェックアウト。",
     cleanNow: "今すぐクリーンアップ",
+    cleanupTitle: "クリーンアップ",
+    cleanupSubtitle:
+      "OpenClaw は、ディスク容量を確保するために古い worktree を定期的に削除します。クリーンアップの実行基準を調整できます。",
+    cleanupMaxCount: "worktree の最大数",
+    cleanupMaxCountHelp:
+      "すべてのリポジトリで保持する管理対象 worktree の最大数です。古い worktree から順にスナップショットが作成され、削除されます。件数制限を無効にするには 0 に設定します。",
+    cleanupMaxSize: "合計最大サイズ（GB）",
+    cleanupMaxSizeHelp:
+      "すべての管理対象 worktree の合計最大サイズ（GB）です。サイズ制限を無効にするには 0 に設定します。",
+    cleanupDecrease: "{label}を減らす",
+    cleanupIncrease: "{label}を増やす",
+    cleanupSaveFailed: "クリーンアップ制限の保存に失敗しました。",
     name: "名前",
     repo: "リポジトリ",
     branch: "ブランチ",
@@ -413,9 +425,17 @@ export const ja_JP: TranslationMap = {
     working: "作業中…",
     ready: "チャットできます",
     whatCanAgentDo: "{name}には何ができますか？",
+    help: "ヘルプ",
     getHelp: "ヘルプを表示",
     discord: "Discord コミュニティ",
     viewChangelog: "変更履歴を表示",
+    agentSettings: "エージェント設定",
+    filterAgents: "エージェントを検索…",
+    noAgentMatches: "一致するエージェントはありません",
+  },
+  agentScope: {
+    label: "エージェントの範囲",
+    allAgents: "すべてのエージェント",
   },
   newSession: {
     title: "新しいセッション",
@@ -625,6 +645,8 @@ export const ja_JP: TranslationMap = {
     setDefault: "Set Default",
     alreadyDefaultTitle: "Already the default agent",
     setDefaultTitle: "Set as the default agent",
+    pinToSwitcher: "切り替えメニューにピン留め",
+    unpinFromSwitcher: "切り替えメニューからピン留めを解除",
     selectTitle: "Select an agent",
     selectSubtitle: "Pick an agent to inspect its workspace and tools.",
     tabs: {
@@ -649,6 +671,17 @@ export const ja_JP: TranslationMap = {
       default: "Default",
       configurationSubtitle: "Workspace, identity, and model configuration.",
       schedulingSubtitle: "Workspace and scheduling targets.",
+    },
+    identity: {
+      title: "アイデンティティ",
+      subtitle: "チャットとサイドバーに表示される名前、絵文字、アバター。",
+      name: "表示名",
+      namePlaceholder: "エージェント名",
+      emoji: "絵文字",
+      chooseImage: "画像を選択…",
+      replaceImage: "画像を置き換え…",
+      imageUnusable: "この画像は使用できません。2 MB以下の画像ファイルを選択してください。",
+      fileHint: "エージェントは、ワークスペース内のIDENTITY.mdを編集して自身で設定できます。",
     },
     overview: {
       title: "概要",

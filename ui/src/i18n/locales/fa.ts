@@ -390,6 +390,18 @@ export const fa: TranslationMap = {
     title: "Worktreeهای مدیریت‌شده",
     subtitle: "checkoutهای ایزولهٔ مخزن که متعلق به OpenClaw هستند.",
     cleanNow: "اکنون پاک‌سازی کن",
+    cleanupTitle: "پاک‌سازی",
+    cleanupSubtitle:
+      "OpenClaw برای آزاد کردن فضای دیسک، به‌طور دوره‌ای worktreeهای قدیمی را حذف می‌کند. میزان شدت اجرای پاک‌سازی را تنظیم کنید.",
+    cleanupMaxCount: "حداکثر تعداد worktreeها",
+    cleanupMaxCountHelp:
+      "حداکثر تعداد worktreeهای مدیریت‌شده که در همه مخزن‌ها نگه داشته می‌شوند. ابتدا از worktreeهای قدیمی‌تر snapshot گرفته می‌شود و سپس حذف می‌شوند. برای غیرفعال کردن محدودیت تعداد، مقدار را روی 0 تنظیم کنید.",
+    cleanupMaxSize: "حداکثر اندازه کل (GB)",
+    cleanupMaxSizeHelp:
+      "حداکثر اندازه کل برحسب GB در همه worktreeهای مدیریت‌شده. برای غیرفعال کردن محدودیت اندازه، مقدار را روی 0 تنظیم کنید.",
+    cleanupDecrease: "کاهش {label}",
+    cleanupIncrease: "افزایش {label}",
+    cleanupSaveFailed: "ذخیره محدودیت‌های پاک‌سازی ناموفق بود.",
     name: "نام",
     repo: "مخزن",
     branch: "شاخه",
@@ -408,9 +420,17 @@ export const fa: TranslationMap = {
     working: "در حال کار…",
     ready: "آماده گفت‌وگو",
     whatCanAgentDo: "{name} چه کاری می‌تواند انجام دهد؟",
+    help: "راهنما",
     getHelp: "دریافت راهنمایی",
     discord: "انجمن Discord",
     viewChangelog: "مشاهده فهرست تغییرات",
+    agentSettings: "تنظیمات عامل",
+    filterAgents: "یافتن عامل…",
+    noAgentMatches: "هیچ عامل منطبقی یافت نشد",
+  },
+  agentScope: {
+    label: "دامنه عامل",
+    allAgents: "همه عامل‌ها",
   },
   newSession: {
     title: "جلسه جدید",
@@ -619,6 +639,8 @@ export const fa: TranslationMap = {
     setDefault: "تنظیم به‌عنوان پیش‌فرض",
     alreadyDefaultTitle: "همین حالا عامل پیش‌فرض است",
     setDefaultTitle: "تنظیم به‌عنوان عامل پیش‌فرض",
+    pinToSwitcher: "سنجاق کردن به تعویض‌گر",
+    unpinFromSwitcher: "برداشتن از تعویض‌گر",
     selectTitle: "انتخاب عامل",
     selectSubtitle: "یک عامل را انتخاب کنید تا فضای کاری و ابزارهای آن را بررسی کنید.",
     tabs: {
@@ -643,6 +665,18 @@ export const fa: TranslationMap = {
       default: "پیش‌فرض",
       configurationSubtitle: "پیکربندی فضای کاری، هویت و مدل.",
       schedulingSubtitle: "فضای کاری و اهداف زمان‌بندی.",
+    },
+    identity: {
+      title: "هویت",
+      subtitle: "نام، ایموجی و آواتاری که در گفت‌وگوها و نوار کناری نمایش داده می‌شود.",
+      name: "نام نمایشی",
+      namePlaceholder: "نام عامل",
+      emoji: "ایموجی",
+      chooseImage: "انتخاب تصویر…",
+      replaceImage: "جایگزینی تصویر…",
+      imageUnusable:
+        "نمی‌توان از این تصویر استفاده کرد. یک فایل تصویری با حجم حداکثر ۲ مگابایت انتخاب کنید.",
+      fileHint: "عامل‌ها می‌توانند با ویرایش IDENTITY.md در فضای کاری خود، این مورد را تنظیم کنند.",
     },
     overview: {
       title: "نمای کلی",

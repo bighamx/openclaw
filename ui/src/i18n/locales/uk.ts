@@ -390,6 +390,18 @@ export const uk: TranslationMap = {
     title: "Керовані Worktrees",
     subtitle: "Ізольовані копії репозиторію, що належать OpenClaw.",
     cleanNow: "Очистити зараз",
+    cleanupTitle: "Очищення",
+    cleanupSubtitle:
+      "OpenClaw періодично видаляє старі робочі дерева, щоб звільнити місце на диску. Налаштуйте інтенсивність очищення.",
+    cleanupMaxCount: "Максимальна кількість робочих дерев",
+    cleanupMaxCountHelp:
+      "Максимальна кількість керованих робочих дерев, які зберігатимуться в усіх репозиторіях. Для старіших робочих дерев спочатку створюються знімки, після чого їх видаляють. Установіть значення 0, щоб вимкнути обмеження кількості.",
+    cleanupMaxSize: "Максимальний загальний розмір (ГБ)",
+    cleanupMaxSizeHelp:
+      "Максимальний загальний розмір у ГБ для всіх керованих робочих дерев. Установіть значення 0, щоб вимкнути обмеження розміру.",
+    cleanupDecrease: "Зменшити {label}",
+    cleanupIncrease: "Збільшити {label}",
+    cleanupSaveFailed: "Не вдалося зберегти обмеження очищення.",
     name: "Назва",
     repo: "Репозиторій",
     branch: "Гілка",
@@ -408,9 +420,17 @@ export const uk: TranslationMap = {
     working: "Працює…",
     ready: "Готовий до спілкування",
     whatCanAgentDo: "Що може робити {name}?",
+    help: "Довідка",
     getHelp: "Отримати допомогу",
     discord: "Спільнота Discord",
     viewChangelog: "Переглянути журнал змін",
+    agentSettings: "Налаштування агента",
+    filterAgents: "Знайти агента…",
+    noAgentMatches: "Відповідних агентів не знайдено",
+  },
+  agentScope: {
+    label: "Область дії агента",
+    allAgents: "Усі агенти",
   },
   newSession: {
     title: "Новий сеанс",
@@ -619,6 +639,8 @@ export const uk: TranslationMap = {
     setDefault: "Set Default",
     alreadyDefaultTitle: "Already the default agent",
     setDefaultTitle: "Set as the default agent",
+    pinToSwitcher: "Закріпити в перемикачі",
+    unpinFromSwitcher: "Відкріпити від перемикача",
     selectTitle: "Select an agent",
     selectSubtitle: "Pick an agent to inspect its workspace and tools.",
     tabs: {
@@ -643,6 +665,19 @@ export const uk: TranslationMap = {
       default: "Default",
       configurationSubtitle: "Workspace, identity, and model configuration.",
       schedulingSubtitle: "Workspace and scheduling targets.",
+    },
+    identity: {
+      title: "Ідентичність",
+      subtitle: "Ім’я, емодзі й аватар, які відображаються в чатах і на бічній панелі.",
+      name: "Відображуване ім’я",
+      namePlaceholder: "Ім’я агента",
+      emoji: "Емодзі",
+      chooseImage: "Вибрати зображення…",
+      replaceImage: "Замінити зображення…",
+      imageUnusable:
+        "Це зображення не можна використати. Виберіть файл зображення розміром до 2 МБ.",
+      fileHint:
+        "Агенти можуть налаштувати це самостійно, відредагувавши IDENTITY.md у своєму робочому просторі.",
     },
     overview: {
       title: "Огляд",
