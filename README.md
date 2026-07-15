@@ -1,12 +1,16 @@
 # OpenClaw Android Node Companion APK
 
 <p align="center">
-  <img src="docs/assets/openclaw-logo-text.svg" alt="OpenClaw Logo" width="500">
+    <picture>
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-banner-light.png">
+        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-banner-dark.png" alt="OpenClaw — EXFOLIATE! EXFOLIATE! Your personal AI assistant, running on your own devices.">
+    </picture>
 </p>
 
 <p align="center">
   <strong>⚠️ 特别声明 / Notice ⚠️<br>本项目仅使用原始的上游代码生成 APK，没有任何额外修改。<br>后台每 6 小时自动拉取合并上游代码；若 Android 相关代码有变更，会自动编译并发布最新 APK。<br>如果对你有帮助，请 star 本项目。<br><br>This fork strictly uses the original upstream code to generate the APK, without any extra modifications. Every 6 hours it automatically fetches and merges upstream; when Android-related code changes, it builds and publishes a new APK.<br>If this helps you, please consider starring this repository.</strong>
 </p>
+
 
 <p align="center">
   <a href="https://github.com/openclaw/openclaw/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openclaw/openclaw/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
