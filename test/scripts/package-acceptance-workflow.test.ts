@@ -224,6 +224,65 @@ function runNpmTelegramInputValidation(overrides: Record<string, string>) {
   });
 }
 
+function runNpmTelegramArtifactValidation(params: {
+  currentRunId: string;
+  producerRunId: string;
+  producerStatus: "completed" | "in_progress";
+  producerConclusion: "success" | null;
+}) {
+  const job = workflowJob(NPM_TELEGRAM_WORKFLOW, "run_package_telegram_e2e");
+  const script = workflowStep(job, "Validate package artifact identity").run;
+  if (!script) {
+    throw new Error("Expected npm Telegram artifact identity script");
+  }
+  const binDir = tempDirs.make("npm-telegram-artifact-gh-");
+  const ghPath = `${binDir}/gh`;
+  writeFileSync(
+    ghPath,
+    `#!/bin/sh
+case "$*" in
+  *actions/artifacts*) printf '%s\\n' "$MOCK_ARTIFACT_JSON" ;;
+  *actions/runs*) printf '%s\\n' "$MOCK_ATTEMPT_JSON" ;;
+  *) exit 2 ;;
+esac
+`,
+  );
+  chmodSync(ghPath, 0o755);
+  const attempt = "2";
+  const artifactId = "987";
+  const artifactName = `package-under-test-${params.producerRunId}-${attempt}`;
+  const digest = "a".repeat(64);
+  return spawnSync("bash", ["-c", script], {
+    encoding: "utf8",
+    env: {
+      ARTIFACT_DIGEST: digest,
+      ARTIFACT_ID: artifactId,
+      ARTIFACT_NAME: artifactName,
+      ARTIFACT_RUN_ATTEMPT: attempt,
+      ARTIFACT_RUN_ID: params.producerRunId,
+      GITHUB_REPOSITORY: "openclaw/openclaw",
+      GITHUB_RUN_ID: params.currentRunId,
+      MOCK_ARTIFACT_JSON: JSON.stringify({
+        created_at: "2026-07-15T08:49:20Z",
+        digest: `sha256:${digest}`,
+        expired: false,
+        id: Number(artifactId),
+        name: artifactName,
+        workflow_run: { id: Number(params.producerRunId) },
+      }),
+      MOCK_ATTEMPT_JSON: JSON.stringify({
+        conclusion: params.producerConclusion,
+        id: Number(params.producerRunId),
+        run_attempt: Number(attempt),
+        run_started_at: "2026-07-15T08:39:00Z",
+        status: params.producerStatus,
+        updated_at: "2026-07-15T08:49:30Z",
+      }),
+      PATH: `${binDir}:${process.env.PATH}`,
+    },
+  });
+}
+
 function runReleasePublishInputValidation(overrides: Record<string, string>) {
   const job = workflowJob(RELEASE_PUBLISH_WORKFLOW, "resolve_release_target");
   const script = workflowStep(job, "Validate inputs").run;
@@ -1300,6 +1359,9 @@ describe("package artifact reuse", () => {
 
   it("lets reusable Docker E2E consume an already resolved package artifact", () => {
     const workflow = readFileSync(LIVE_E2E_WORKFLOW, "utf8");
+    const parsedWorkflow = parse(workflow) as {
+      on?: { workflow_call?: { inputs?: Record<string, unknown> } };
+    };
     const packageJson = readFileSync(PACKAGE_JSON, "utf8");
     const scheduler = readFileSync("scripts/test-docker-all.mjs", "utf8");
     const publishedUpgradeSurvivor = readFileSync(UPGRADE_SURVIVOR_RUN_SCRIPT, "utf8");
@@ -1316,6 +1378,9 @@ describe("package artifact reuse", () => {
     expect(workflow).toContain("published_upgrade_survivor_baseline:");
     expect(workflow).toContain("published_upgrade_survivor_baselines:");
     expect(workflow).toContain("published_upgrade_survivor_scenarios:");
+    expect(parsedWorkflow.on?.workflow_call?.inputs).toHaveProperty(
+      "allow_frozen_target_scenario_omissions",
+    );
     expect(workflow).toContain("docker_e2e_bare_image:");
     expect(workflow).toContain("docker_e2e_functional_image:");
     expect(workflow).toContain("OPENCLAW_DOCKER_E2E_SELECTED_SHA:");
@@ -1327,6 +1392,10 @@ describe("package artifact reuse", () => {
     );
     expect(workflow).toContain(
       "OPENCLAW_UPGRADE_SURVIVOR_SCENARIOS: ${{ inputs.published_upgrade_survivor_scenarios }}",
+    );
+    expect(workflow).toContain("OPENCLAW_UPGRADE_SURVIVOR_TARGET_ROOT: ${{ github.workspace }}");
+    expect(workflow).toContain(
+      "OPENCLAW_ALLOW_FROZEN_TARGET_SCENARIO_OMISSIONS: ${{ inputs.allow_frozen_target_scenario_omissions && '1' || '0' }}",
     );
     expect(workflow).toContain("Download current-run OpenClaw Docker E2E package");
     expect(workflow).toContain("Download previous-run OpenClaw Docker E2E package");
@@ -2143,6 +2212,9 @@ describe("package artifact reuse", () => {
     );
     expect(workflow).toContain("include_release_path_suites: false");
     expect(workflow).toContain("include_release_path_suites: true");
+    expect(workflow).toContain(
+      "allow_frozen_target_scenario_omissions: ${{ inputs.allow_frozen_target_scenario_omissions }}",
+    );
     expect(workflow).toContain("uses: ./.github/workflows/package-acceptance.yml");
     expect(workflow).toContain(
       "source: ${{ (needs.resolve_target.outputs.package_acceptance_package_spec != '' || needs.resolve_target.outputs.release_package_spec != '') && 'npm' || 'artifact' }}",
@@ -2327,8 +2399,26 @@ describe("package artifact reuse", () => {
       'echo "Matrix live lane failed on attempt ${attempt}; retrying..." >&2',
     );
     expect(qaWorkflow).not.toContain("OPENCLAW_QA_MATRIX_CANARY_TIMEOUT_MS");
-    expect(qaWorkflow).toContain('--profile "${INPUT_MATRIX_PROFILE}"');
+    expect(qaWorkflow).toContain('--profile "${matrix_profile}"');
     expect(qaWorkflow).not.toContain("--fail-fast");
+
+    const matrixRunScript = workflowStep(matrixJob, "Run Matrix live lane").run ?? "";
+    const resolveMatrixProfile = shellFunctionSource(matrixRunScript, "resolve_matrix_profile");
+    const resolveProfile = (requested: string, helpText: string) =>
+      execFileSync(
+        "bash",
+        [
+          "-c",
+          `${resolveMatrixProfile}\nresolve_matrix_profile "$1" "$2"`,
+          "resolve-matrix-profile",
+          requested,
+          helpText,
+        ],
+        { encoding: "utf8" },
+      ).trim();
+    expect(resolveProfile("release", "profiles: all, fast, release, transport")).toBe("release");
+    expect(resolveProfile("release", "profiles: all, fast, transport")).toBe("fast");
+    expect(resolveProfile("e2ee-smoke", "profiles: all, fast, transport")).toBe("e2ee-smoke");
   });
 
   it("runs live transport lanes nightly while release checks stay gated", () => {
@@ -2782,6 +2872,10 @@ describe("package artifact reuse", () => {
       "actions/artifacts/${ARTIFACT_ID}",
       '--arg digest "sha256:${ARTIFACT_DIGEST}"',
       "actions/runs/${ARTIFACT_RUN_ID}/attempts/${ARTIFACT_RUN_ATTEMPT}",
+      'if [[ "$ARTIFACT_RUN_ID" == "$GITHUB_RUN_ID" ]]',
+      '.status == "in_progress"',
+      ".conclusion == null",
+      "Package Telegram artifact predates the active producer run attempt.",
       '.status == "completed"',
       '.conclusion == "success"',
       "artifact_created_at <= attempt_started_at",
@@ -2810,6 +2904,28 @@ describe("package artifact reuse", () => {
       'export OPENCLAW_NPM_TELEGRAM_PACKAGE_DIR="${package_dir}"',
       'export OPENCLAW_NPM_TELEGRAM_PACKAGE_TGZ="${package_tgz}"',
     ]);
+  });
+
+  it("accepts immutable artifacts produced earlier in the active workflow attempt", () => {
+    const result = runNpmTelegramArtifactValidation({
+      currentRunId: "123",
+      producerConclusion: null,
+      producerRunId: "123",
+      producerStatus: "in_progress",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+  });
+
+  it("keeps completed external producer attempts success-gated", () => {
+    const result = runNpmTelegramArtifactValidation({
+      currentRunId: "456",
+      producerConclusion: "success",
+      producerRunId: "123",
+      producerStatus: "completed",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
   });
 
   it("rejects partial npm Telegram artifact identity instead of falling back to npm", () => {
@@ -3963,6 +4079,10 @@ describe("package artifact reuse", () => {
     expect(clawHubNewWorkflow).toContain(
       "Download and verify immutable ClawHub bootstrap artifact",
     );
+    expect(clawHubNewWorkflow).toContain("WORKFLOW_HEAD_BRANCH: ${{ github.ref_name }}");
+    expect(clawHubNewWorkflow).toContain("WORKFLOW_REF: ${{ github.ref }}");
+    expect(clawHubNewWorkflow).toContain('--workflow-head-branch "${WORKFLOW_HEAD_BRANCH}"');
+    expect(clawHubNewWorkflow).toContain('--workflow-ref "${WORKFLOW_REF}"');
     expect(clawHubNewWorkflow).toContain("Rehash immutable ClawHub bootstrap artifacts");
     expect(clawHubNewWorkflow).toContain("Download parent ClawHub bootstrap approval");
     expect(clawHubNewWorkflow).toContain("RELEASE_APPROVAL_KIND: clawhub-bootstrap");
