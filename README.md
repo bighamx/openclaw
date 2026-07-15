@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>⚠️ 特别声明 / Notice ⚠️<br>本项目仅使用原始的上游代码生成 APK，没有任何额外修改。<br>后台每六小时会自动拉取合并上游代码，并自动编译发布最新的 APK。<br>如果对你有帮助，请 star 本项目。<br><br>This fork strictly uses the original upstream code to generate the APK, without any extra modifications. The system automatically fetches, merges upstream code, and builds/plishes a new APK every 6 hours.<br>If this helps you, please consider starring this repository.</strong>
+  <strong>⚠️ 特别声明 / Notice ⚠️<br>本项目仅使用原始的上游代码生成 APK，没有任何额外修改。<br>后台每 6 小时自动拉取合并上游代码；若 Android 相关代码有变更，会自动编译并发布最新 APK。<br>如果对你有帮助，请 star 本项目。<br><br>This fork strictly uses the original upstream code to generate the APK, without any extra modifications. Every 6 hours it automatically fetches and merges upstream; when Android-related code changes, it builds and publishes a new APK.<br>If this helps you, please consider starring this repository.</strong>
 </p>
 
 <p align="center">

@@ -2,85 +2,238 @@ name: Sync Upstream
 
 on:
   schedule:
-    # 每 6 小时执行一次
-    - cron: '0 */1 * * *'
-  # 允许手动触发
+    # 每 6 小时
+    - cron: "0 */6 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
-      
+      actions: write
+    outputs:
+      synced: ${{ steps.sync.outputs.synced }}
+      android_changed: ${{ steps.sync.outputs.android_changed }}
+
     steps:
-      - name: Checkout source code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
+          # PAT 才能触发后续 Android Build；未配置时回退到 GITHUB_TOKEN
           token: ${{ secrets.PAT || github.token }}
-      
-      - name: Sync and Merge Upstream
+
+      - name: Sync and merge upstream
+        id: sync
+        env:
+          GH_TOKEN: ${{ secrets.PAT || github.token }}
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # 添加上游仓库
-          git remote add upstream https://github.com/openclaw/openclaw.git
-          
-          # 拉取上游最新代码
-          git fetch upstream
-          
-          # 确保在 main 分支，并同步自己仓库远端可能由其他途径新增的 commit
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream https://github.com/openclaw/openclaw.git
+          else
+            git remote add upstream https://github.com/openclaw/openclaw.git
+          fi
+
+          git fetch --prune origin
+          git fetch --prune upstream
+
           git checkout main
-          git pull origin main --rebase
-          
-          # 尝试合并上游，并不自动提交，以便我们在有冲突时进行处理
-          # 使用 || true 防止有冲突时脚本直接退出
-          git merge upstream/main --no-commit --no-ff || true
-          
-          # --- 自动清理: 仅保留 android-build.yml 和 sync-upstream.yml ---
-          find .github/workflows -type f -name "*.yml" | grep -vE 'android-build.yml|sync-upstream.yml' | xargs -r git rm -f 2>/dev/null || true
-          
-          # 检查是否有冲突未解决 (U状态的文件)
-          if git ls-files -u | grep -q "^"; then
-            echo "Conflicts detected. Applying custom resolution strategies..."
-            
-            # --- 规则1: README.md 保留我们的版本 ---
-            if git ls-files -u | grep -q "README.md"; then
-              echo "Resolving README.md with --ours"
-              git checkout --ours README.md
-              git add README.md
-            fi
-            
-            # --- 规则2: 保留我们的核心工作流文件 ---
-            for wf in ".github/workflows/android-build.yml" ".github/workflows/sync-upstream.yml"; do
-              if git ls-files -u | grep -q "$wf"; then
-                echo "Resolving $wf with --ours"
-                git checkout --ours "$wf"
-                git add "$wf"
+          git reset --hard origin/main
+
+          BEFORE_SHA="$(git rev-parse HEAD)"
+          UPSTREAM_SHA="$(git rev-parse upstream/main)"
+
+          if [ "$BEFORE_SHA" = "$UPSTREAM_SHA" ]; then
+            echo "Already aligned with upstream/main ($UPSTREAM_SHA)."
+            echo "synced=false" >> "$GITHUB_OUTPUT"
+            echo "android_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 上游已包含在历史中（仅 fork 独有提交）时，也无需再 merge
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "upstream/main is already an ancestor of HEAD. Nothing to merge."
+            echo "synced=false" >> "$GITHUB_OUTPUT"
+            echo "android_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          KEEP_DIR="$(mktemp -d)"
+          export KEEP_DIR
+          trap 'rm -rf "$KEEP_DIR"' EXIT
+
+          mkdir -p "$KEEP_DIR/.github/workflows"
+          cp .github/workflows/android-build.yml "$KEEP_DIR/.github/workflows/android-build.yml"
+          cp .github/workflows/sync-upstream.yml "$KEEP_DIR/.github/workflows/sync-upstream.yml"
+
+          # 保存 fork 声明片段，合并后注入上游 README，避免长期丢失上游说明更新
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import os
+
+          readme = Path("README.md").read_text(encoding="utf-8")
+          keep_dir = Path(os.environ["KEEP_DIR"])
+          notice_path = keep_dir / "FORK_NOTICE.md"
+
+          # 优先提取已有 Notice 段落；否则写入默认声明
+          match = re.search(
+              r"(<p align=\"center\">\s*<strong>⚠️ 特别声明 / Notice ⚠️.*?</strong>\s*</p>)",
+              readme,
+              flags=re.S,
+          )
+          if match:
+              notice = match.group(1).strip() + "\n"
+          else:
+              notice = """<p align="center">
+            <strong>⚠️ 特别声明 / Notice ⚠️<br>本项目仅使用原始的上游代码生成 APK，没有任何额外修改。<br>后台每 6 小时自动拉取合并上游代码；若 Android 相关代码有变更，会自动编译并发布最新 APK。<br>如果对你有帮助，请 star 本项目。<br><br>This fork strictly uses the original upstream code to generate the APK, without any extra modifications. Every 6 hours it automatically fetches and merges upstream; when Android-related code changes, it builds and publishes a new APK.<br>If this helps you, please consider starring this repository.</strong>
+          </p>
+          """
+          notice_path.write_text(notice, encoding="utf-8")
+          PY
+
+          set +e
+          git merge upstream/main --no-commit --no-ff
+          MERGE_STATUS=$?
+          set -e
+
+          # 无论冲突与否，都强制恢复 fork 专属工作流，并清理其余 workflow
+          mkdir -p .github/workflows
+          cp "$KEEP_DIR/.github/workflows/android-build.yml" .github/workflows/android-build.yml
+          cp "$KEEP_DIR/.github/workflows/sync-upstream.yml" .github/workflows/sync-upstream.yml
+
+          # 删除除保留项外的全部 workflow（含上游新增 / modify-delete 残留）
+          find .github/workflows -type f \( -name "*.yml" -o -name "*.yaml" \) \
+            ! -name "android-build.yml" \
+            ! -name "sync-upstream.yml" \
+            -print0 | xargs -0 -r git rm -f --ignore-unmatch
+
+          git add .github/workflows/android-build.yml .github/workflows/sync-upstream.yml
+
+          # README：采用上游正文，并注入 fork Notice；标题改为本 fork 名称
+          git show upstream/main:README.md > README.md
+          KEEP_DIR="$KEEP_DIR" python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          readme_path = Path("README.md")
+          notice = Path(os.environ["KEEP_DIR"], "FORK_NOTICE.md").read_text(encoding="utf-8").strip() + "\n"
+          text = readme_path.read_text(encoding="utf-8")
+
+          # 替换首个标题
+          text = re.sub(r"^# .*$", "# OpenClaw Android Node Companion APK", text, count=1, flags=re.M)
+
+          # 去掉旧 notice（若上游未来误带入）后，插入到首个居中段落之后或标题之后
+          text = re.sub(
+              r"<p align=\"center\">\s*<strong>⚠️ 特别声明 / Notice ⚠️.*?</strong>\s*</p>\s*",
+              "",
+              text,
+              flags=re.S,
+          )
+
+          lines = text.splitlines(keepends=True)
+          insert_at = 0
+          for i, line in enumerate(lines):
+              if line.startswith("# "):
+                  insert_at = i + 1
+                  break
+
+          # 若标题后紧跟 logo/banner 段落，则插到该段落后，观感更好
+          j = insert_at
+          while j < len(lines) and lines[j].strip() == "":
+              j += 1
+          if j < len(lines) and "<p align=\"center\">" in lines[j]:
+              # 找到该 </p> 结束
+              k = j
+              while k < len(lines) and "</p>" not in lines[k]:
+                  k += 1
+              insert_at = min(k + 1, len(lines))
+
+          rebuilt = "".join(lines[:insert_at]) + "\n" + notice + "\n" + "".join(lines[insert_at:])
+          readme_path.write_text(rebuilt, encoding="utf-8")
+          PY
+          git add README.md
+
+          # 其余未解决冲突一律取上游
+          mapfile -t CONFLICTS < <(git ls-files -u | awk '{print $4}' | sort -u)
+          if [ "${#CONFLICTS[@]}" -gt 0 ]; then
+            echo "Resolving remaining conflicts with upstream (theirs):"
+            printf ' - %s\n' "${CONFLICTS[@]}"
+            for file in "${CONFLICTS[@]}"; do
+              if [ "$file" = "README.md" ] \
+                || [ "$file" = ".github/workflows/android-build.yml" ] \
+                || [ "$file" = ".github/workflows/sync-upstream.yml" ]; then
+                continue
+              fi
+              # modify/delete：上游修改、本地删除的 workflow 等，优先删除（fork 策略）
+              if [[ "$file" == .github/workflows/* ]]; then
+                git rm -f --ignore-unmatch -- "$file" || true
+                continue
+              fi
+              if git checkout --theirs -- "$file" 2>/dev/null; then
+                git add -- "$file"
+              else
+                # 无 theirs 阶段（例如 deleted by them）则确认删除
+                git rm -f --ignore-unmatch -- "$file" || git add -u -- "$file" || true
               fi
             done
-            
-            # --- 规则3: 其他所有的冲突文件接受上游（远程）版本 ---
-            REMAINING_CONFLICTS=$(git ls-files -u | awk '{print $4}' | sort -u)
-            if [ -n "$REMAINING_CONFLICTS" ]; then
-              IFS=$'\n'
-              for file in $REMAINING_CONFLICTS; do
-                echo "Resolving $file with --theirs"
-                git checkout --theirs "$file"
-                git add "$file"
-              done
-            fi
           fi
-          
-          # 检查状态，并准备提交
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            # 提交合并结果
-            git commit -m "Auto-merge upstream with custom rules"
-            # 推送到你的 GitHub 仓库
-            git push origin main
+
+          if git ls-files -u | grep -q .; then
+            echo "::error::Unresolved merge conflicts remain:"
+            git ls-files -u
+            git status --short
+            exit 1
           fi
+
+          # 合并成功但工作区相对 HEAD 无变化：结束合并状态且不推送
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "Merge produced no content changes after applying fork rules."
+            git merge --abort 2>/dev/null || true
+            echo "synced=false" >> "$GITHUB_OUTPUT"
+            echo "android_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 若 merge 未进入冲突路径但 exit!=0，且已无未合并文件，仍可提交
+          if [ ! -f .git/MERGE_HEAD ] && [ "$MERGE_STATUS" -ne 0 ]; then
+            echo "::error::Merge failed unexpectedly (status=$MERGE_STATUS)."
+            git status --short
+            exit 1
+          fi
+
+          git commit -m "Auto-merge upstream with custom rules"
+          git push origin main
+
+          AFTER_SHA="$(git rev-parse HEAD)"
+          ANDROID_CHANGED=false
+          if git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" | grep -Eq '^apps/(android|shared)/'; then
+            ANDROID_CHANGED=true
+          fi
+
+          echo "Synced $BEFORE_SHA -> $AFTER_SHA (upstream $UPSTREAM_SHA)"
+          echo "synced=true" >> "$GITHUB_OUTPUT"
+          echo "android_changed=$ANDROID_CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Android Build when needed
+        if: steps.sync.outputs.synced == 'true' && steps.sync.outputs.android_changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT || github.token }}
+        run: |
+          set -euo pipefail
+          # 即使 push 因路径过滤未触发，也显式调度一次构建
+          gh workflow run android-build.yml --ref main
+          echo "Dispatched android-build.yml"
