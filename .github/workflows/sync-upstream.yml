@@ -230,10 +230,13 @@ jobs:
 
       - name: Trigger Android Build when needed
         if: steps.sync.outputs.synced == 'true' && steps.sync.outputs.android_changed == 'true'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.PAT || github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          # 即使 push 因路径过滤未触发，也显式调度一次构建
-          gh workflow run android-build.yml --ref main
-          echo "Dispatched android-build.yml"
+          # 显式指定本仓库，避免 gh 在存在 upstream remote 时误调度到 openclaw/openclaw
+          # push + PAT 通常已能触发构建；此处作为兜底，失败不阻断同步结果
+          gh workflow run android-build.yml --repo "$GH_REPO" --ref main
+          echo "Dispatched android-build.yml on $GH_REPO"
