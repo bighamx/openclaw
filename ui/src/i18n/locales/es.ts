@@ -2504,6 +2504,12 @@ export const es: TranslationMap = {
         empty: "No rows to show.",
         more: "+{count} more",
       },
+      chart: {
+        empty: "No hay datos para representar.",
+        invalid: "Este gráfico contiene datos u opciones no válidos.",
+        label: "Gráfico",
+        summary: "{title}: {count} puntos de datos, con valores de {min} a {max}.",
+      },
       sessions: {
         empty: "No sessions yet.",
       },
@@ -2527,6 +2533,20 @@ export const es: TranslationMap = {
         missing: "This embed has no URL yet.",
         blockedExternal: "External embeds are disabled by your gateway policy.",
         blockedScheme: "This embed URL uses an unsupported scheme.",
+      },
+      preview: {
+        missing: "Esta vista previa aún no tiene una URL.",
+        blockedExternal:
+          "Las vistas previas externas están deshabilitadas por la política de tu Gateway.",
+        blockedScheme: "La URL de esta vista previa utiliza un esquema no compatible.",
+        toolbar: "Controles de la vista previa",
+        reload: "Recargar vista previa",
+        viewport: {
+          label: "Área de visualización de la vista previa",
+          desktop: "Escritorio",
+          tablet: "Tableta",
+          mobile: "Móvil",
+        },
       },
     },
   },
@@ -3916,6 +3936,14 @@ export const es: TranslationMap = {
       viewTranscript: "Ver transcripción",
       toolUseOne: "1 uso de herramienta",
       toolUseMany: "{count} usos de herramientas",
+      expandTask: "Mostrar detalles de {title}",
+      collapseTask: "Ocultar detalles de {title}",
+      detailLoading: "Cargando detalles de la tarea…",
+      detailFailed: "No se pudieron cargar los detalles de la tarea.",
+      prompt: "Prompt",
+      output: "Resultado",
+      promptUnavailable: "Prompt no disponible.",
+      outputPending: "Aún no hay resultados.",
     },
     sessionDiff: {
       title: "Cambios",

@@ -187,7 +187,7 @@ without exceptions outside doctor/import/export/debug boundaries.
       Proof: no schema change in this pass; `pnpm db:kysely:check`;
       `pnpm lint:kysely`.
 - [x] Re-run focused tests for touched stores, commands, and scripts.
-      Proof: `pnpm test src/cron/service/store.test.ts src/cron/store.test.ts src/cron/service.heartbeat-ok-summary-suppressed.test.ts src/cron/service.main-job-passes-heartbeat-target-last.test.ts src/cron/service.every-jobs-fire.test.ts src/cron/service.persists-delivered-status.test.ts src/cron/service.runs-one-shot-main-job-disables-it.test.ts src/cron/service/ops.test.ts src/cron/service/timer.regression.test.ts src/auto-reply/reply/commands-export-trajectory.test.ts extensions/telegram/src/thread-bindings.test.ts extensions/slack/src/monitor/message-handler/prepare.test.ts src/acp/translator.session-lineage-meta.test.ts`; `git diff --check`.
+      Proof: `pnpm test src/cron/service/store.test.ts src/cron/store.test.ts src/cron/service.heartbeat-ok-summary-suppressed.test.ts src/cron/service.main-job-passes-heartbeat-target-last.test.ts src/cron/service.every-jobs-fire.test.ts src/cron/service.persists-delivered-status.test.ts src/cron/service.runs-one-shot-main-job-disables-it.test.ts src/cron/service/ops.test.ts src/cron/service/timer.regression.test.ts src/auto-reply/reply/commands-export-session.test.ts extensions/telegram/src/thread-bindings.test.ts extensions/slack/src/monitor/message-handler/prepare.test.ts src/acp/translator.session-lineage-meta.test.ts`; `git diff --check`.
 - [x] Before declaring `done`, run the changed gate or remote broad proof.
       Proof: `pnpm check:changed --timed -- <changed extension paths>` passed on
       Hetzner Crabbox run `run_3f1cabf6b25c` after temporary Node 24/pnpm setup and
@@ -564,9 +564,9 @@ The branch already has a real shared SQLite base:
   an internal `installedPluginIndex.installRecords.*` diff namespace. Runtime
   reload decisions no longer wrap those rows in fake `plugins.installs` config
   objects.
-- Matrix named-account credential upgrade no longer happens during runtime
-  reads. Doctor owns the old top-level `credentials/matrix/credentials.json`
-  rename when a single/default Matrix account can be resolved.
+- Matrix account credentials now live in SQLite plugin state. Runtime reads
+  only that canonical store; Doctor imports, verifies, and archives retired
+  `credentials/matrix/credentials*.json` files when their account can be resolved.
 - Core pairing and cron runtime modules no longer use legacy JSON path builders.
   The deprecated pairing-path SDK helper remains migration-only compatibility;
   doctor state migration owns its file reads and imports. Doctor-owned legacy
@@ -1193,8 +1193,10 @@ sessionId})`; create, branch, continue, list, and fork flows live in their
 - Zalo hosted outbound media now uses shared SQLite `plugin_blob_entries`
   instead of `openclaw-zalo-outbound-media` JSON/bin temp sidecars.
 - Diffs viewer HTML and metadata now use shared SQLite `plugin_blob_entries`
-  instead of `meta.json`/`viewer.html` temp files. Rendered PNG/PDF outputs stay
-  temp materializations because channel delivery still needs a file path.
+  instead of `meta.json`/`viewer.html` temp files. Viewer HTML is stored as a
+  gzip blob and only the URL token hash is persisted. Rendered PNG/PDF outputs
+  stay temp materializations because channel delivery still needs a file path;
+  their expiry metadata is SQLite-owned without JSON sidecars.
 - Canvas managed documents now use shared SQLite `plugin_blob_entries` instead
   of a default `state/canvas/documents` directory. The Canvas host serves those
   blobs directly; local files are created only for explicit `host.root`

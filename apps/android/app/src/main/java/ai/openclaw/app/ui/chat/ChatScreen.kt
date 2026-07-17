@@ -14,6 +14,7 @@ import ai.openclaw.app.chat.ChatPlanStepStatus
 import ai.openclaw.app.chat.ChatSessionEntry
 import ai.openclaw.app.chat.ChatThinkingLevelOption
 import ai.openclaw.app.chat.ChatThinkingLevelSelection
+import ai.openclaw.app.chat.ChatWidgetResource
 import ai.openclaw.app.chat.MessageSpeechPhase
 import ai.openclaw.app.chat.MessageSpeechState
 import ai.openclaw.app.chat.VoiceNoteRecorderState
@@ -79,6 +80,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -211,6 +213,7 @@ fun ChatScreen(
   val scope = rememberCoroutineScope()
   val attachments = remember { mutableStateListOf<PendingAttachment>() }
   var showModelPicker by rememberSaveable { mutableStateOf(false) }
+  var showBackgroundTasks by rememberSaveable { mutableStateOf(false) }
 
   DisposableEffect(viewModel) {
     onDispose(viewModel::stopChatMessageSpeech)
@@ -365,10 +368,11 @@ fun ChatScreen(
         startNewChat(false)
       },
       onNewChatInWorktree = { startNewChat(true) },
-      onMore = {
+      onRefresh = {
         viewModel.refreshChat()
         viewModel.refreshChatSessions(limit = 100)
       },
+      onOpenBackgroundTasks = { showBackgroundTasks = true },
     )
 
     ChatAgentSelector(
@@ -417,6 +421,7 @@ fun ChatScreen(
       onReplyMessage = viewModel::setChatReplyDraft,
       speechState = messageSpeechState,
       onToggleListen = viewModel::toggleChatMessageSpeech,
+      resolveInlineWidgetResource = viewModel::resolveInlineWidgetResource,
       modifier = Modifier.weight(1f),
     )
 
@@ -497,6 +502,13 @@ fun ChatScreen(
         showModelPicker = false
       },
       onToggleFavorite = viewModel::toggleModelFavorite,
+    )
+  }
+  if (showBackgroundTasks) {
+    BackgroundTasksSheet(
+      viewModel = viewModel,
+      agentId = sessionAgentId,
+      onDismiss = { showBackgroundTasks = false },
     )
   }
 }
@@ -645,9 +657,10 @@ private fun ChatHeader(
   workspaceGit: Boolean,
   onNewChat: () -> Unit,
   onNewChatInWorktree: () -> Unit,
-  onMore: () -> Unit,
+  onRefresh: () -> Unit,
+  onOpenBackgroundTasks: () -> Unit,
 ) {
-  var newChatMenuExpanded by remember { mutableStateOf(false) }
+  var actionsMenuExpanded by remember { mutableStateOf(false) }
   val newChatInWorktreeLabel = stringResource(R.string.new_chat_in_worktree)
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(
@@ -679,26 +692,41 @@ private fun ChatHeader(
           },
       )
       HeaderIcon(icon = Icons.Default.Add, contentDescription = nativeString("New chat"), enabled = newChatEnabled, onClick = onNewChat)
-      if (workspaceGit) {
-        Box {
-          HeaderIcon(
-            icon = Icons.Default.MoreHoriz,
-            contentDescription = nativeString("More new chat options"),
-            enabled = newChatEnabled,
-            onClick = { newChatMenuExpanded = true },
+      Box {
+        HeaderIcon(
+          icon = Icons.Default.MoreVert,
+          contentDescription = nativeString("Chat actions"),
+          onClick = { actionsMenuExpanded = true },
+        )
+        DropdownMenu(expanded = actionsMenuExpanded, onDismissRequest = { actionsMenuExpanded = false }) {
+          DropdownMenuItem(
+            text = { Text(nativeString("Refresh chat")) },
+            leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+            onClick = {
+              actionsMenuExpanded = false
+              onRefresh()
+            },
           )
-          DropdownMenu(expanded = newChatMenuExpanded, onDismissRequest = { newChatMenuExpanded = false }) {
+          DropdownMenuItem(
+            text = { Text(nativeString("Background tasks")) },
+            leadingIcon = { Icon(Icons.Default.HourglassEmpty, contentDescription = null) },
+            onClick = {
+              actionsMenuExpanded = false
+              onOpenBackgroundTasks()
+            },
+          )
+          if (workspaceGit) {
             DropdownMenuItem(
               text = { Text(newChatInWorktreeLabel) },
+              enabled = newChatEnabled,
               onClick = {
-                newChatMenuExpanded = false
+                actionsMenuExpanded = false
                 onNewChatInWorktree()
               },
             )
           }
         }
       }
-      HeaderIcon(icon = Icons.Default.Refresh, contentDescription = nativeString("Refresh chat"), onClick = onMore)
     }
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
       Text(text = nativeString("Chat"), style = ClawTheme.type.display.copy(fontSize = 24.sp, lineHeight = 28.sp), color = ClawTheme.colors.text, maxLines = 1)
@@ -784,6 +812,7 @@ private fun ChatMessageList(
   onReplyMessage: (String) -> Unit,
   speechState: MessageSpeechState?,
   onToggleListen: (String, String) -> Unit,
+  resolveInlineWidgetResource: suspend (String, ChatWidgetResource?) -> ChatWidgetResource?,
   modifier: Modifier = Modifier,
 ) {
   val timeline =
@@ -823,6 +852,8 @@ private fun ChatMessageList(
               onReplyMessage = onReplyMessage,
               speechState = speechState,
               onToggleListen = onToggleListen,
+              inlineWidgetResolverReady = healthOk,
+              resolveInlineWidgetResource = resolveInlineWidgetResource,
             )
           is ChatTimelineItem.OutboxCommand ->
             ChatOutboxBubble(
@@ -841,6 +872,8 @@ private fun ChatMessageList(
               onReplyMessage = onReplyMessage,
               speechState = null,
               onToggleListen = onToggleListen,
+              inlineWidgetResolverReady = healthOk,
+              resolveInlineWidgetResource = resolveInlineWidgetResource,
             )
           ChatTimelineItem.Thinking -> ChatThinkingBubble()
         }
@@ -1021,6 +1054,8 @@ private fun ChatBubble(
   onReplyMessage: (String) -> Unit,
   speechState: MessageSpeechState?,
   onToggleListen: (String, String) -> Unit,
+  inlineWidgetResolverReady: Boolean,
+  resolveInlineWidgetResource: suspend (String, ChatWidgetResource?) -> ChatWidgetResource?,
 ) {
   val normalizedRole = role.trim().lowercase(Locale.US)
   val isUser = normalizedRole == "user"
@@ -1029,6 +1064,7 @@ private fun ChatBubble(
       when (part.type) {
         "text" -> !part.text.isNullOrBlank()
         "image" -> !part.base64.isNullOrBlank()
+        "canvas" -> normalizedRole == "assistant" && part.widget != null
         else -> part.isAudioAttachment()
       }
     }
@@ -1085,6 +1121,12 @@ private fun ChatBubble(
                 ChatBase64Image(
                   base64 = checkNotNull(part.base64),
                   mimeType = part.mimeType,
+                )
+              part.type == "canvas" && normalizedRole == "assistant" ->
+                ChatInlineWidget(
+                  preview = checkNotNull(part.widget),
+                  resolverReady = inlineWidgetResolverReady,
+                  resolveResource = resolveInlineWidgetResource,
                 )
               else -> Text(text = part.fileName ?: nativeString("Attachment"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
             }
