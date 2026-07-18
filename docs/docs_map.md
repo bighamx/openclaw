@@ -7377,6 +7377,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Message adapter
   - H3: Inbound ingress (experimental)
   - H3: Durable ingress and replay dedupe
+  - H4: At-least-once side effects
   - H4: Account-scoped restart contract
   - H3: Typing indicators
   - H3: Media source params
@@ -10510,6 +10511,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Gateway host status
   - H2: Language support
   - H2: Appearance themes
+  - H2: OpenClaw system care
   - H2: Manage plugins
   - H2: Apps and extensions
   - H2: Sidebar navigation
