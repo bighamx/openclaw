@@ -5053,6 +5053,7 @@ public struct SessionsCreateParams: Codable, Sendable {
     public let parentsessionkey: String?
     public let fork: Bool?
     public let emitcommandhooks: Bool?
+    public let succeedsparent: Bool?
     public let task: String?
     public let message: String?
     public let attachments: [AnyCodable]?
@@ -5072,6 +5073,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         parentsessionkey: String? = nil,
         fork: Bool? = nil,
         emitcommandhooks: Bool? = nil,
+        succeedsparent: Bool? = nil,
         task: String? = nil,
         message: String? = nil,
         attachments: [AnyCodable]? = nil,
@@ -5090,6 +5092,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         self.parentsessionkey = parentsessionkey
         self.fork = fork
         self.emitcommandhooks = emitcommandhooks
+        self.succeedsparent = succeedsparent
         self.task = task
         self.message = message
         self.attachments = attachments
@@ -5110,6 +5113,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         case parentsessionkey = "parentSessionKey"
         case fork
         case emitcommandhooks = "emitCommandHooks"
+        case succeedsparent = "succeedsParent"
         case task
         case message
         case attachments
@@ -8675,21 +8679,29 @@ public struct AgentsDeleteResult: Codable, Sendable {
     public let ok: Bool
     public let agentid: String
     public let removedbindings: Int
+    public let removed: [[String: AnyCodable]]?
+    public let failed: [[String: AnyCodable]]?
 
     public init(
         ok: Bool,
         agentid: String,
-        removedbindings: Int)
+        removedbindings: Int,
+        removed: [[String: AnyCodable]]? = nil,
+        failed: [[String: AnyCodable]]? = nil)
     {
         self.ok = ok
         self.agentid = agentid
         self.removedbindings = removedbindings
+        self.removed = removed
+        self.failed = failed
     }
 
     private enum CodingKeys: String, CodingKey {
         case ok
         case agentid = "agentId"
         case removedbindings = "removedBindings"
+        case removed
+        case failed
     }
 }
 

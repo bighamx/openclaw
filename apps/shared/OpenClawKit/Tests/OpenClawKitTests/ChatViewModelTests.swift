@@ -5675,6 +5675,40 @@ struct ChatViewModelTests {
         #expect(await transport.lastSentRunId() == nil)
     }
 
+    @Test func `default create session overload rejects unsupported agent and base ref options`() async throws {
+        let (transport, _) = await makeViewModel(historyResponses: [historyPayload()])
+
+        await #expect(throws: (any Error).self) {
+            _ = try await transport.createSession(
+                key: "next",
+                label: nil,
+                agentID: nil,
+                parentSessionKey: nil,
+                worktree: true,
+                worktreeBaseRef: "release/2026.7")
+        }
+        await #expect(throws: (any Error).self) {
+            _ = try await transport.createSession(
+                key: "next",
+                label: nil,
+                agentID: "reviewer",
+                parentSessionKey: nil,
+                worktree: nil,
+                worktreeBaseRef: nil)
+        }
+        #expect(await transport.createdSessionKeys().isEmpty)
+
+        let created = try await transport.createSession(
+            key: "next",
+            label: nil,
+            agentID: nil,
+            parentSessionKey: nil,
+            worktree: nil,
+            worktreeBaseRef: nil)
+        #expect(created.key == "next")
+        #expect(await transport.createdSessionKeys() == ["next"])
+    }
+
     @Test func `new trigger keeps selected global agent scope`() async throws {
         let (transport, vm) = await makeViewModel(
             sessionKey: "global",
@@ -7659,6 +7693,7 @@ struct ChatViewModelTests {
     }
 
     @Test func `late model patch updates captured canonical alias after agent switch`() async throws {
+        let patchGate = AsyncGate()
         let now = Date().timeIntervalSince1970 * 1000
         let sessions = OpenClawChatSessionsListResponse(
             ts: now,
@@ -7682,7 +7717,7 @@ struct ChatViewModelTests {
             modelResponses: [models],
             setSessionModelHook: { model in
                 if model == "openai/gpt-5.4" {
-                    try await Task.sleep(for: .milliseconds(100))
+                    await patchGate.wait()
                 }
             })
 
@@ -7693,6 +7728,10 @@ struct ChatViewModelTests {
         }
 
         await MainActor.run { vm.syncActiveAgentId("beta") }
+        try await waitUntil("replacement agent bootstrap completes") {
+            await MainActor.run { vm.activeAgentId == "beta" && vm.sessionId == "sess-beta" }
+        }
+        await patchGate.open()
         try await waitUntil("late patch updates canonical main row") {
             await MainActor.run {
                 vm.sessions.first(where: { $0.key == "agent:alpha:main" })?.model == "gpt-5.4"
