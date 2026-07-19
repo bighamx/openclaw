@@ -17,6 +17,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Boundaries
   - H2: Manifests
   - H2: Runtime Selection
+  - H2: Model Runtime Generations
   - H2: Related
 
 ## announcements/bluebubbles-imessage.md
@@ -1828,6 +1829,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: What OpenClaw shows
   - H2: Examples
   - H2: Operations and approval
+  - H3: Change history
   - H3: Switching to masked channel setup
   - H2: Setup bootstrap
   - H2: AI conversation
@@ -2492,7 +2494,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Home
   - H2: What flows into the main session
   - H2: Memory across resets and conversations
-  - H2: A rolling session, not an immortal one
+  - H2: A rolling session with durable history
   - H2: When you want isolation instead
   - H2: Related
 
@@ -7435,6 +7437,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
 - Headings:
   - H2: Durable ingress monitors
   - H2: Adapter
+  - H2: Outbound echo suppression
   - H2: Plain-text sanitization
   - H2: Delivery Evidence
   - H2: Existing outbound adapters
@@ -9767,6 +9770,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H3: Enable Code Mode
   - H3: What the model does
   - H3: Verify the active surface
+  - H2: Use Swarm for agent fan-out
   - H2: Technical tour
   - H2: Runtime status
   - H2: Scope
@@ -10420,6 +10424,22 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Liveness and recovery
   - H2: Stopping
   - H2: Limitations
+  - H2: Related
+
+## tools/swarm.md
+
+- Route: /tools/swarm
+- Headings:
+  - H2: Enable Swarm
+  - H2: Requirements
+  - H2: Write a Swarm script
+  - H3: Fan out in parallel with structured results
+  - H3: Loop on a decision gate
+  - H3: Process the first child that finishes
+  - H2: How collector children behave
+  - H2: Observe a Swarm
+  - H2: Use Swarm from other harnesses
+  - H2: Limits and roadmap
   - H2: Related
 
 ## tools/tavily.md

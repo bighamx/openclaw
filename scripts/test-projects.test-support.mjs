@@ -520,14 +520,26 @@ const GITHUB_WORKFLOW_OWNER_TEST_TARGETS = new Map([
     ".github/workflows/ios-periphery-comment.yml",
     ["test/scripts/ios-periphery-comment-workflow.test.ts"],
   ],
-  [".github/workflows/ios-periphery.yml", ["test/scripts/ios-periphery-comment-workflow.test.ts"]],
+  [
+    ".github/workflows/ios-periphery.yml",
+    [
+      "test/scripts/ios-periphery-comment-workflow.test.ts",
+      "test/scripts/periphery-scope-workflows.test.ts",
+    ],
+  ],
   [
     ".github/workflows/macos-periphery.yml",
-    ["test/scripts/ios-periphery-comment-workflow.test.ts"],
+    [
+      "test/scripts/ios-periphery-comment-workflow.test.ts",
+      "test/scripts/periphery-scope-workflows.test.ts",
+    ],
   ],
   [
     ".github/workflows/shared-openclawkit-periphery.yml",
-    ["test/scripts/periphery-intersection.test.ts"],
+    [
+      "test/scripts/periphery-intersection.test.ts",
+      "test/scripts/periphery-scope-workflows.test.ts",
+    ],
   ],
   [
     ".github/workflows/live-media-runner-image.yml",
@@ -1275,6 +1287,10 @@ const TOOLING_SOURCE_TEST_TARGETS = new Map([
   ["scripts/lib/format-generated-module.mjs", ["test/scripts/format-generated-module.test.ts"]],
   ["scripts/lib/ios-version.ts", ["test/scripts/ios-version.test.ts"]],
   ["scripts/lib/live-docker-stage.sh", ["test/scripts/live-docker-stage.test.ts"]],
+  [
+    "scripts/lib/local-heavy-check-runtime.d.mts",
+    ["test/scripts/local-heavy-check-runtime.test.ts"],
+  ],
   ["scripts/lib/local-heavy-check-runtime.mjs", ["test/scripts/local-heavy-check-runtime.test.ts"]],
   ["scripts/lib/kova-report-gate.mjs", ["test/scripts/kova-report-gate.test.ts"]],
   ["scripts/lib/kova-report-publish-files.mjs", ["test/scripts/kova-report-publish-files.test.ts"]],
