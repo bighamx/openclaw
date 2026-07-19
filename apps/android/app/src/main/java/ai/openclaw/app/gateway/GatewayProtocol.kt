@@ -109,6 +109,11 @@ data class QuestionRecord(
 )
 
 @Serializable
+data class QuestionGetResult(
+  val question: QuestionRecord,
+)
+
+@Serializable
 data class QuestionListResult(
   val questions: List<QuestionRecord>,
 )
@@ -226,6 +231,11 @@ enum class GatewayMethod(
   McpAppListResourceTemplates("mcp.app.listResourceTemplates"),
   McpAppReadResource("mcp.app.readResource"),
   McpAppCallTool("mcp.app.callTool"),
+  BoardGet("board.get"),
+  BoardUpdate("board.update"),
+  BoardWidgetPut("board.widget.put"),
+  BoardWidgetGrant("board.widget.grant"),
+  BoardEvent("board.event"),
   AuditList("audit.list"),
   AuditActivityList("audit.activity.list"),
   TasksList("tasks.list"),

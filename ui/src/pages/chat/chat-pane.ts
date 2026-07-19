@@ -324,11 +324,11 @@ const WORKSPACE_RAIL_MAX_WIDTH = 280;
 const DETAIL_SIDEBAR_SIDE_MIN_WIDTH = 680;
 
 const NEW_SESSION_ACTIVE_RUN_MESSAGE =
-  "Start a new session after the active run or queued messages finish.";
+  "Start a new thread after the active run or queued messages finish.";
 const NEW_SESSION_LIST_LOADING_MESSAGE =
-  "Session list is still refreshing. Try New Chat again in a moment.";
+  "Thread list is still refreshing. Try New Chat again in a moment.";
 const NEW_SESSION_CREATE_FAILED_MESSAGE =
-  "New Chat could not create a new session. Try again in a moment.";
+  "New Chat could not create a new thread. Try again in a moment.";
 
 function keyboardEventPathMatches(event: KeyboardEvent, selector: string): boolean {
   return event
@@ -729,10 +729,15 @@ class ChatPane extends OpenClawLightDomElement {
 
   private markSessionRead(row: GatewaySessionRow | undefined) {
     const state = this.state;
+    if (!state?.connected || !row) {
+      return;
+    }
+    const failureAt = row.endedAt ?? row.updatedAt ?? 0;
+    const unreadFailure =
+      (row.status === "failed" || row.status === "timeout") &&
+      (row.lastReadAt == null || failureAt > row.lastReadAt);
     if (
-      !state?.connected ||
-      !row ||
-      !this.unreadPatchGuard.shouldPatch(state.sessionKey, row.unread)
+      !this.unreadPatchGuard.shouldPatch(state.sessionKey, row.unread === true || unreadFailure)
     ) {
       return;
     }
@@ -2334,6 +2339,7 @@ class ChatPane extends OpenClawLightDomElement {
       state.realtimeTalkSession = null;
       state.realtimeTalkActive = false;
       state.realtimeTalkVideoStream = null;
+      state.realtimeTalkCameraDevices = [];
       state.realtimeTalkVideoCapable = false;
       state.realtimeTalkVideoPending = false;
       state.realtimeTalkCameraError = false;
@@ -2602,7 +2608,7 @@ class ChatPane extends OpenClawLightDomElement {
         ...(agentId ? { agentId } : {}),
       });
       if (!result.ok) {
-        this.publishHeaderError(result.error ?? "Failed to reveal session workspace.");
+        this.publishHeaderError(result.error ?? "Failed to reveal thread workspace.");
       }
     } catch (error) {
       this.publishHeaderError(error);
@@ -2841,6 +2847,7 @@ class ChatPane extends OpenClawLightDomElement {
       realtimeTalkInputLevel: state.realtimeTalkInputLevel,
       realtimeTalkConversation: state.realtimeTalkConversation,
       realtimeTalkVideoStream: state.realtimeTalkVideoStream,
+      realtimeTalkCameraDevices: state.realtimeTalkCameraDevices,
       realtimeTalkVideoCapable: state.realtimeTalkVideoCapable,
       realtimeTalkVideoPending: state.realtimeTalkVideoPending,
       realtimeTalkCameraError: state.realtimeTalkCameraError,
@@ -2968,6 +2975,7 @@ class ChatPane extends OpenClawLightDomElement {
       },
       onToggleRealtimeTalk: () => void state.toggleRealtimeTalk(),
       onToggleRealtimeCamera: () => void state.toggleRealtimeTalkCamera(),
+      onSwitchRealtimeCamera: () => void state.switchRealtimeTalkCamera(),
       onDismissError: () => {
         dismissChatError(state as never);
         state.requestUpdate?.();

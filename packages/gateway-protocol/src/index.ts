@@ -1,4 +1,5 @@
 export * from "./clawhub-trust-error-details.js";
+export { readMissingScopeError, readMissingScopeErrorDetails } from "./gateway-error-details.js";
 export * from "./session-icon.js";
 export * from "./terminal-validators.js";
 export {
@@ -13,9 +14,16 @@ export type { ProtocolValidator } from "./protocol-validator.js";
 export * from "./schema/worker-inference.js";
 export * from "./schema/skill-history.js";
 export * from "./schema/ui-command.js";
+export type { GatewayErrorDetails, MissingScopeErrorDetails } from "./schema/error-codes.js";
+export * from "./schema/board.js";
 export * from "./migration-api.js";
 export type * from "./public-session-catalog.js";
 import {
+  BoardEventParamsSchema,
+  BoardGetParamsSchema,
+  BoardUpdateParamsSchema,
+  BoardWidgetGrantParamsSchema,
+  BoardWidgetPutParamsSchema,
   AgentEventSchema,
   AuditActivityAgentRunV1Schema,
   AuditActivityEventV1Schema,
@@ -229,6 +237,10 @@ import {
   PluginsUninstallParamsSchema,
   PluginsUninstallResultSchema,
   ErrorCodes,
+  buildMissingScopeErrorDetails,
+  GatewayErrorDetailCodes,
+  GatewayErrorDetailsSchema,
+  MissingScopeErrorDetailsSchema,
   EnvironmentSummarySchema,
   EnvironmentsCreateParamsSchema,
   EnvironmentsCreateResultSchema,
@@ -284,6 +296,7 @@ import {
   ErrorShapeSchema,
   EventFrameSchema,
   errorShape,
+  missingScopeErrorShape,
   GatewayFrameSchema,
   GATEWAY_SERVER_CAPS,
   HelloOkSchema,
@@ -624,6 +637,11 @@ export const validateAgentWaitParams = lazyCompile(AgentWaitParamsSchema);
 export const validateWakeParams = lazyCompile(WakeParamsSchema);
 export const validateAgentsListParams = lazyCompile(AgentsListParamsSchema);
 export const validateWorktreesListParams = lazyCompile(WorktreesListParamsSchema);
+export const validateBoardGetParams = lazyCompile(BoardGetParamsSchema);
+export const validateBoardUpdateParams = lazyCompile(BoardUpdateParamsSchema);
+export const validateBoardWidgetPutParams = lazyCompile(BoardWidgetPutParamsSchema);
+export const validateBoardWidgetGrantParams = lazyCompile(BoardWidgetGrantParamsSchema);
+export const validateBoardEventParams = lazyCompile(BoardEventParamsSchema);
 export const validateWorktreesCreateParams = lazyCompile(WorktreesCreateParamsSchema);
 export const validateWorktreesRemoveParams = lazyCompile(WorktreesRemoveParamsSchema);
 export const validateWorktreesRestoreParams = lazyCompile(WorktreesRestoreParamsSchema);
@@ -942,6 +960,8 @@ export {
   PresenceEntrySchema,
   SnapshotSchema,
   ErrorShapeSchema,
+  GatewayErrorDetailsSchema,
+  MissingScopeErrorDetailsSchema,
   WorkerAdmissionFailureReasonSchema,
   WorkerAdmissionHandshakeSchema,
   WorkerAdmissionResponseFrameSchema,
@@ -1402,7 +1422,10 @@ export {
   MIN_PROBE_PROTOCOL_VERSION,
   PROTOCOL_VERSION,
   ErrorCodes,
+  buildMissingScopeErrorDetails,
+  GatewayErrorDetailCodes,
   errorShape,
+  missingScopeErrorShape,
 };
 
 // Type exports mirror the schema exports for downstream TypeScript consumers.

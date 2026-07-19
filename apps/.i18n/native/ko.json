@@ -4154,6 +4154,11 @@
       "translated": "Talk Provider 설정"
     },
     {
+      "id": "native.android.23b638094c34b916",
+      "source": "Microphone",
+      "translated": "마이크"
+    },
+    {
       "id": "native.android.98a8bbb2b1f382e6",
       "source": "Audio Test",
       "translated": "오디오 테스트"
@@ -4197,6 +4202,66 @@
       "id": "native.android.05bd460309ac6db6",
       "source": "Done",
       "translated": "완료"
+    },
+    {
+      "id": "native.android.8d9ecdfdd916b780",
+      "source": "Automatic",
+      "translated": "자동"
+    },
+    {
+      "id": "native.android.c1626a6700a570f6",
+      "source": "Preferred microphone unavailable; using automatic routing.",
+      "translated": "선호하는 마이크를 사용할 수 없어 자동 라우팅을 사용합니다."
+    },
+    {
+      "id": "native.android.820bc5d0ce571d8b",
+      "source": "Prioritizes connected Bluetooth microphones.",
+      "translated": "연결된 Bluetooth 마이크를 우선 사용합니다."
+    },
+    {
+      "id": "native.android.11e48038d5e8bff6",
+      "source": "Preferred microphone",
+      "translated": "선호하는 마이크"
+    },
+    {
+      "id": "native.android.eaa4d7563a46d307",
+      "source": "Unavailable",
+      "translated": "사용할 수 없음"
+    },
+    {
+      "id": "native.android.9f5ebf17eb405ba8",
+      "source": "Next session",
+      "translated": "다음 세션"
+    },
+    {
+      "id": "native.android.8c4e91f53928efb2",
+      "source": "Built-in microphone",
+      "translated": "내장 마이크"
+    },
+    {
+      "id": "native.android.14b613cb6e2446b4",
+      "source": "Bluetooth microphone",
+      "translated": "Bluetooth 마이크"
+    },
+    {
+      "id": "native.android.c885247b2d7ce271",
+      "source": "Bluetooth LE microphone",
+      "translated": "Bluetooth LE 마이크"
+    },
+    {
+      "id": "native.android.b6a4e674c5fb441a",
+      "source": "Wired headset microphone",
+      "translated": "유선 헤드셋 마이크"
+    },
+    {
+      "id": "native.android.9c8becb3b0fb5a90",
+      "source": "USB microphone",
+      "translated": "USB 마이크"
+    },
+    {
+      "id": "native.android.ba46258fadec7a39",
+      "source": "External microphone",
+      "translated": "외부 마이크"
     },
     {
       "id": "native.android.60cf67eb5ec46ea0",
@@ -6719,6 +6784,16 @@
       "translated": "음소거 해제"
     },
     {
+      "id": "native.android.cb608d82c5b3352a",
+      "source": "Back camera",
+      "translated": "후면 카메라"
+    },
+    {
+      "id": "native.android.e89a0e780eed2e1e",
+      "source": "Front camera",
+      "translated": "전면 카메라"
+    },
+    {
       "id": "native.android.d7ffaa41c514ba38",
       "source": "End",
       "translated": "종료"
@@ -7154,6 +7229,36 @@
       "translated": "음성 인식"
     },
     {
+      "id": "native.android.5bbcfd75bf605de8",
+      "source": "Could not copy widget image",
+      "translated": "위젯 이미지를 복사할 수 없습니다"
+    },
+    {
+      "id": "native.android.43d98caa4a9fa44c",
+      "source": "Could not save widget image",
+      "translated": "위젯 이미지를 저장할 수 없습니다"
+    },
+    {
+      "id": "native.android.88e52d3ea4d2059a",
+      "source": "Widget image copied",
+      "translated": "위젯 이미지가 복사되었습니다"
+    },
+    {
+      "id": "native.android.04b164bc44c08e38",
+      "source": "Widget image saved to Downloads",
+      "translated": "위젯 이미지가 다운로드에 저장되었습니다"
+    },
+    {
+      "id": "native.android.a29e724e9e3b5cc9",
+      "source": "Copy image",
+      "translated": "이미지 복사"
+    },
+    {
+      "id": "native.android.6b45a391b1289aa5",
+      "source": "Save image",
+      "translated": "이미지 저장"
+    },
+    {
       "id": "native.android.d1712183ebf86197",
       "source": "Widget unavailable",
       "translated": "위젯을 사용할 수 없음"
@@ -7389,9 +7494,34 @@
       "translated": "기타 답변"
     },
     {
+      "id": "native.android.de591e6e2e440ecb",
+      "source": "Skip",
+      "translated": "건너뛰기"
+    },
+    {
+      "id": "native.android.92dfa7979d04989c",
+      "source": "Submitting…",
+      "translated": "제출 중…"
+    },
+    {
       "id": "native.android.fa81739f52e7697f",
       "source": "Submit",
       "translated": "제출"
+    },
+    {
+      "id": "native.android.7da074848cacfe4b",
+      "source": "Skipped",
+      "translated": "건너뜀"
+    },
+    {
+      "id": "native.android.1a0e6b33059a63aa",
+      "source": "Expired",
+      "translated": "만료됨"
+    },
+    {
+      "id": "native.android.86c8d6113d07ef82",
+      "source": "Unavailable",
+      "translated": "사용할 수 없음"
     },
     {
       "id": "native.android.f68cd7a84be4089e",
@@ -7402,36 +7532,6 @@
       "id": "native.android.a0dc883947c2f980",
       "source": "Answered elsewhere",
       "translated": "다른 곳에서 응답 완료"
-    },
-    {
-      "id": "native.android.1a0e6b33059a63aa",
-      "source": "Expired",
-      "translated": "만료됨"
-    },
-    {
-      "id": "native.android.d6d8fc83cec68418",
-      "source": "Cancelled",
-      "translated": "취소됨"
-    },
-    {
-      "id": "native.android.73f64d0d54b7f9c0",
-      "source": "Pending",
-      "translated": "대기 중"
-    },
-    {
-      "id": "native.android.92dfa7979d04989c",
-      "source": "Submitting…",
-      "translated": "제출 중…"
-    },
-    {
-      "id": "native.android.c5e9ee99f9d9c612",
-      "source": "Expires in ${seconds / 60}m ${seconds % 60}s",
-      "translated": "${seconds / 60}분 ${seconds % 60}초 후 만료"
-    },
-    {
-      "id": "native.android.2ca602fbdf96f1e7",
-      "source": "Expires in ${seconds}s",
-      "translated": "${seconds}초 후 만료"
     },
     {
       "id": "native.android.118e8d239b18895e",
@@ -21124,6 +21224,41 @@
       "translated": "계속"
     },
     {
+      "id": "native.apple.237f02309f0b9aeb",
+      "source": "Microphone and speech recognition permission required.",
+      "translated": "마이크 및 음성 인식 권한이 필요합니다."
+    },
+    {
+      "id": "native.apple.6f2679049010dae7",
+      "source": "Dictation stopped because speech recognition failed.",
+      "translated": "음성 인식에 실패하여 받아쓰기가 중지되었습니다."
+    },
+    {
+      "id": "native.apple.fd0469907ed8a50c",
+      "source": "Couldn't start dictation.",
+      "translated": "받아쓰기를 시작할 수 없습니다."
+    },
+    {
+      "id": "native.apple.ec789bf13bcffb61",
+      "source": "No app is available to paste into.",
+      "translated": "붙여넣을 수 있는 앱이 없습니다."
+    },
+    {
+      "id": "native.apple.bd2b8e99eee923b4",
+      "source": "Choose another app before pasting.",
+      "translated": "붙여넣기 전에 다른 앱을 선택하세요."
+    },
+    {
+      "id": "native.apple.f7aeeb401f9a4cd1",
+      "source": "Accessibility permission is required to paste.",
+      "translated": "붙여넣으려면 손쉬운 사용 권한이 필요합니다."
+    },
+    {
+      "id": "native.apple.14e9c9f41a9523c0",
+      "source": "Couldn't paste the reply.",
+      "translated": "답변을 붙여넣을 수 없습니다."
+    },
+    {
       "id": "native.apple.0a4fcdf09c5e7b3f",
       "source": "Capture Window…",
       "translated": "윈도우 캡처…"
@@ -21219,6 +21354,51 @@
       "translated": "\\(context.appName)의 컨텍스트 — \\(context.windowTitle)"
     },
     {
+      "id": "native.apple.d82159d749697338",
+      "source": "Auto",
+      "translated": "자동"
+    },
+    {
+      "id": "native.apple.4e02ff977e48dfcb",
+      "source": "\\(model) · \\(thinking)",
+      "translated": "\\(model) · \\(thinking)"
+    },
+    {
+      "id": "native.apple.07bd035ae7e799c5",
+      "source": "Selected reasoning is unavailable for this target.",
+      "translated": "선택한 추론은 이 대상에서 사용할 수 없습니다."
+    },
+    {
+      "id": "native.apple.2eb721ed8bffe9aa",
+      "source": "Couldn't load model settings.",
+      "translated": "모델 설정을 불러올 수 없습니다."
+    },
+    {
+      "id": "native.apple.ef6f4c54f9cfac08",
+      "source": "Couldn't change the model.",
+      "translated": "모델을 변경할 수 없습니다."
+    },
+    {
+      "id": "native.apple.82b81bd0670b0cef",
+      "source": "Model",
+      "translated": "모델"
+    },
+    {
+      "id": "native.apple.2eb4c724364c7583",
+      "source": "Session default",
+      "translated": "세션 기본값"
+    },
+    {
+      "id": "native.apple.9f1c4db792611774",
+      "source": "Reasoning",
+      "translated": "추론"
+    },
+    {
+      "id": "native.apple.25a01f61b4e33ece",
+      "source": "Auto",
+      "translated": "자동"
+    },
+    {
       "id": "native.apple.b5524e37a230e571",
       "source": "New message to \\(agentName)",
       "translated": "\\(agentName)에게 보내는 새 메시지"
@@ -21254,6 +21434,16 @@
       "translated": "메시지 보내기"
     },
     {
+      "id": "native.apple.b520a305b56a6387",
+      "source": "Choose model and reasoning",
+      "translated": "모델 및 추론 선택"
+    },
+    {
+      "id": "native.apple.1dd50e6126da7179",
+      "source": "Model and reasoning",
+      "translated": "모델 및 추론"
+    },
+    {
       "id": "native.apple.024725d220e79697",
       "source": "Needs additional permissions",
       "translated": "추가 권한이 필요합니다"
@@ -21277,6 +21467,21 @@
       "id": "native.apple.66ec93e9eefd9bd7",
       "source": "Remove attached text context",
       "translated": "첨부된 텍스트 컨텍스트 제거"
+    },
+    {
+      "id": "native.apple.00b46fe92d9bb1d4",
+      "source": "Paste to \\(self.model.frontmostAppName)",
+      "translated": "\\(self.model.frontmostAppName)에 붙여넣기"
+    },
+    {
+      "id": "native.apple.d2aa2e60ec2f62d8",
+      "source": "Stop dictation",
+      "translated": "받아쓰기 중지"
+    },
+    {
+      "id": "native.apple.8c4a27a4361d0572",
+      "source": "Start dictation",
+      "translated": "받아쓰기 시작"
     },
     {
       "id": "native.apple.88d0123c86b06144",
@@ -23039,6 +23244,41 @@
       "translated": "계획 펼치기"
     },
     {
+      "id": "native.apple.ce899320a84d4086",
+      "source": "Answered",
+      "translated": "응답 완료"
+    },
+    {
+      "id": "native.apple.f019b6a07d5a33d8",
+      "source": "Answered elsewhere",
+      "translated": "다른 곳에서 응답 완료"
+    },
+    {
+      "id": "native.apple.ebdedeffad570c43",
+      "source": "Skipped",
+      "translated": "건너뜀"
+    },
+    {
+      "id": "native.apple.8dde2eaaf6b0dfa9",
+      "source": "Expired",
+      "translated": "만료됨"
+    },
+    {
+      "id": "native.apple.6dff9e9194347f3b",
+      "source": "Unavailable",
+      "translated": "사용할 수 없음"
+    },
+    {
+      "id": "native.apple.b34cd890366824f0",
+      "source": "Pending",
+      "translated": "대기 중"
+    },
+    {
+      "id": "native.apple.b97da55b7e16e60c",
+      "source": "Question summary",
+      "translated": "질문 요약"
+    },
+    {
       "id": "native.apple.da4494f9e875169d",
       "source": "Other answer",
       "translated": "기타 답변"
@@ -23054,9 +23294,14 @@
       "translated": "선택됨"
     },
     {
-      "id": "native.apple.e3095b651fc46b52",
-      "source": "Submit",
-      "translated": "제출"
+      "id": "native.apple.1bbbbfd1ad3842ce",
+      "source": "Skipping…",
+      "translated": "건너뛰는 중…"
+    },
+    {
+      "id": "native.apple.14a4bf7b6b7d40dc",
+      "source": "Skip",
+      "translated": "건너뛰기"
     },
     {
       "id": "native.apple.6c1adc16e0a846e5",
@@ -23064,14 +23309,9 @@
       "translated": "제출 중…"
     },
     {
-      "id": "native.apple.698bdb0d6537edb6",
-      "source": "Expires in \\(seconds / 60)m \\(seconds % 60)s",
-      "translated": "\\(seconds / 60)분 \\(seconds % 60)초 후 만료"
-    },
-    {
-      "id": "native.apple.30e1c342b3345290",
-      "source": "Expires in \\(seconds)s",
-      "translated": "\\(seconds)초 후 만료"
+      "id": "native.apple.e3095b651fc46b52",
+      "source": "Submit",
+      "translated": "제출"
     },
     {
       "id": "native.apple.7cd6fb01b9f5d14a",
@@ -23759,6 +23999,16 @@
       "translated": "전체 메시지 열기"
     },
     {
+      "id": "native.apple.002bfcede229ad4b",
+      "source": "Rewind to Here",
+      "translated": "여기까지 되돌리기"
+    },
+    {
+      "id": "native.apple.14df2e4997689fb3",
+      "source": "Fork from Here",
+      "translated": "여기에서 분기하기"
+    },
+    {
       "id": "native.apple.b37ec7bd7dc1579a",
       "source": "Reply",
       "translated": "답장"
@@ -24122,6 +24372,11 @@
       "id": "native.apple.4185df7a940f09ef",
       "source": "Finish dictation",
       "translated": "받아쓰기 종료"
+    },
+    {
+      "id": "native.apple.95eeae0399fbc990",
+      "source": "Cancel",
+      "translated": "취소"
     },
     {
       "id": "native.apple.5a0793d2827b9399",
