@@ -16304,6 +16304,11 @@
       "translated": "OpenClaw är inte tillgängligt"
     },
     {
+      "id": "native.apple.f4adf2762402e92a",
+      "source": "Confirmation needed",
+      "translated": "Bekräftelse krävs"
+    },
+    {
       "id": "native.apple.f703391677039fa3",
       "source": "iOS Speech + TTS",
       "translated": "iOS-tal + TTS"
@@ -23472,6 +23477,16 @@
       "id": "native.apple.9a6e8afbe24a262b",
       "source": "The widget image could not be saved.",
       "translated": "Det gick inte att spara widgetbilden."
+    },
+    {
+      "id": "native.apple.bf5924f1129e06d3",
+      "source": "List item",
+      "translated": "Listobjekt"
+    },
+    {
+      "id": "native.apple.2a03f71557a5b659",
+      "source": "Item",
+      "translated": "Objekt"
     },
     {
       "id": "native.apple.769b7dcea4708c40",

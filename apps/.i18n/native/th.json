@@ -16304,6 +16304,11 @@
       "translated": "OpenClaw ไม่พร้อมใช้งาน"
     },
     {
+      "id": "native.apple.f4adf2762402e92a",
+      "source": "Confirmation needed",
+      "translated": "ต้องการการยืนยัน"
+    },
+    {
       "id": "native.apple.f703391677039fa3",
       "source": "iOS Speech + TTS",
       "translated": "เสียงพูด iOS + TTS"
@@ -23472,6 +23477,16 @@
       "id": "native.apple.9a6e8afbe24a262b",
       "source": "The widget image could not be saved.",
       "translated": "ไม่สามารถบันทึกรูปภาพวิดเจ็ตได้"
+    },
+    {
+      "id": "native.apple.bf5924f1129e06d3",
+      "source": "List item",
+      "translated": "รายการในลิสต์"
+    },
+    {
+      "id": "native.apple.2a03f71557a5b659",
+      "source": "Item",
+      "translated": "รายการ"
     },
     {
       "id": "native.apple.769b7dcea4708c40",
