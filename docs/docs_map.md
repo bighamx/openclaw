@@ -319,6 +319,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H3: JSON5 reference
   - H3: Account config keys
   - H2: Multiple bots
+  - H2: Session discussions
   - H2: Reply modes
   - H2: Command menu
   - H2: Durable media delivery
@@ -10434,6 +10435,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H3: Loop on a decision gate
   - H3: Process the first child that finishes
   - H2: How collector children behave
+  - H3: Children are leaves
   - H2: Observe a Swarm
   - H2: Use Swarm from other harnesses
   - H2: Limits and roadmap

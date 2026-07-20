@@ -2308,6 +2308,7 @@ export async function startGatewayServer(
         ? (startupLastGoodSnapshot.hash ?? null)
         : null,
       initialAuthoredConfig: startupLastGoodSnapshot.parsed,
+      initialIncludedPaths: startupLastGoodSnapshot.includedPaths ?? [],
       initialSnapshotValid: startupLastGoodSnapshot.valid,
       initialSnapshotIssues: startupLastGoodSnapshot.issues,
       initialInternalWriteHash: startupInternalWriteHash,

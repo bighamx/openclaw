@@ -1907,6 +1907,8 @@ export const en: TranslationMap = {
     earlier: "Earlier",
     requestFailed: "OpenClaw could not reply. Try again.",
     connectionChanged: "The Gateway connection changed. Retry to continue this setup.",
+    sessionRestarted:
+      "{error} OpenClaw started a fresh session; earlier messages remain for context.",
     unsupportedGateway: "Update the Gateway to continue setup with OpenClaw.",
     history: {
       button: "History",
@@ -2128,6 +2130,7 @@ export const en: TranslationMap = {
       title: "Swarm",
       description: "Let Code Mode orchestrate groups of subagents in parallel.",
       empty: "No active swarms.",
+      defaultPhase: "Unphased",
     },
   },
   aboutPage: {
@@ -2610,7 +2613,12 @@ export const en: TranslationMap = {
       reject: "Reject",
       rejected: "Access rejected",
       rejectedDetail: "This widget stays inactive until it is removed or replaced.",
+      appLoading: "Restoring app…",
+      appStaleTitle: "This pinned app is stale",
+      appStaleDetail: "Its server, resource, or originating transcript is no longer available.",
+      retry: "Retry",
       frameResolverMissing: "Widget content is unavailable.",
+      frameAuthorizationFailed: "Widget authorization failed after repeated refresh attempts.",
       errorTitle: "This widget could not load",
       errorDetail: "The problem is contained to this card.",
       actionErrorTitle: "Widget change failed",
@@ -3604,6 +3612,7 @@ export const en: TranslationMap = {
   },
   chat: {
     disconnected: "Disconnected from gateway.",
+    waitingForApproval: "Waiting for approval…",
     archivedSessionDisabled: "Restore this thread to send messages.",
     loadOlder: "Load older",
     sessionHeader: {
@@ -3637,6 +3646,7 @@ export const en: TranslationMap = {
       dockHidden: "Hide chat",
       resizeDock: "Resize chat dock",
       reopenChat: "Show chat",
+      defaultTab: "Main",
       mockPlaceholder: "Board view seam · {tabs} tabs · {widgets} widgets",
       mockOverview: "Overview",
       mockResearch: "Research",
@@ -4039,6 +4049,9 @@ export const en: TranslationMap = {
       downloadFile: "Download file",
       widgetExportRerender: "This widget needs to be re-rendered to export as an image.",
       widgetExportFailed: "Widget export failed. Try again.",
+      pinToDashboard: "Pin to dashboard",
+      pinToDashboardPending: "Pinning…",
+      pinnedToDashboard: "Pinned",
       fileChanges: "File changes",
       attemptedChanges: "Attempted changes",
       failed: "failed",
