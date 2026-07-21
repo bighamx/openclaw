@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import qrcode from "qrcode";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
+import type { UserProfile } from "../packages/gateway-protocol/src/index.js";
 import { expectDefined } from "../packages/normalization-core/src/expect.js";
 import { CONTROL_UI_BOOTSTRAP_CONFIG_PATH } from "../src/gateway/control-ui-contract.js";
 import {
@@ -779,6 +780,16 @@ function searchPrefixes(term: string): string[] {
 
 async function createChatPickerScenario(): Promise<ControlUiMockGatewayScenario> {
   const baseTime = Date.parse("2026-05-22T09:00:00.000Z");
+  const selfProfile: UserProfile = {
+    id: "presence-riley",
+    displayName: "Riley",
+    avatarMime: null,
+    mergedInto: null,
+    createdAt: baseTime,
+    updatedAt: baseTime,
+    emails: ["riley@example.com"],
+    hasAvatar: false,
+  };
   const devicePairSetupCode = Buffer.from(
     JSON.stringify({
       url: "wss://gateway.example.test",
@@ -1140,12 +1151,18 @@ async function createChatPickerScenario(): Promise<ControlUiMockGatewayScenario>
     // Lights up the footer facepile and who's-online roster; the email-only
     // entry keeps the roster's no-display-name row exercised.
     presenceUsers: [
-      { self: true, id: "presence-riley", name: "Riley", email: "riley@example.com" },
+      {
+        self: true,
+        id: selfProfile.id,
+        name: selfProfile.displayName ?? undefined,
+        email: selfProfile.emails[0],
+      },
       { id: "presence-colin", name: "Colin", email: "colin@example.com" },
       { id: "presence-patricia", email: "patricia.erichsen@example.com" },
     ],
     methodResponses: {
       ...buildBackgroundTasksMock(baseTime),
+      "users.self": { profile: selfProfile },
       "system.info": {
         machineName: "Peters-Mac-Studio",
         hostname: "peters-mac-studio.local",
@@ -1459,14 +1476,22 @@ async function createChatPickerScenario(): Promise<ControlUiMockGatewayScenario>
             nodeId: "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff",
             displayName: "iPhone",
             platform: "iOS 26.4",
+            deviceFamily: "iPhone",
+            modelIdentifier: "iPhone17,2",
+            remoteIp: "192.168.1.30",
             version: "2026.6.11",
-            connected: false,
+            connected: true,
             paired: true,
-            approvalState: "pending-reapproval",
-            pendingRequestId: "mock-node-reapproval",
+            approvalState: "approved",
             lastSeenAtMs: baseTime - 3_600_000,
             caps: ["camera", "canvas", "contacts", "device", "location"],
-            commands: ["camera.list", "contacts.search", "device.info", "location.get"],
+            commands: [
+              "camera.list",
+              "contacts.search",
+              "device.info",
+              "location.get",
+              "system.run",
+            ],
           },
         ],
       },
