@@ -229,6 +229,13 @@ public enum QuestionStatus: String, Codable, Sendable {
     case expired = "expired"
 }
 
+public enum ChatRunStartupPhase: String, Codable, Sendable {
+    case preparingWorkspace = "preparing_workspace"
+    case provisioningEnvironment = "provisioning_environment"
+    case preparingContext = "preparing_context"
+    case startingModel = "starting_model"
+}
+
 public struct BoardTab: Codable, Sendable {
     public let tabid: String
     public let title: String
@@ -3954,7 +3961,7 @@ public struct SessionsListParams: Codable, Sendable {
     public let spawnedby: String?
     public let agentid: String?
     public let search: String?
-    public let archived: Bool?
+    public let archived: AnyCodable?
 
     public init(
         limit: Int? = nil,
@@ -3971,7 +3978,7 @@ public struct SessionsListParams: Codable, Sendable {
         spawnedby: String? = nil,
         agentid: String? = nil,
         search: String? = nil,
-        archived: Bool? = nil)
+        archived: AnyCodable? = nil)
     {
         self.limit = limit
         self.offset = offset
@@ -4814,6 +4821,42 @@ public struct SessionObserverDigest: Codable, Sendable {
         case assessment
         case health
         case planprogress = "planProgress"
+    }
+}
+
+public struct SessionsObserverAskParams: Codable, Sendable {
+    public let sessionkey: String
+    public let question: String
+
+    public init(
+        sessionkey: String,
+        question: String)
+    {
+        self.sessionkey = sessionkey
+        self.question = question
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionkey = "sessionKey"
+        case question
+    }
+}
+
+public struct SessionsObserverAskResult: Codable, Sendable {
+    public let answer: String
+    public let digestrevision: Int?
+
+    public init(
+        answer: String,
+        digestrevision: Int? = nil)
+    {
+        self.answer = answer
+        self.digestrevision = digestrevision
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case answer
+        case digestrevision = "digestRevision"
     }
 }
 
@@ -6287,6 +6330,7 @@ public struct SessionsCreateParams: Codable, Sendable {
     public let thinkinglevel: String?
     public let catalogid: String?
     public let parentsessionkey: String?
+    public let spawndepth: Int?
     public let fork: Bool?
     public let emitcommandhooks: Bool?
     public let succeedsparent: Bool?
@@ -6307,6 +6351,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         thinkinglevel: String? = nil,
         catalogid: String? = nil,
         parentsessionkey: String? = nil,
+        spawndepth: Int? = nil,
         fork: Bool? = nil,
         emitcommandhooks: Bool? = nil,
         succeedsparent: Bool? = nil,
@@ -6326,6 +6371,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         self.thinkinglevel = thinkinglevel
         self.catalogid = catalogid
         self.parentsessionkey = parentsessionkey
+        self.spawndepth = spawndepth
         self.fork = fork
         self.emitcommandhooks = emitcommandhooks
         self.succeedsparent = succeedsparent
@@ -6347,6 +6393,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         case thinkinglevel = "thinkingLevel"
         case catalogid = "catalogId"
         case parentsessionkey = "parentSessionKey"
+        case spawndepth = "spawnDepth"
         case fork
         case emitcommandhooks = "emitCommandHooks"
         case succeedsparent = "succeedsParent"
@@ -15738,6 +15785,44 @@ public struct ChatInjectParams: Codable, Sendable {
     }
 }
 
+public struct ChatStatusEvent: Codable, Sendable {
+    public let runid: String
+    public let sessionkey: String
+    public let agentid: String?
+    public let spawnedby: String?
+    public let seq: Int
+    public let state: String
+    public let phase: ChatRunStartupPhase
+
+    public init(
+        runid: String,
+        sessionkey: String,
+        agentid: String? = nil,
+        spawnedby: String? = nil,
+        seq: Int,
+        state: String,
+        phase: ChatRunStartupPhase)
+    {
+        self.runid = runid
+        self.sessionkey = sessionkey
+        self.agentid = agentid
+        self.spawnedby = spawnedby
+        self.seq = seq
+        self.state = state
+        self.phase = phase
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case runid = "runId"
+        case sessionkey = "sessionKey"
+        case agentid = "agentId"
+        case spawnedby = "spawnedBy"
+        case seq
+        case state
+        case phase
+    }
+}
+
 public struct ChatDeltaEvent: Codable, Sendable {
     public let runid: String
     public let sessionkey: String
@@ -16612,6 +16697,7 @@ public enum PluginsSessionActionResult: Codable, Sendable {
 }
 
 public enum ChatEvent: Codable, Sendable {
+    case status(ChatStatusEvent)
     case delta(ChatDeltaEvent)
     case final(ChatFinalEvent)
     case aborted(ChatAbortedEvent)
@@ -16625,6 +16711,7 @@ public enum ChatEvent: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let discriminator = try container.decode(String.self, forKey: .discriminator)
         switch discriminator {
+        case "status": self = try .status(ChatStatusEvent(from: decoder))
         case "delta": self = try .delta(ChatDeltaEvent(from: decoder))
         case "final": self = try .final(ChatFinalEvent(from: decoder))
         case "aborted": self = try .aborted(ChatAbortedEvent(from: decoder))
@@ -16640,6 +16727,7 @@ public enum ChatEvent: Codable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
+        case .status(let value): try value.encode(to: encoder)
         case .delta(let value): try value.encode(to: encoder)
         case .final(let value): try value.encode(to: encoder)
         case .aborted(let value): try value.encode(to: encoder)

@@ -15,6 +15,8 @@ import {
   validateNodePluginToolsUpdateParams,
   validateNodeSkillsUpdateParams,
   validateNodePresenceActivityPayload,
+  validateSessionsListParams,
+  validateSessionsObserverAskParams,
   validateSessionsSearchParams,
   validateSessionsUsageParams,
   validateTasksCancelParams,
@@ -62,6 +64,14 @@ describe("lazy protocol validators", () => {
     expect(validateCommandsListParams({ includeArgs: true })).toBe(true);
     expect(validateCommandsListParams({ includeArgs: "yes" })).toBe(false);
     expect(formatValidationErrors(validateCommandsListParams.errors)).toContain("must be boolean");
+  });
+
+  it("accepts every sessions.list archive filter mode", () => {
+    expect(validateSessionsListParams({})).toBe(true);
+    expect(validateSessionsListParams({ archived: false })).toBe(true);
+    expect(validateSessionsListParams({ archived: true })).toBe(true);
+    expect(validateSessionsListParams({ archived: "all" })).toBe(true);
+    expect(validateSessionsListParams({ archived: "archived" })).toBe(false);
   });
 
   it("keeps validation errors readable on the exported validator", () => {
@@ -262,6 +272,24 @@ describe("lazy protocol validators", () => {
     expect(validateSessionsSearchParams({ query: "deployment failure", limit: 26 })).toBe(false);
     expect(validateSessionsSearchParams({ query: "" })).toBe(false);
     expect(validateSessionsSearchParams({ query: "x".repeat(4097) })).toBe(false);
+  });
+
+  it("validates bounded session observer questions", () => {
+    expect(
+      validateSessionsObserverAskParams({
+        sessionKey: "agent:main:current",
+        question: "Why is it rerunning that test?",
+      }),
+    ).toBe(true);
+    expect(
+      validateSessionsObserverAskParams({ sessionKey: "agent:main:current", question: "" }),
+    ).toBe(false);
+    expect(
+      validateSessionsObserverAskParams({
+        sessionKey: "agent:main:current",
+        question: "x".repeat(401),
+      }),
+    ).toBe(false);
   });
 
   it("validates chat sends that suppress command interpretation", () => {

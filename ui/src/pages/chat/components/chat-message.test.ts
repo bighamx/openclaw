@@ -1553,12 +1553,49 @@ describe("grouped chat rendering", () => {
     expect(container.querySelector(".chat-group-footer")).toBeNull();
   });
 
+  it("renders the active startup phase with elapsed time", () => {
+    const container = document.createElement("div");
+
+    render(
+      renderStreamGroup([{ kind: "reading-indicator", key: "reading", startedAt: 1_000 }], {
+        startupPhase: "provisioning_environment",
+      }),
+      container,
+    );
+
+    expect(container.querySelector(".chat-working-indicator__status")?.textContent).toContain(
+      "Provisioning environment…",
+    );
+    expect(container.querySelector(".chat-working-indicator__elapsed")).not.toBeNull();
+    expect(
+      container.querySelector(".chat-working-indicator__status > .agent-chat__sr-only"),
+    ).toBeNull();
+  });
+
+  it("shows live output usage beside elapsed time", () => {
+    const container = document.createElement("div");
+
+    render(
+      renderStreamGroup([{ kind: "reading-indicator", key: "reading", startedAt: 1_000 }], {
+        runOutputTokens: 5_500,
+      }),
+      container,
+    );
+
+    expect(container.querySelector(".chat-working-indicator__elapsed")).not.toBeNull();
+    expect(container.querySelector(".chat-working-indicator__tokens")?.textContent?.trim()).toBe(
+      "5.5k output tokens",
+    );
+  });
+
   it("relabels the working indicator while the run waits for approval", () => {
     const container = document.createElement("div");
 
     render(
       renderStreamGroup([{ kind: "reading-indicator", key: "reading", startedAt: 1_000 }], {
+        startupPhase: "starting_model",
         waitingApproval: true,
+        runOutputTokens: 5_500,
       }),
       container,
     );
@@ -1567,6 +1604,7 @@ describe("grouped chat rendering", () => {
       "Waiting for approval…",
     );
     expect(container.querySelector(".chat-working-indicator__elapsed")).toBeNull();
+    expect(container.querySelector(".chat-working-indicator__tokens")).toBeNull();
   });
 
   it("renders the active plan card inside the working stream group", () => {
@@ -1636,6 +1674,9 @@ describe("grouped chat rendering", () => {
         "chat-reading-indicator--spin",
         "chat-reading-indicator--shadowbox",
         "chat-reading-indicator--backflip",
+        "chat-reading-indicator--zen",
+        "chat-reading-indicator--drummer",
+        "chat-reading-indicator--peekaboo",
       ]).toContain(cls);
     }
   });

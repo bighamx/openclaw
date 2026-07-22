@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { RouteLoaderOptions } from "@openclaw/uirouter";
 import { describe, expect, it, vi } from "vitest";
 import type { GatewayBrowserClient } from "../api/gateway.ts";
@@ -132,7 +133,7 @@ describe("route preload gateway provenance", () => {
       search: undefined,
       includeGlobal: true,
       includeUnknown: false,
-      showArchived: false,
+      archivedFilter: "active",
     });
     expect(list.mock.calls[0]?.[0]).not.toHaveProperty("activeMinutes");
   });

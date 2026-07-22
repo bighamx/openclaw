@@ -220,7 +220,7 @@ export type ChatPageHost = ChatHost &
     sessionsResult: SessionsListResult | null;
     sessionsResultAgentId: string | null;
     sessionsError: string | null;
-    sessionsShowArchived: boolean;
+    sessionsArchivedFilter: "active" | "archived" | "all";
     selectedChatSessionArchived: boolean;
     agentsList: AgentsListResult | null;
     agentsSelectedId: string | null;
@@ -536,6 +536,7 @@ export function resetChatStateForRouteSession(
   state.chatEffectiveQueueMode = undefined;
   state.chatStream = null;
   state.observerDigest = null;
+  state.chatRunUsageById = new Map();
   state.chatSending = false;
   state.chatSendingScopeKey = null;
   state.chatSideChatTurns = [];
@@ -900,7 +901,7 @@ async function refreshChat(
     const reconciled = host.sessions.reconcile(history.sessionInfo, history.defaults, {
       resultAgentId: host.sessionsResultAgentId ?? refreshedAgentId,
       selectedGlobalAgentId: refreshedAgentId,
-      showArchived: host.sessionsShowArchived,
+      archivedFilter: host.sessionsArchivedFilter,
     });
     const sessionsResult = reconciled ? host.sessions.state.result : host.sessionsResult;
     if (reconciled) {
@@ -1049,7 +1050,7 @@ function reconcileSessionEvent(state: ChatPageHost, payload: unknown): SessionCh
   const reconciled = state.sessions.reconcileChanged(payload, {
     resultAgentId: state.sessionsResultAgentId ?? selectedAgentId,
     selectedGlobalAgentId: selectedAgentId,
-    showArchived: state.sessionsShowArchived,
+    archivedFilter: state.sessionsArchivedFilter,
   });
   if (reconciled.applied) {
     state.sessionsResult = state.sessions.state.result;
@@ -1269,8 +1270,10 @@ export function createPageState(
     chatEffectiveQueueMode: undefined,
     chatAttachments: [] as ChatAttachment[],
     chatRunId: null,
+    chatRunUsageById: new Map<string, number>(),
     chatStream: null,
     chatStreamStartedAt: null,
+    chatRunStartup: null,
     lastError: null,
     chatError: null,
     chatRunError: null,
@@ -1301,7 +1304,7 @@ export function createPageState(
     sessionsResultAgentId: null,
     sessionsLoading: false,
     sessionsError: null,
-    sessionsShowArchived: false,
+    sessionsArchivedFilter: "active",
     selectedChatSessionArchived: false,
     agentsList: context.agents.state.agentsList,
     agentsSelectedId: context.agentSelection.state.selectedId,
