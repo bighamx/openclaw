@@ -64,6 +64,7 @@ import {
 import "../../components/modal-dialog.ts";
 import { createDockPanelLayout } from "../../components/dock-panel-layout.ts";
 import { icons } from "../../components/icons.ts";
+import { listSessionCreators } from "../../components/session-owner-chip.ts";
 import { isCloudWorkerPlacementState } from "../../components/session-row-badges.ts";
 import { t } from "../../i18n/index.ts";
 import { resolveBoardChatLayoutWidth } from "../../lib/board/chat-layout.ts";
@@ -95,6 +96,7 @@ import {
   isGatewayMethodAdvertised,
 } from "../../lib/gateway-methods.ts";
 import {
+  ObserverDigestHistory,
   pickFreshestObserverDigest,
   resolveChatPaneObserverRunId,
 } from "../../lib/observer-digest.ts";
@@ -147,7 +149,7 @@ import {
   switchChatHistoryBranch,
   syncSelectedSessionMessageSubscription,
 } from "./chat-history.ts";
-import { requestSessionObserverAnswer } from "./chat-observer.ts";
+import { requestSessionObserverAnswer, sendSessionObserverVisibility } from "./chat-observer.ts";
 import {
   applySelectedSessionProjection,
   dismissChatError,
@@ -180,12 +182,8 @@ import {
   saveRouteSessionSettings,
   type ChatPageHost,
 } from "./chat-state.ts";
-import {
-  renderChat,
-  renderChatResizableDivider,
-  resetChatViewState,
-  type ChatProps,
-} from "./chat-view.ts";
+import { resetChatViewState } from "./chat-view-state.ts";
+import { renderChat, renderChatResizableDivider, type ChatProps } from "./chat-view.ts";
 import { renderCatalogTerminalButton } from "./components/catalog-terminal-button.ts";
 import { chatAttachmentFromDataUrl } from "./components/chat-attachments.ts";
 import {
@@ -195,6 +193,7 @@ import {
 } from "./components/chat-background-tasks.ts";
 import { isChatRunWorking } from "./components/chat-composer.ts";
 import { renderChatControls } from "./components/chat-controls.ts";
+import { dismissConfirmedActionPopovers } from "./components/chat-message.ts";
 import {
   canRevealSessionWorkspace,
   renderChatPaneHeader,
@@ -458,6 +457,13 @@ class ChatPane extends OpenClawLightDomElement {
     }
     return requestSessionObserverAnswer(state.client, sessionKey, question);
   };
+  private readonly setSessionObserverVisibility = (visible: boolean) => {
+    const state = this.state;
+    if (state?.connected && state.client) {
+      void sendSessionObserverVisibility(state.client, visible).catch(() => undefined);
+    }
+    this.requestUpdate();
+  };
   private resetConfirmation:
     | {
         sessionKey: string;
@@ -466,9 +472,10 @@ class ChatPane extends OpenClawLightDomElement {
       }
     | undefined;
   private readonly lastVisibleBoardDock = new Map<string, VisibleBoardDock>();
-  private swarmBoardSnapshot: BoardViewSnapshot | null = null;
-  private swarmBoardSnapshotBase: BoardSnapshot | null = null;
-  private swarmBoardSnapshotRequest = 0;
+  private readonly observerDigestHistory = new ObserverDigestHistory();
+  private builtinBoardSnapshot: BoardViewSnapshot | null = null;
+  private builtinBoardSnapshotBase: BoardSnapshot | null = null;
+  private builtinBoardSnapshotRequest = 0;
   private readonly sessionDiscussionStates = new Map<string, SessionDiscussionState>();
   private readonly sessionDiscussionOpenUrls = new Map<string, string | null>();
   private readonly sessionDiscussionProbes = new Set<string>();
@@ -498,7 +505,7 @@ class ChatPane extends OpenClawLightDomElement {
         () => this.resolveBoardProvider(),
         (provider, notify) =>
           provider.snapshot$.subscribe(() => {
-            this.refreshSwarmBoardSnapshot();
+            this.refreshBuiltinBoardSnapshot();
             notify();
           }),
       )
@@ -921,9 +928,10 @@ class ChatPane extends OpenClawLightDomElement {
     if (!state) {
       return;
     }
-    // Close old-session portals and listener-owning popovers before the next
-    // render detaches their DOM and makes owner-scoped cleanup impossible.
-    resetChatThreadPresentationState(this.paneId, this);
+    // Close old-session listener owners before the next render detaches their
+    // DOM; thread-global portals and caches are reset separately.
+    dismissConfirmedActionPopovers(this);
+    resetChatThreadPresentationState(this.paneId);
     this.sessionDiscussionOpenUrls.clear();
     const previousSessionKey = state.sessionKey;
     // An in-progress title edit belongs to the previous session; committing
@@ -1688,30 +1696,42 @@ class ChatPane extends OpenClawLightDomElement {
     return normalized === "main" ? buildAgentMainSessionKey({ agentId: "main" }) : normalized;
   }
 
-  private refreshSwarmBoardSnapshot(): void {
+  private refreshBuiltinBoardSnapshot(): void {
     const state = this.state;
     if (!state) {
       return;
     }
-    const request = ++this.swarmBoardSnapshotRequest;
+    const request = ++this.builtinBoardSnapshotRequest;
     const sessions = state.sessionsResult?.sessions ?? [];
-    void import("../../lib/board/swarm-dashboard.ts").then(({ withSwarmWidget }) => {
-      if (request !== this.swarmBoardSnapshotRequest) {
+    void import("../../lib/board/builtin-dashboard.ts").then(({ withBuiltinDashboardWidgets }) => {
+      if (request !== this.builtinBoardSnapshotRequest) {
         return;
       }
       const currentBase = this.resolveBoardProvider().snapshot$.value;
-      this.swarmBoardSnapshotBase = currentBase;
-      this.swarmBoardSnapshot = withSwarmWidget(currentBase, sessions);
+      const sessionKey = this.resolveBoardSessionKey(currentBase.sessionKey);
+      this.builtinBoardSnapshotBase = currentBase;
+      this.builtinBoardSnapshot = withBuiltinDashboardWidgets(
+        currentBase,
+        sessions,
+        this.observerDigestHistory.get(sessionKey),
+      );
       this.requestUpdate();
     });
+  }
+
+  private recordObserverDigest(digest: SessionObserverDigest): void {
+    const sessionKey = this.resolveBoardSessionKey(digest.sessionKey);
+    if (this.observerDigestHistory.record({ ...digest, sessionKey })) {
+      this.refreshBuiltinBoardSnapshot();
+    }
   }
 
   private resolveBoardView(): ResolvedBoardView {
     const provider = this.resolveBoardProvider();
     const baseSnapshot = provider.snapshot$.value;
     const snapshot: BoardViewSnapshot =
-      this.swarmBoardSnapshotBase === baseSnapshot
-        ? (this.swarmBoardSnapshot ?? baseSnapshot)
+      this.builtinBoardSnapshotBase === baseSnapshot
+        ? (this.builtinBoardSnapshot ?? baseSnapshot)
         : baseSnapshot;
     const hasBoard = snapshot.tabs.length > 0 || snapshot.widgets.length > 0;
     const sessionKey = this.resolveBoardSessionKey(snapshot.sessionKey);
@@ -2033,7 +2053,23 @@ class ChatPane extends OpenClawLightDomElement {
     state.lastError = null;
     state.chatError = null;
     if (preservesBoard) {
+      // Captured before the await: the reset can land and refresh session rows
+      // mid-flight, and invalidating the post-reset id would eat fresh digests.
+      const preResetSessionId = state.sessionsResult?.sessions.find((row) =>
+        areUiSessionKeysEquivalent(row.key, previousSessionKey),
+      )?.sessionId;
       const resetResult = await clearChatHistory(state);
+      if (resetResult !== "failed") {
+        // A reset reuses the session key; prior-run digests must not survive
+        // into the fresh conversation or keep injecting the observer card.
+        this.observerDigestHistory.markReset(
+          this.resolveBoardSessionKey(previousSessionKey),
+          preResetSessionId,
+        );
+        // Recompute rather than null: the builtin snapshot also carries the
+        // swarm card, which must survive an observer-only invalidation.
+        this.refreshBuiltinBoardSnapshot();
+      }
       return resetResult !== "failed";
     }
     const nextSessionKey = await sessions.create({
@@ -2327,6 +2363,9 @@ class ChatPane extends OpenClawLightDomElement {
           if (event.event === "task.suggestion" && event.payload) {
             this.handleTaskSuggestionEvent(event.payload as TaskSuggestionEvent);
           }
+          if (event.event === "session.observer" && event.payload) {
+            this.recordObserverDigest(event.payload as SessionObserverDigest);
+          }
           handlePageGatewayEvent(state, event);
         }
       }),
@@ -2398,10 +2437,17 @@ class ChatPane extends OpenClawLightDomElement {
         }
       });
     }
-    const projectedObserverDigest = this.state?.sessionsResult?.sessions.find((row) =>
+    const selectedSessionRow = this.state?.sessionsResult?.sessions.find((row) =>
       areUiSessionKeysEquivalent(row.key, this.state?.sessionKey ?? ""),
-    )?.observerDigest;
-    if (this.state?.observerDigest || projectedObserverDigest) {
+    );
+    // Active runs count even without a digest: a hidden observer generates
+    // none, and the HUD module owns the restore control for turning it back on.
+    const observerRunId = resolveChatPaneObserverRunId({
+      localRunId: this.state?.chatRunId ?? null,
+      session: selectedSessionRow,
+      digest: null,
+    });
+    if (this.state?.observerDigest || selectedSessionRow?.observerDigest || observerRunId) {
       this.ensureObserverHud();
     }
   }
@@ -2443,7 +2489,8 @@ class ChatPane extends OpenClawLightDomElement {
     this.headerWorktreePaths.clear();
     this.headerBranches.clear();
     this.announceCommandPaletteTarget(null);
-    resetChatViewState(this.paneId, this);
+    dismissConfirmedActionPopovers(this);
+    resetChatViewState(this.paneId);
     this.state = undefined;
     this.connectedClient = null;
     disposeQuestionPromptState(this.questionPromptState);
@@ -2473,7 +2520,14 @@ class ChatPane extends OpenClawLightDomElement {
     state.sessionsResultAgentId = stateValue.agentId;
     state.sessionsLoading = stateValue.loading;
     state.sessionsError = stateValue.error;
-    this.refreshSwarmBoardSnapshot();
+    for (const row of stateValue.result?.sessions ?? []) {
+      const sessionKey = this.resolveBoardSessionKey(row.key);
+      this.observerDigestHistory.sync(sessionKey, row.sessionId);
+      if (row.observerDigest) {
+        this.observerDigestHistory.hydrate(sessionKey, row.observerDigest, row.sessionId);
+      }
+    }
+    this.refreshBuiltinBoardSnapshot();
     const selectedSession = stateValue.result?.sessions.find((row) =>
       areUiSessionKeysEquivalent(row.key, state.sessionKey),
     );
@@ -3141,6 +3195,11 @@ class ChatPane extends OpenClawLightDomElement {
       mergedChrome: this.mergedChrome,
       title: this.paneTitle,
       session: row,
+      showOwnerChip:
+        (
+          this.state?.sessionsResult?.creators ??
+          listSessionCreators(this.state?.sessionsResult?.sessions ?? [])
+        ).length >= 2,
       catalog,
       editing: this.headerEditing && this.headerRenameSessionKey === row?.key,
       renameValue: this.headerRenameValue,
@@ -3346,6 +3405,9 @@ class ChatPane extends OpenClawLightDomElement {
       observerStartedAt: selectedSession?.startedAt ?? state.chatStreamStartedAt ?? undefined,
       observerLastReadAt: selectedSession?.lastReadAt,
       onObserverAsk: catalogKey ? undefined : this.askSessionObserver,
+      // Unconditional: catalog chats never render the HUD (observerHudReady is
+      // forced false), and a hide/show from any surface must reach the gateway.
+      onObserverVisibilityChange: this.setSessionObserverVisibility,
       gatewayQuestionPrompts: catalogKey ? [] : this.questionPrompts,
       onGatewayQuestionChange: () => {
         this.questionPrompts = [...this.questionPrompts];
@@ -3385,6 +3447,7 @@ class ChatPane extends OpenClawLightDomElement {
       realtimeTalkVideoPending: state.realtimeTalkVideoPending,
       realtimeTalkCameraError: state.realtimeTalkCameraError,
       connected: state.connected,
+      offline: gatewaySnapshot.offlineStable,
       gatewayClient: state.client,
       composerHoldToRecord: state.settings.composerHoldToRecord,
       canSend: catalogKey ? this.catalogSession?.canContinue === true : !selectedSessionArchived,
@@ -3633,6 +3696,10 @@ class ChatPane extends OpenClawLightDomElement {
         }
         state.handleCloseSidebar();
       },
+      imageLightbox: state.imageLightbox,
+      onRequestOpenImage: state.beginImageOpen,
+      onOpenImage: state.handleOpenImage,
+      onCloseImage: state.handleCloseImage,
       onSplitRatioChange: state.handleSplitRatioChange,
       assistantName: state.assistantName,
       assistantAvatar: state.assistantAvatar,
@@ -3654,6 +3721,13 @@ class ChatPane extends OpenClawLightDomElement {
         ? renderBoardSessionSurface({
             snapshot: board.snapshot,
             sessions: state.sessionsResult?.sessions ?? [],
+            observer: {
+              activeRunId: observerRunId,
+              digests: this.observerDigestHistory.get(
+                this.resolveBoardSessionKey(board.snapshot.sessionKey),
+              ),
+              lastReadAt: selectedSession?.lastReadAt,
+            },
             activeTabId: board.activeTabId,
             dock: board.dock,
             reopenDock: board.reopenDock,
