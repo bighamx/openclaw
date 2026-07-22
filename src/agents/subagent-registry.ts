@@ -9,6 +9,7 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { ResolveContextEngineOptions } from "../context-engine/registry.js";
 import type { ContextEngine, SubagentEndReason } from "../context-engine/types.js";
 import { callGateway } from "../gateway/call.js";
+import { ADMIN_SCOPE } from "../gateway/method-scopes.js";
 import type { GatewayRecoveryRuntime } from "../gateway/server-instance-runtime.types.js";
 import { getGatewayRecoveryRuntime } from "../gateway/server-recovery-runtime-context.js";
 import { getAgentRunContext, onAgentEvent } from "../infra/agent-events.js";
@@ -50,6 +51,7 @@ import {
   getDeliveryLastError,
   isDeliverySuspended,
 } from "./subagent-delivery-state.js";
+import { applySubagentLaunchAuthorization } from "./subagent-launch-authorization.js";
 import {
   SUBAGENT_ENDED_OUTCOME_KILLED,
   SUBAGENT_ENDED_REASON_COMPLETE,
@@ -89,6 +91,8 @@ import {
 } from "./subagent-registry-run-manager.js";
 import {
   clearSubagentRunsReadCacheForTest,
+  getSubagentRunsSnapshotForChildSession,
+  getSubagentRunsSnapshotForController,
   getSubagentRunsSnapshotForRead,
   persistSubagentRunsToDisk,
   persistSubagentRunsToDiskOrThrow,
@@ -142,6 +146,8 @@ type SubagentRegistryDeps = {
   getGatewayRecoveryRuntime: () => GatewayRecoveryRuntime | undefined;
   captureSubagentCompletionReply: SubagentAnnounceModule["captureSubagentCompletionReply"];
   cleanupBrowserSessionsForLifecycleEnd: typeof cleanupBrowserSessionsForLifecycleEnd;
+  getSubagentRunsSnapshotForChildSession: typeof getSubagentRunsSnapshotForChildSession;
+  getSubagentRunsSnapshotForController: typeof getSubagentRunsSnapshotForController;
   getSubagentRunsSnapshotForRead: typeof getSubagentRunsSnapshotForRead;
   getRuntimeConfig: typeof getRuntimeConfig;
   onAgentEvent: typeof onAgentEvent;
@@ -185,6 +191,8 @@ const defaultSubagentRegistryDeps: SubagentRegistryDeps = {
     (await loadSubagentAnnounceModule()).captureSubagentCompletionReply(sessionKey, options),
   cleanupBrowserSessionsForLifecycleEnd: async (params) =>
     (await loadCleanupBrowserSessionsForLifecycleEnd())(params),
+  getSubagentRunsSnapshotForChildSession,
+  getSubagentRunsSnapshotForController,
   getSubagentRunsSnapshotForRead,
   getRuntimeConfig,
   onAgentEvent,
@@ -1137,7 +1145,10 @@ function restoreSubagentRunsOnce() {
           start: async () => {
             const response = await subagentRegistryDeps.callGateway({
               method: "agent",
-              params: launch.request,
+              params: applySubagentLaunchAuthorization(launch.request, launch.authorization),
+              // Restart replay must restore the trusted launch capability; otherwise
+              // the queued child silently falls back to its session/default route.
+              ...(launch.authorization ? { scopes: [ADMIN_SCOPE] } : {}),
               timeoutMs: launch.timeoutMs,
             });
             const gatewayRunId = readGatewayRunId(response) ?? runId;
@@ -2440,7 +2451,7 @@ export { prependAgentSteeringPrompt };
 
 export function listSubagentRunsForController(controllerSessionKey: string): SubagentRunRecord[] {
   return listRunsForControllerFromRuns(
-    subagentRegistryDeps.getSubagentRunsSnapshotForRead(subagentRuns),
+    subagentRegistryDeps.getSubagentRunsSnapshotForController(subagentRuns, controllerSessionKey),
     controllerSessionKey,
   );
 }
@@ -2597,7 +2608,9 @@ export function getLatestSubagentRunByChildSessionKey(
   }
 
   let latest: SubagentRunRecord | null = null;
-  for (const entry of subagentRegistryDeps.getSubagentRunsSnapshotForRead(subagentRuns).values()) {
+  for (const entry of subagentRegistryDeps
+    .getSubagentRunsSnapshotForChildSession(subagentRuns, key)
+    .values()) {
     if (entry.childSessionKey !== key) {
       continue;
     }

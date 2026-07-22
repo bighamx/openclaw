@@ -71,6 +71,12 @@ public enum WorkerTunnelStatus: String, Codable, Sendable {
     case reconnecting = "reconnecting"
 }
 
+public enum WorktreeRepositoryStatus: String, Codable, Sendable {
+    case git = "git"
+    case notGit = "not_git"
+    case unavailable = "unavailable"
+}
+
 public enum NodePresenceAliveReason: String, Codable, Sendable {
     case background = "background"
     case silentPush = "silent_push"
@@ -254,6 +260,8 @@ public struct BoardWidget: Codable, Sendable {
     public let tabid: String
     public let title: String?
     public let contentkind: AnyCodable
+    public let pluginkind: String?
+    public let props: [String: AnyCodable]?
     public let presentation: AnyCodable?
     public let heightmode: AnyCodable?
     public let sizew: Int
@@ -277,6 +285,8 @@ public struct BoardWidget: Codable, Sendable {
         tabid: String,
         title: String? = nil,
         contentkind: AnyCodable,
+        pluginkind: String? = nil,
+        props: [String: AnyCodable]? = nil,
         presentation: AnyCodable? = nil,
         heightmode: AnyCodable? = nil,
         sizew: Int,
@@ -299,6 +309,8 @@ public struct BoardWidget: Codable, Sendable {
         self.tabid = tabid
         self.title = title
         self.contentkind = contentkind
+        self.pluginkind = pluginkind
+        self.props = props
         self.presentation = presentation
         self.heightmode = heightmode
         self.sizew = sizew
@@ -323,6 +335,8 @@ public struct BoardWidget: Codable, Sendable {
         case tabid = "tabId"
         case title
         case contentkind = "contentKind"
+        case pluginkind = "pluginKind"
+        case props
         case presentation
         case heightmode = "heightMode"
         case sizew = "sizeW"
@@ -634,6 +648,28 @@ public struct BoardWidgetMcpAppPutContent: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case kind
         case viewid = "viewId"
+    }
+}
+
+public struct BoardWidgetPluginContent: Codable, Sendable {
+    public let kind: String
+    public let pluginkind: String
+    public let props: [String: AnyCodable]?
+
+    public init(
+        kind: String,
+        pluginkind: String,
+        props: [String: AnyCodable]? = nil)
+    {
+        self.kind = kind
+        self.pluginkind = pluginkind
+        self.props = props
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case pluginkind = "pluginKind"
+        case props
     }
 }
 
@@ -1046,6 +1082,7 @@ public struct HelloOk: Codable, Sendable {
     public let features: [String: AnyCodable]
     public let snapshot: Snapshot
     public let controluitabs: [[String: AnyCodable]]?
+    public let controluiwidgetkinds: [[String: AnyCodable]]?
     public let pluginsurfaceurls: [String: AnyCodable]?
     public let auth: [String: AnyCodable]
     public let policy: [String: AnyCodable]
@@ -1057,6 +1094,7 @@ public struct HelloOk: Codable, Sendable {
         features: [String: AnyCodable],
         snapshot: Snapshot,
         controluitabs: [[String: AnyCodable]]? = nil,
+        controluiwidgetkinds: [[String: AnyCodable]]? = nil,
         pluginsurfaceurls: [String: AnyCodable]? = nil,
         auth: [String: AnyCodable],
         policy: [String: AnyCodable])
@@ -1067,6 +1105,7 @@ public struct HelloOk: Codable, Sendable {
         self.features = features
         self.snapshot = snapshot
         self.controluitabs = controluitabs
+        self.controluiwidgetkinds = controluiwidgetkinds
         self.pluginsurfaceurls = pluginsurfaceurls
         self.auth = auth
         self.policy = policy
@@ -1079,6 +1118,7 @@ public struct HelloOk: Codable, Sendable {
         case features
         case snapshot
         case controluitabs = "controlUiTabs"
+        case controluiwidgetkinds = "controlUiWidgetKinds"
         case pluginsurfaceurls = "pluginSurfaceUrls"
         case auth
         case policy
@@ -1888,6 +1928,7 @@ public struct SystemInfoResult: Codable, Sendable {
     public let disktotalbytes: Int?
     public let diskavailablebytes: Int?
     public let diskpath: String?
+    public let defaultagentutilitymodel: AnyCodable?
 
     public init(
         machinename: String,
@@ -1909,7 +1950,8 @@ public struct SystemInfoResult: Codable, Sendable {
         memoryfreebytes: Int,
         disktotalbytes: Int? = nil,
         diskavailablebytes: Int? = nil,
-        diskpath: String? = nil)
+        diskpath: String? = nil,
+        defaultagentutilitymodel: AnyCodable? = nil)
     {
         self.machinename = machinename
         self.hostname = hostname
@@ -1931,6 +1973,7 @@ public struct SystemInfoResult: Codable, Sendable {
         self.disktotalbytes = disktotalbytes
         self.diskavailablebytes = diskavailablebytes
         self.diskpath = diskpath
+        self.defaultagentutilitymodel = defaultagentutilitymodel
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -1954,6 +1997,7 @@ public struct SystemInfoResult: Codable, Sendable {
         case disktotalbytes = "diskTotalBytes"
         case diskavailablebytes = "diskAvailableBytes"
         case diskpath = "diskPath"
+        case defaultagentutilitymodel = "defaultAgentUtilityModel"
     }
 }
 
@@ -2947,15 +2991,19 @@ public struct WorktreeBranch: Codable, Sendable {
 
 public struct WorktreesBranchesParams: Codable, Sendable {
     public let reporoot: String
+    public let includerepositorystatus: Bool?
 
     public init(
-        reporoot: String)
+        reporoot: String,
+        includerepositorystatus: Bool? = nil)
     {
         self.reporoot = reporoot
+        self.includerepositorystatus = includerepositorystatus
     }
 
     private enum CodingKeys: String, CodingKey {
         case reporoot = "repoRoot"
+        case includerepositorystatus = "includeRepositoryStatus"
     }
 }
 
@@ -2963,21 +3011,25 @@ public struct WorktreesBranchesResult: Codable, Sendable {
     public let branches: [WorktreeBranch]
     public let defaultbranch: String?
     public let headbranch: String?
+    public let repositorystatus: WorktreeRepositoryStatus?
 
     public init(
         branches: [WorktreeBranch],
         defaultbranch: String? = nil,
-        headbranch: String? = nil)
+        headbranch: String? = nil,
+        repositorystatus: WorktreeRepositoryStatus? = nil)
     {
         self.branches = branches
         self.defaultbranch = defaultbranch
         self.headbranch = headbranch
+        self.repositorystatus = repositorystatus
     }
 
     private enum CodingKeys: String, CodingKey {
         case branches
         case defaultbranch = "defaultBranch"
         case headbranch = "headBranch"
+        case repositorystatus = "repositoryStatus"
     }
 }
 
@@ -3480,24 +3532,6 @@ public struct NodePresenceAlivePayload: Codable, Sendable {
         case devicefamily = "deviceFamily"
         case modelidentifier = "modelIdentifier"
         case pushtransport = "pushTransport"
-    }
-}
-
-public struct NodePresenceActivityPayload: Codable, Sendable {
-    public let idleseconds: Int
-    public let saturated: Bool?
-
-    public init(
-        idleseconds: Int,
-        saturated: Bool? = nil)
-    {
-        self.idleseconds = idleseconds
-        self.saturated = saturated
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case idleseconds = "idleSeconds"
-        case saturated
     }
 }
 
@@ -16021,6 +16055,7 @@ public enum BoardOp: Codable, Sendable {
 public enum BoardWidgetContent: Codable, Sendable {
     case html(BoardWidgetHtmlContent)
     case mcpApp(BoardWidgetMcpAppContent)
+    case plugin(BoardWidgetPluginContent)
 
     private enum CodingKeys: String, CodingKey {
         case discriminator = "kind"
@@ -16032,6 +16067,7 @@ public enum BoardWidgetContent: Codable, Sendable {
         switch discriminator {
         case "html": self = try .html(BoardWidgetHtmlContent(from: decoder))
         case "mcp-app": self = try .mcpApp(BoardWidgetMcpAppContent(from: decoder))
+        case "plugin": self = try .plugin(BoardWidgetPluginContent(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .discriminator,
@@ -16045,6 +16081,7 @@ public enum BoardWidgetContent: Codable, Sendable {
         switch self {
         case .html(let value): try value.encode(to: encoder)
         case .mcpApp(let value): try value.encode(to: encoder)
+        case .plugin(let value): try value.encode(to: encoder)
         }
     }
 }
@@ -16052,6 +16089,7 @@ public enum BoardWidgetContent: Codable, Sendable {
 public enum BoardWidgetPutContent: Codable, Sendable {
     case html(BoardWidgetHtmlContent)
     case mcpApp(BoardWidgetMcpAppPutContent)
+    case plugin(BoardWidgetPluginContent)
     case canvasDoc(BoardCanvasDocumentSource)
 
     private enum CodingKeys: String, CodingKey {
@@ -16064,6 +16102,7 @@ public enum BoardWidgetPutContent: Codable, Sendable {
         switch discriminator {
         case "html": self = try .html(BoardWidgetHtmlContent(from: decoder))
         case "mcp-app": self = try .mcpApp(BoardWidgetMcpAppPutContent(from: decoder))
+        case "plugin": self = try .plugin(BoardWidgetPluginContent(from: decoder))
         case "canvas-doc": self = try .canvasDoc(BoardCanvasDocumentSource(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(
@@ -16078,6 +16117,7 @@ public enum BoardWidgetPutContent: Codable, Sendable {
         switch self {
         case .html(let value): try value.encode(to: encoder)
         case .mcpApp(let value): try value.encode(to: encoder)
+        case .plugin(let value): try value.encode(to: encoder)
         case .canvasDoc(let value): try value.encode(to: encoder)
         }
     }
