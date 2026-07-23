@@ -4895,6 +4895,7 @@ public struct SessionObserverDigest: Codable, Sendable {
 public struct SessionRow: Codable, Sendable {
     public let key: String
     public let sessionid: String?
+    public let incognito: Bool?
     public let kind: AnyCodable
     public let label: String?
     public let displayname: String?
@@ -4905,6 +4906,7 @@ public struct SessionRow: Codable, Sendable {
     public let updatedat: AnyCodable?
     public let archived: Bool?
     public let archivedat: Double?
+    public let archivedby: SessionCreatedActor?
     public let pinned: Bool?
     public let pinnedat: Double?
     public let icon: String?
@@ -4947,6 +4949,7 @@ public struct SessionRow: Codable, Sendable {
     public init(
         key: String,
         sessionid: String? = nil,
+        incognito: Bool? = nil,
         kind: AnyCodable,
         label: String? = nil,
         displayname: String? = nil,
@@ -4957,6 +4960,7 @@ public struct SessionRow: Codable, Sendable {
         updatedat: AnyCodable? = nil,
         archived: Bool? = nil,
         archivedat: Double? = nil,
+        archivedby: SessionCreatedActor? = nil,
         pinned: Bool? = nil,
         pinnedat: Double? = nil,
         icon: String? = nil,
@@ -4998,6 +5002,7 @@ public struct SessionRow: Codable, Sendable {
     {
         self.key = key
         self.sessionid = sessionid
+        self.incognito = incognito
         self.kind = kind
         self.label = label
         self.displayname = displayname
@@ -5008,6 +5013,7 @@ public struct SessionRow: Codable, Sendable {
         self.updatedat = updatedat
         self.archived = archived
         self.archivedat = archivedat
+        self.archivedby = archivedby
         self.pinned = pinned
         self.pinnedat = pinnedat
         self.icon = icon
@@ -5051,6 +5057,7 @@ public struct SessionRow: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case key
         case sessionid = "sessionId"
+        case incognito
         case kind
         case label
         case displayname = "displayName"
@@ -5061,6 +5068,7 @@ public struct SessionRow: Codable, Sendable {
         case updatedat = "updatedAt"
         case archived
         case archivedat = "archivedAt"
+        case archivedby = "archivedBy"
         case pinned
         case pinnedat = "pinnedAt"
         case icon
@@ -6882,6 +6890,7 @@ public struct SessionsCreateParams: Codable, Sendable {
     public let label: String?
     public let model: String?
     public let thinkinglevel: String?
+    public let incognito: Bool?
     public let catalogid: String?
     public let parentsessionkey: String?
     public let spawndepth: Int?
@@ -6903,6 +6912,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         label: String? = nil,
         model: String? = nil,
         thinkinglevel: String? = nil,
+        incognito: Bool? = nil,
         catalogid: String? = nil,
         parentsessionkey: String? = nil,
         spawndepth: Int? = nil,
@@ -6923,6 +6933,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         self.label = label
         self.model = model
         self.thinkinglevel = thinkinglevel
+        self.incognito = incognito
         self.catalogid = catalogid
         self.parentsessionkey = parentsessionkey
         self.spawndepth = spawndepth
@@ -6945,6 +6956,7 @@ public struct SessionsCreateParams: Codable, Sendable {
         case label
         case model
         case thinkinglevel = "thinkingLevel"
+        case incognito
         case catalogid = "catalogId"
         case parentsessionkey = "parentSessionKey"
         case spawndepth = "spawnDepth"
@@ -6968,6 +6980,8 @@ public struct SessionsCreateResult: Codable, Sendable {
     public let sessionid: String?
     public let entry: [String: AnyCodable]?
     public let runstarted: Bool?
+    public let runid: String?
+    public let messageseq: Int?
     public let runerror: ErrorShape?
     public let worktree: SessionWorktreeInfo?
 
@@ -6977,6 +6991,8 @@ public struct SessionsCreateResult: Codable, Sendable {
         sessionid: String? = nil,
         entry: [String: AnyCodable]? = nil,
         runstarted: Bool? = nil,
+        runid: String? = nil,
+        messageseq: Int? = nil,
         runerror: ErrorShape? = nil,
         worktree: SessionWorktreeInfo? = nil)
     {
@@ -6985,6 +7001,8 @@ public struct SessionsCreateResult: Codable, Sendable {
         self.sessionid = sessionid
         self.entry = entry
         self.runstarted = runstarted
+        self.runid = runid
+        self.messageseq = messageseq
         self.runerror = runerror
         self.worktree = worktree
     }
@@ -6995,6 +7013,8 @@ public struct SessionsCreateResult: Codable, Sendable {
         case sessionid = "sessionId"
         case entry
         case runstarted = "runStarted"
+        case runid = "runId"
+        case messageseq = "messageSeq"
         case runerror = "runError"
         case worktree
     }
@@ -13283,6 +13303,28 @@ public struct CronRunsParams: Codable, Sendable {
         case deliverystatus = "deliveryStatus"
         case query
         case sortdir = "sortDir"
+    }
+}
+
+public struct CronScratchGetResult: Codable, Sendable {
+    public let scratch: AnyCodable
+    public let currentrevision: Int
+    public let maxbytes: Int
+
+    public init(
+        scratch: AnyCodable,
+        currentrevision: Int,
+        maxbytes: Int)
+    {
+        self.scratch = scratch
+        self.currentrevision = currentrevision
+        self.maxbytes = maxbytes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case scratch
+        case currentrevision = "currentRevision"
+        case maxbytes = "maxBytes"
     }
 }
 

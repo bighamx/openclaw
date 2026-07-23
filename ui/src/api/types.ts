@@ -501,6 +501,7 @@ export type GatewaySessionRow = {
   key: string;
   visibility?: SessionVisibility;
   sharingRole?: SessionSharingRole;
+  incognito?: true;
   spawnedBy?: string;
   controlOwnerSessionKey?: string;
   /** Collector swarm group that owns this child session, when applicable. */
@@ -545,6 +546,7 @@ export type GatewaySessionRow = {
   lastActivityAt?: number;
   archived?: boolean;
   archivedAt?: number;
+  archivedBy?: import("../../../packages/gateway-protocol/src/schema/sessions.js").SessionCreatedActor;
   pinned?: boolean;
   pinnedAt?: number;
   icon?: string;

@@ -52,7 +52,9 @@ export function sidebarSessionAttentionPriority(attention: SidebarSessionAttenti
 
 export type SidebarRecentSession = {
   key: string;
+  incognito?: boolean;
   createdActor?: SessionCreatedActor;
+  archivedBy?: SessionCreatedActor;
   label: string;
   meta: string;
   /** Compact repo/branch/node line for work sessions. */

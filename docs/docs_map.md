@@ -2993,6 +2993,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: How messages are routed
   - H2: DM isolation
   - H3: Dock linked channels
+  - H2: Incognito sessions
   - H2: Remember across conversations
   - H2: Session lifecycle
   - H2: Where state lives
@@ -3599,11 +3600,10 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H3: What each flag does
   - H3: Per-channel vs per-account examples
   - H3: Common patterns
-  - H2: HEARTBEAT.md (optional)
+  - H2: Monitor scratch (optional)
   - H3: tasks: blocks
-  - H3: Can the agent update HEARTBEAT.md?
+  - H3: Can the agent update its scratch?
   - H2: Manual wake (on-demand)
-  - H2: Reasoning delivery (optional)
   - H2: Cost awareness
   - H2: Context overflow after heartbeat
   - H2: Related
@@ -10724,6 +10724,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Connection loss and reconnect
   - H2: PWA install and web push
   - H2: Hosted embeds
+  - H2: Chat transcript layout
   - H2: Chat message width
   - H2: Tailnet access (recommended)
   - H2: Insecure HTTP
