@@ -152,7 +152,9 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +2: generic inbound-root and SCP-host schema validators.
       // +2: attributed-range renderer and its options contract.
       // +1: agent-harness transcript visibility projector.
-      4690,
+      // +1: outbound formatting capability profile.
+      // +3: plugin approval reviewer-detail cap/truncator and sanitize-with-status variant.
+      4694,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
@@ -166,7 +168,8 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +2: generic inbound-root and SCP-host schema validators.
       // +1: attributed-range renderer.
       // +1: agent-harness transcript visibility projector.
-      2840,
+      // +2: plugin approval detail truncator and sanitize-with-status variant.
+      2842,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(
