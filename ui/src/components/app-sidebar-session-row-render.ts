@@ -2,10 +2,8 @@ import { html, nothing, type TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
 import type { SessionObserverDigest } from "../../../packages/gateway-protocol/src/schema/sessions.js";
 import type { NavigationRouteId } from "../app-navigation.ts";
-import type { ApprovalBadgeSnapshot } from "../app/approval-presentation.ts";
 import { sessionHasPendingApproval } from "../app/approval-presentation.ts";
 import type { ApplicationNavigationOptions } from "../app/context.ts";
-import type { PresencePayload } from "../app/user-profile.ts";
 import { t } from "../i18n/index.ts";
 import { sessionHasBoard } from "../lib/board/provider.ts";
 import { formatDurationCompact } from "../lib/format.ts";
@@ -21,18 +19,20 @@ import {
   rowDemandsVisibility,
   sidebarSessionMetaId,
   type SidebarRecentSession,
-  type SidebarSessionGroupDropTarget,
   type SidebarSessionStatusFilter,
 } from "./app-sidebar-session-types.ts";
 import { icons } from "./icons.ts";
+import type { SessionDataController } from "./session-data-controller.ts";
 import { renderSessionLeadingState } from "./session-leading-indicator.ts";
 import type { SessionPullRequestIndicatorState } from "./session-menu-work.ts";
+import type { SessionOrganizerController } from "./session-organizer-controller.ts";
 import { renderSessionOwnerChip } from "./session-owner-chip.ts";
 import { renderSessionRowBadges } from "./session-row-badges.ts";
 import {
   renderSidebarSessionSubtitle,
   resolveSidebarSessionSubtitle,
 } from "./session-row-subtitle.ts";
+import type { SidebarMenusController } from "./sidebar-menus-controller.ts";
 import "./elapsed-time.ts";
 
 const SIDEBAR_VISIBLE_CHILD_SESSION_LIMIT = 4;
@@ -42,22 +42,36 @@ export interface SessionListHost {
   readonly sidebarNarrationLines: ReadonlyMap<string, string>;
   readonly sidebarObserverDigests: ReadonlyMap<string, SessionObserverDigest>;
   readonly selectedSessionKeys: ReadonlySet<string>;
-  readonly draggingSessionKey: string | null;
   readonly connected: boolean;
-  readonly presencePayload: PresencePayload | undefined;
-  readonly presenceInstanceId?: string;
+  readonly sessionData: Pick<
+    SessionDataController,
+    | "approvalBadgeSnapshot"
+    | "loadMoreSessionCatalog"
+    | "presenceInstanceId"
+    | "presencePayload"
+    | "sessionMutationError"
+  >;
   readonly fullyShownChildSessionKeys: ReadonlySet<string>;
   readonly sessionsGrouping: SidebarSessionsGrouping;
   readonly collapsedSessionSections: ReadonlySet<string>;
-  readonly draggingSessionGroup: string | null;
-  readonly sessionDropTarget: string | null;
-  readonly sessionGroupDropTarget: SidebarSessionGroupDropTarget | null;
-  readonly sessionSortMenuPosition: { readonly x: number; readonly y: number } | null;
-  readonly sessionMenu: { readonly session: SidebarRecentSession } | null;
-  readonly sessionGroupMenu: { readonly group: string } | null;
+  readonly sessionOrganizer: Pick<
+    SessionOrganizerController,
+    | "draggingSessionGroup"
+    | "draggingSessionKey"
+    | "sessionDropTarget"
+    | "sessionGroupDropTarget"
+    | "sessionListRemovalDrop"
+  >;
+  readonly sidebarMenus: Pick<
+    SidebarMenusController,
+    | "openSessionGroupMenu"
+    | "openSessionMenu"
+    | "sessionGroupMenu"
+    | "sessionMenu"
+    | "sessionSortMenuPosition"
+    | "toggleSessionSortMenu"
+  >;
   readonly sessionsStatusFilter: SidebarSessionStatusFilter;
-  readonly sessionListRemovalDrop: boolean;
-  readonly sessionMutationError: string | null;
   readonly sessionOwnershipVisible: boolean;
   readonly onOpenNewSession?: (agentId: string, target?: NewSessionTarget) => void;
   readonly onNavigate?: (
@@ -69,11 +83,9 @@ export interface SessionListHost {
     sessionKey: string,
     worktreeId: string,
   ): SessionPullRequestIndicatorState;
-  approvalBadgeSnapshot(): ApprovalBadgeSnapshot;
   isSessionChildrenExpanded(session: SidebarRecentSession): boolean;
   startSessionDrag(session: SidebarRecentSession): void;
   finishSessionDrag(): void;
-  openSessionMenu(session: SidebarRecentSession, x: number, y: number, trigger?: HTMLElement): void;
   handleSessionRowClick(event: MouseEvent, session: SidebarRecentSession): void;
   toggleSessionChildren(session: SidebarRecentSession): void;
   toggleSessionPin(session: SidebarRecentSession): void;
@@ -88,9 +100,7 @@ export interface SessionListHost {
   sectionDrop(event: DragEvent, sectionId: string, group?: string): void;
   startSessionGroupDrag(group: string): void;
   finishSessionGroupDrag(): void;
-  openSessionGroupMenu(group: string, x: number, y: number, trigger: HTMLElement | null): void;
   toggleSection(sectionId: string): void;
-  toggleSessionSortMenu(trigger: HTMLElement): void;
   openNewSession(): void;
   setVisibleSessionLimit(limit: number): void;
   clearSessionSelection(): void;
@@ -99,7 +109,6 @@ export interface SessionListHost {
   handleSessionListDrop(event: DragEvent): void;
   dismissSessionMutationError(): void;
   toggleCatalogProjectGrouping(): void;
-  loadMoreSessionCatalog(catalogId: string): Promise<void>;
   openCatalogMenu(
     request: CatalogSessionMenuRequest,
     x: number,
@@ -164,7 +173,9 @@ export function renderRecentSession(params: {
       : session.attention.kind !== "none"
         ? "sidebar-recent-session--attention-amber"
         : "",
-    host.draggingSessionKey === session.key ? "sidebar-recent-session--dragging" : "",
+    host.sessionOrganizer.draggingSessionKey === session.key
+      ? "sidebar-recent-session--dragging"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -192,7 +203,7 @@ export function renderRecentSession(params: {
         ? nothing
         : (event: MouseEvent) => {
             event.preventDefault();
-            host.openSessionMenu(menuSession, event.clientX, event.clientY);
+            host.sidebarMenus.openSessionMenu(menuSession, event.clientX, event.clientY);
           }}
       @mouseenter=${(event: MouseEvent) => startHoverMarquee(event.currentTarget as HTMLElement)}
       @mouseleave=${(event: MouseEvent) => stopHoverMarquee(event.currentTarget as HTMLElement)}
@@ -233,8 +244,8 @@ export function renderRecentSession(params: {
             >`
           : nothing}
         <openclaw-viewer-facepile
-          .presencePayload=${host.presencePayload}
-          .selfInstanceId=${host.presenceInstanceId}
+          .presencePayload=${host.sessionData.presencePayload}
+          .selfInstanceId=${host.sessionData.presenceInstanceId}
           .sessionKey=${session.key}
           .maxVisible=${3}
           variant="session"
@@ -242,7 +253,10 @@ export function renderRecentSession(params: {
         ${renderSessionRowBadges({
           ...session,
           pullRequest: session.pullRequest ?? display?.pullRequest,
-          hasApproval: sessionHasPendingApproval(host.approvalBadgeSnapshot(), session.key),
+          hasApproval: sessionHasPendingApproval(
+            host.sessionData.approvalBadgeSnapshot(),
+            session.key,
+          ),
         })}
         ${pinnedState}
       </a>
@@ -314,7 +328,7 @@ export function renderRecentSession(params: {
                 title=${t("chat.sidebar.openSessionMenu")}
                 aria-label=${t("chat.sidebar.openSessionMenu")}
                 aria-haspopup="menu"
-                aria-expanded=${String(host.sessionMenu?.session.key === session.key)}
+                aria-expanded=${String(host.sidebarMenus.sessionMenu?.session.key === session.key)}
                 @click=${(event: MouseEvent) => {
                   event.stopPropagation();
                   const trigger = event.currentTarget as HTMLElement;

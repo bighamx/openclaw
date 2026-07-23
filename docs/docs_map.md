@@ -502,7 +502,6 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Private API actions
   - H2: Config writes
   - H2: Coalescing split-send DMs (command + URL in one composition)
-  - H3: Scenarios and what the agent sees
   - H2: Inbound recovery after a bridge or gateway restart
   - H3: Operator-visible signal
   - H3: Migration
@@ -3159,6 +3158,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Resolve config secrets with op
   - H2: Service account setup for headless Gateways
   - H2: The 1password skill for agents
+  - H2: Browser sign-in with 1Password for Claude
   - H2: Security notes
   - H2: Troubleshooting
 
@@ -3256,6 +3256,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: How it works
   - H2: Timeouts and long-running work
   - H3: Claude CLI specifics
+  - H3: Claude browser tools and 1Password sign-in
   - H2: Sessions
   - H2: Fallback prelude from claude-cli sessions
   - H2: Images

@@ -127,7 +127,8 @@ class AppSidebar extends AppSidebarSessionListElement {
       return agentId !== cardAgentId && this.agentUnreadCount(agentId) > 0;
     });
     const cardName = cardAgent ? normalizeAgentLabel(cardAgent) : cardAgentId;
-    const approvalCount = this.approvalBadgeSnapshot().agentCounts.get(cardAgentId) ?? 0;
+    const approvalCount =
+      this.sessionData.approvalBadgeSnapshot().agentCounts.get(cardAgentId) ?? 0;
     const cardAvatarText =
       (cardAgent ? resolveAgentTextAvatar(cardAgent) : null) ??
       (cardName || cardAgentId).slice(0, 1).toUpperCase();
@@ -140,11 +141,11 @@ class AppSidebar extends AppSidebarSessionListElement {
           .avatarUrl=${cardAgent ? resolveAgentAvatarUrl(cardAgent) : null}
           .avatarText=${cardAvatarText}
           .subtitle=${this.agentChipSubtitle(cardAgentId)}
-          .menuOpen=${this.agentMenuPosition !== null}
+          .menuOpen=${this.sidebarMenus.agentMenuPosition !== null}
           .menuUnread=${menuUnread}
           .approvalCount=${approvalCount}
           .switcherAvailable=${cardAgents.length > 1}
-          .onToggleMenu=${(trigger: HTMLElement) => this.toggleAgentMenu(trigger)}
+          .onToggleMenu=${(trigger: HTMLElement) => this.sidebarMenus.toggleAgentMenu(trigger)}
         ></openclaw-sidebar-agent-card>
         <div class="sidebar-brand__actions">
           <openclaw-tooltip
@@ -184,7 +185,10 @@ class AppSidebar extends AppSidebarSessionListElement {
     const agentId = this.activeChipAgent().activeId;
     const mainKey = this.selectedAgentMainSessionKey(agentId);
     const mainRow = this.mainSessionRow(agentId);
-    const approvalNeeded = sessionHasPendingApproval(this.approvalBadgeSnapshot(), mainKey);
+    const approvalNeeded = sessionHasPendingApproval(
+      this.sessionData.approvalBadgeSnapshot(),
+      mainKey,
+    );
     const outboxCount = this.outboxCountForSessionKey(mainKey);
     const active =
       this.activeRouteId === "chat" &&
@@ -259,9 +263,10 @@ class AppSidebar extends AppSidebarSessionListElement {
           type="button"
           class="sidebar-nav__head-action"
           aria-haspopup="menu"
-          aria-expanded=${String(this.moreMenuPosition !== null)}
+          aria-expanded=${String(this.sidebarMenus.moreMenuPosition !== null)}
           aria-label=${t("nav.customize")}
-          @click=${(event: MouseEvent) => this.toggleMoreMenu(event.currentTarget as HTMLElement)}
+          @click=${(event: MouseEvent) =>
+            this.sidebarMenus.toggleMoreMenu(event.currentTarget as HTMLElement)}
         >
           ${icons.penLine}
         </button>
@@ -275,8 +280,8 @@ class AppSidebar extends AppSidebarSessionListElement {
     const selfUser = this.connected
       ? resolveCurrentSelfUser({
           snapshotUser: this.context?.gateway.snapshot.selfUser,
-          presenceEntries: readPresenceEntries(this.presencePayload),
-          presenceInstanceId: this.presenceInstanceId,
+          presenceEntries: readPresenceEntries(this.sessionData.presencePayload),
+          presenceInstanceId: this.sessionData.presenceInstanceId,
         })
       : null;
     const selfLabel = selfUser?.name ?? selfUser?.email ?? selfUser?.id;
@@ -308,8 +313,8 @@ class AppSidebar extends AppSidebarSessionListElement {
             </openclaw-tooltip>`
           : nothing}
         <openclaw-viewer-facepile
-          .presencePayload=${this.presencePayload}
-          .selfInstanceId=${this.presenceInstanceId}
+          .presencePayload=${this.sessionData.presencePayload}
+          .selfInstanceId=${this.sessionData.presenceInstanceId}
           .buildInfo=${CONTROL_UI_BUILD_INFO}
           .gatewayVersion=${this.gatewayVersion}
           .maxVisible=${5}
@@ -365,17 +370,19 @@ class AppSidebar extends AppSidebarSessionListElement {
     workboardRows: ReadonlyMap<string, SidebarWorkboardBoard>,
   ) {
     if (
-      (entry.type === "route" && !this.isRouteEnabled(entry.route)) ||
-      (entry.type === "workboard" && !this.isRouteEnabled("workboard"))
+      (entry.type === "route" && !this.sidebarMenus.isRouteEnabled(entry.route)) ||
+      (entry.type === "workboard" && !this.sidebarMenus.isRouteEnabled("workboard"))
     ) {
       return nothing;
     }
     const serialized = serializeSidebarEntry(entry);
     const dropPosition =
-      this.sidebarZoneDropTarget?.entry === serialized ? this.sidebarZoneDropTarget.position : null;
+      this.sessionOrganizer.sidebarZoneDropTarget?.entry === serialized
+        ? this.sessionOrganizer.sidebarZoneDropTarget.position
+        : null;
     const content =
       entry.type === "route"
-        ? this.renderRoute(entry.route)
+        ? this.sidebarMenus.renderRoute(entry.route)
         : entry.type === "workboard"
           ? workboardRows.has(entry.boardId)
             ? this.renderWorkboardBoard(workboardRows.get(entry.boardId)!)
@@ -388,17 +395,22 @@ class AppSidebar extends AppSidebarSessionListElement {
       <div
         class="sidebar-zone-entry ${dropPosition
           ? `sidebar-zone-entry--drop-${dropPosition}`
-          : ""} ${this.draggingSidebarEntry === serialized ? "sidebar-zone-entry--dragging" : ""}"
+          : ""} ${this.sessionOrganizer.draggingSidebarEntry === serialized
+          ? "sidebar-zone-entry--dragging"
+          : ""}"
         data-sidebar-entry=${serialized}
         draggable=${draggable ? "true" : "false"}
         @dragstart=${entry.type === "route"
-          ? (event: DragEvent) => this.startSidebarRouteDrag(event, entry.route)
+          ? (event: DragEvent) => this.sessionOrganizer.startSidebarRouteDrag(event, entry.route)
           : entry.type === "workboard"
-            ? (event: DragEvent) => this.startSidebarWorkboardDrag(event, entry.boardId)
+            ? (event: DragEvent) =>
+                this.sessionOrganizer.startSidebarWorkboardDrag(event, entry.boardId)
             : nothing}
-        @dragend=${draggable ? () => this.finishSidebarEntryDrag() : nothing}
-        @dragover=${(event: DragEvent) => this.handleSidebarZoneDragOver(event, serialized)}
-        @drop=${(event: DragEvent) => this.handleSidebarZoneDrop(event, serialized)}
+        @dragend=${draggable ? () => this.sessionOrganizer.finishSidebarEntryDrag() : nothing}
+        @dragover=${(event: DragEvent) =>
+          this.sessionOrganizer.handleSidebarZoneDragOver(event, serialized)}
+        @drop=${(event: DragEvent) =>
+          this.sessionOrganizer.handleSidebarZoneDrop(event, serialized)}
       >
         ${content}
       </div>
@@ -439,17 +451,20 @@ class AppSidebar extends AppSidebarSessionListElement {
         <div class="sidebar-shell" @mousedown=${beginNativeWindowDragFromTopInset}>
           ${this.renderBrand()}
           <div
-            class="sidebar-shell__body sidebar-shell__body--scroll-${this.sessionsScrollState}"
+            class="sidebar-shell__body sidebar-shell__body--scroll-${this.sessionData
+              .sessionsScrollState}"
             @scroll=${(event: Event) =>
-              this.updateSessionsScrollState(event.currentTarget as HTMLElement)}
+              this.sessionData.updateSessionsScrollState(event.currentTarget as HTMLElement)}
           >
-            <nav class="sidebar-nav" @contextmenu=${this.openCustomizeMenuFromContext}>
+            <nav class="sidebar-nav" @contextmenu=${this.sidebarMenus.openCustomizeMenuFromContext}>
               ${this.renderPagesHead()}
               <div
                 class="nav-section__items"
-                @dragover=${(event: DragEvent) => this.handleSidebarZoneDragOver(event)}
-                @dragleave=${(event: DragEvent) => this.handleSidebarZoneDragLeave(event)}
-                @drop=${(event: DragEvent) => this.handleSidebarZoneDrop(event)}
+                @dragover=${(event: DragEvent) =>
+                  this.sessionOrganizer.handleSidebarZoneDragOver(event)}
+                @dragleave=${(event: DragEvent) =>
+                  this.sessionOrganizer.handleSidebarZoneDragLeave(event)}
+                @drop=${(event: DragEvent) => this.sessionOrganizer.handleSidebarZoneDrop(event)}
               >
                 ${this.renderHomeRow()}
                 ${sidebarZone.entries.map((entry) =>
@@ -478,8 +493,11 @@ class AppSidebar extends AppSidebarSessionListElement {
             ></openclaw-sidebar-update-card>
             <openclaw-lobster-pet
               .seed=${lobsterPetSeed(this.sessionKey)}
-              .mode=${resolveLobsterPetMode(!this.offline, this.sessionsResult?.sessions)}
-              .runOutcome=${resolveLobsterRunOutcome(this.sessionsResult?.sessions)}
+              .mode=${resolveLobsterPetMode(
+                !this.offline,
+                this.sessionData.sessionsResult?.sessions,
+              )}
+              .runOutcome=${resolveLobsterRunOutcome(this.sessionData.sessionsResult?.sessions)}
               .visitsEnabled=${this.lobsterPetVisits}
               .soundsEnabled=${this.lobsterPetSounds}
               .gatewayVersion=${this.gatewayVersion}
@@ -497,9 +515,10 @@ class AppSidebar extends AppSidebarSessionListElement {
             ${this.renderFooterBar()}
           </div>
         </div>
-        ${this.renderCustomizeMenu()} ${this.renderMoreMenu()} ${this.renderAgentMenu()}
-        ${this.renderSessionMenu()} ${this.catalogMenu.render()} ${this.renderSessionGroupMenu()}
-        ${this.renderSessionSortMenu()}
+        ${this.sidebarMenus.renderCustomizeMenu()} ${this.sidebarMenus.renderMoreMenu()}
+        ${this.sidebarMenus.renderAgentMenu()} ${this.sidebarMenus.renderSessionMenu()}
+        ${this.sidebarMenus.catalogMenu.render()} ${this.sidebarMenus.renderSessionGroupMenu()}
+        ${this.sidebarMenus.renderSessionSortMenu()}
       </aside>
     `;
   }
