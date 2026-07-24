@@ -9,22 +9,13 @@ import { loadSqliteVecExtension } from "../../packages/memory-host-sdk/src/engin
 import { runExec } from "../process/exec.js";
 import { formatErrorMessage } from "./errors.js";
 import { sameFileIdentity } from "./fs-safe-advanced.js";
-import { requireNodeSqlite } from "./node-sqlite.js";
+import { requireNodeSqlite, resolveSqliteFilesystemPath } from "./node-sqlite.js";
 import { resolveSystemBin } from "./resolve-system-bin.js";
 import { assertSqliteIntegrity } from "./sqlite-integrity.js";
 import { readSqliteUserVersion } from "./sqlite-user-version.js";
 
 const SQLITE_DIRECTORY_MODE = 0o700;
 const WINDOWS_DIRECTORY_EXISTS_MARKER = "OPENCLAW_SQLITE_DIRECTORY_EXISTS";
-
-function resolveSqliteFilesystemPath(pathname: string): string {
-  if (process.platform !== "win32") {
-    return pathname;
-  }
-  // Node normalizes long paths for fs, but DatabaseSync and VACUUM INTO pass
-  // filesystem names directly to SQLite's Windows VFS.
-  return path.toNamespacedPath(path.resolve(pathname));
-}
 
 // Managed directory creation accepts existing paths. CreateDirectoryW applies the
 // protected DACL atomically while preserving fail-if-exists semantics.
@@ -96,6 +87,7 @@ type CreateVerifiedSqliteSnapshotOptions = {
   /** Final caller checks around publication; failures remove only this helper's target. */
   afterPublish?: (guard: PublishedSqliteFileGuard) => void;
   beforePublish?: () => void | Promise<void>;
+  requireNonEmptySource?: boolean;
   transform?: (database: DatabaseSync) => void | Promise<void>;
   validate?: SqliteSnapshotValidator;
 };
@@ -194,10 +186,16 @@ export async function createPrivateSqliteTempDirectory(
   return directoryPath;
 }
 
-async function assertRegularSourceFile(sourcePath: string): Promise<void> {
+async function assertRegularSourceFile(
+  sourcePath: string,
+  requireNonEmptySource: boolean,
+): Promise<void> {
   const stat = await fs.lstat(sourcePath);
   if (!stat.isFile()) {
     throw new Error(`SQLite snapshot source must be a regular file: ${sourcePath}`);
+  }
+  if (requireNonEmptySource && stat.size === 0) {
+    throw new Error(`SQLite snapshot source must not be empty: ${sourcePath}`);
   }
 }
 
@@ -787,7 +785,7 @@ async function removePublicationStagingDirectory(
 export async function createVerifiedSqliteSnapshot(
   options: CreateVerifiedSqliteSnapshotOptions,
 ): Promise<VerifiedSqliteSnapshot> {
-  await assertRegularSourceFile(options.sourcePath);
+  await assertRegularSourceFile(options.sourcePath, options.requireNonEmptySource === true);
   await assertTargetAbsent(options.targetPath);
 
   const stagingDir = await createPrivateSqliteTempDirectory(
