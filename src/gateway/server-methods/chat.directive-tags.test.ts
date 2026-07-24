@@ -31,6 +31,7 @@ import { getAgentRunContext } from "../../infra/agent-events.js";
 import { runExclusiveSessionLifecycleMutation } from "../../sessions/session-lifecycle-admission.js";
 import { createDeferred } from "../../test-utils/deferred.js";
 import { withEnvAsync } from "../../test-utils/env.js";
+import { createChatRunState } from "../server-chat-state.js";
 import type { GatewayRequestContext } from "./types.js";
 
 const mockState = vi.hoisted(() => ({
@@ -782,14 +783,7 @@ function createChatContext(): Pick<
   | "agentRunSeq"
   | "chatAbortControllers"
   | "chatQueuedTurns"
-  | "chatRunBuffers"
-  | "chatDeltaSentAt"
-  | "chatDeltaLastBroadcastLen"
-  | "chatDeltaLastBroadcastText"
-  | "agentDeltaSentAt"
-  | "bufferedAgentEvents"
-  | "chatAbortedRuns"
-  | "clearChatRunState"
+  | "chatRunState"
   | "addChatRun"
   | "removeChatRun"
   | "dedupe"
@@ -806,14 +800,7 @@ function createChatContext(): Pick<
     agentRunSeq: new Map<string, number>(),
     chatAbortControllers: new Map(),
     chatQueuedTurns: new Map(),
-    chatRunBuffers: new Map(),
-    chatDeltaSentAt: new Map(),
-    chatDeltaLastBroadcastLen: new Map(),
-    chatDeltaLastBroadcastText: new Map(),
-    agentDeltaSentAt: new Map(),
-    bufferedAgentEvents: new Map(),
-    chatAbortedRuns: new Map(),
-    clearChatRunState: vi.fn(),
+    chatRunState: createChatRunState(),
     addChatRun: vi.fn(),
     removeChatRun: vi.fn(),
     dedupe: new Map(),
@@ -974,6 +961,90 @@ describe("chat directive tag stripping for non-streaming final payloads", () => 
     mockState.beforeMessageWriteContent = null;
     mockState.beforeMessageWriteCalls = [];
     mockState.dispatchBlockedByBeforeAgentRun = false;
+  });
+
+  it.each([
+    ["stale", "previous-leaf"],
+    ["empty", null],
+  ])("rejects a %s expected active leaf before starting or writing", async (name, expectedLeaf) => {
+    await createGatewayUserTurnSqliteFixture(`openclaw-chat-send-${name}-leaf-`);
+    await appendTranscriptMessage(transcriptScope(), {
+      eventId: "current-leaf",
+      message: { role: "user", content: "existing" },
+      now: 1,
+      parentId: null,
+    });
+    const before = loadTranscriptEventsSync(transcriptScope());
+    const context = createChatContext();
+    const respond = vi.fn();
+
+    await runNonStreamingChatSend({
+      context,
+      respond,
+      idempotencyKey: `idem-${name}-leaf`,
+      requestParams: { expectedLeafEntryId: expectedLeaf },
+      waitFor: "none",
+    });
+
+    expect(lastRespondCall(respond)).toEqual([
+      false,
+      undefined,
+      expect.objectContaining({ details: { reason: "active-leaf-changed" } }),
+    ]);
+    expect(context.addChatRun).not.toHaveBeenCalled();
+    expect(mockState.lastDispatchCtx).toBeUndefined();
+    expect(loadTranscriptEventsSync(transcriptScope())).toEqual(before);
+  });
+
+  it("allows an expected empty leaf when the transcript is still empty", async () => {
+    await createGatewayUserTurnSqliteFixture("openclaw-chat-send-matching-empty-leaf-");
+    const context = createChatContext();
+    const respond = vi.fn();
+
+    await runNonStreamingChatSend({
+      context,
+      respond,
+      idempotencyKey: "idem-matching-empty-leaf",
+      requestParams: { expectedLeafEntryId: null },
+    });
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({ status: "started" }),
+      undefined,
+      expect.any(Object),
+    );
+    expect(context.addChatRun).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["matching", { expectedLeafEntryId: "current-leaf" }],
+    ["absent", {}],
+  ])("allows a %s expected active leaf", async (_name, requestParams) => {
+    await createGatewayUserTurnSqliteFixture(`openclaw-chat-send-${_name}-leaf-`);
+    await appendTranscriptMessage(transcriptScope(), {
+      eventId: "current-leaf",
+      message: { role: "user", content: "existing" },
+      now: 1,
+      parentId: null,
+    });
+    const context = createChatContext();
+    const respond = vi.fn();
+
+    await runNonStreamingChatSend({
+      context,
+      respond,
+      idempotencyKey: `idem-${_name}-leaf`,
+      requestParams,
+    });
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({ status: "started" }),
+      undefined,
+      expect.any(Object),
+    );
+    expect(context.addChatRun).toHaveBeenCalledTimes(1);
   });
 
   it("broadcasts session metadata changes reported by chat command dispatch", async () => {
@@ -1556,6 +1627,33 @@ describe("chat directive tag stripping for non-streaming final payloads", () => 
     });
   });
 
+  it("returns the rendered history branch leaf in session info", async () => {
+    await createGatewayUserTurnSqliteFixture("openclaw-chat-history-active-leaf-");
+    await appendTranscriptMessage(transcriptScope(), {
+      eventId: "history-active-leaf",
+      message: { role: "user", content: "render this branch" },
+      now: 1,
+      parentId: null,
+    });
+    const respond = vi.fn();
+
+    await expectDefined(
+      chatHandlers["chat.history"],
+      'chatHandlers["chat.history"] test invariant',
+    )({
+      params: { sessionKey: "main" },
+      respond: respond as never,
+      req: {} as never,
+      client: null,
+      isWebchatConnect: () => false,
+      context: createChatContext() as GatewayRequestContext,
+    });
+
+    expect(lastRespondCall(respond)?.[1]).toMatchObject({
+      sessionInfo: { activeLeafEntryId: "history-active-leaf" },
+    });
+  });
+
   it("does not register tool-event recipients without tool-events capability", async () => {
     await createTranscriptFixture("openclaw-chat-send-tool-events-off-");
     mockState.finalText = "ok";
@@ -1631,6 +1729,68 @@ describe("chat directive tag stripping for non-streaming final payloads", () => 
           mimeType: "audio/mpeg",
         },
       });
+    });
+  });
+
+  it("replaces a runtime-owned media reply instead of appending a duplicate assistant", async () => {
+    await withTranscriptFixtureState("openclaw-chat-send-owned-media-", async (fixtureDir) => {
+      const mediaUrl = `data:image/png;base64,${TINY_PNG_BASE64}`;
+      const savedImagePath = path.join(fixtureDir, "reply.png");
+      fs.writeFileSync(savedImagePath, Buffer.from(TINY_PNG_BASE64, "base64"));
+      mockState.savedMediaResults = [{ path: savedImagePath, contentType: "image/png" }];
+      await appendSourceReplyMirrorEntry({
+        idempotencyKey: "older-distinct-assistant",
+        text: "A distinct earlier reply.",
+        provider: "openai",
+        model: "codex",
+      });
+      await appendSourceReplyMirrorEntry({
+        idempotencyKey: "runtime-owned-assistant",
+        text: `Dinner options\nMEDIA:${mediaUrl}`,
+        provider: "openai",
+        model: "codex",
+      });
+      mockState.triggerAgentRunStart = true;
+      mockState.dispatchedReplies = [
+        {
+          kind: "final",
+          payload: setReplyPayloadMetadata(
+            {
+              text: "Dinner options",
+              mediaUrl,
+              mediaUrls: [mediaUrl],
+            },
+            {
+              assistantTranscriptOwned: true,
+              assistantTranscriptIdempotencyKey: "runtime-owned-assistant",
+            },
+          ),
+        },
+      ];
+      const respond = vi.fn();
+      const context = createChatContext();
+
+      await runNonStreamingChatSend({
+        context,
+        respond,
+        idempotencyKey: "idem-owned-media",
+        expectBroadcast: false,
+        waitFor: "dedupe",
+      });
+
+      const messages = await readActiveAssistantTranscriptMessages();
+      expect(messages).toHaveLength(2);
+      expect(messages.map((message) => message.idempotencyKey)).toEqual([
+        "older-distinct-assistant",
+        "runtime-owned-assistant",
+      ]);
+      const rewritten = messages[1];
+      const content = Array.isArray(rewritten?.content)
+        ? (rewritten.content as Array<Record<string, unknown>>)
+        : [];
+      expect(content[0]).toEqual({ type: "text", text: "Dinner options" });
+      expect(content.filter((block) => block.type === "image")).toHaveLength(1);
+      expect(JSON.stringify(messages)).not.toContain(":assistant-media");
     });
   });
 

@@ -656,6 +656,13 @@ export function buildGatewayCronService(params: {
         agentId,
         sessionKey,
         heartbeat: sanitizeCronHeartbeatOverride(opts?.heartbeat),
+        ...(opts?.scheduledEveryMs !== undefined
+          ? { scheduledEveryMs: opts.scheduledEveryMs }
+          : {}),
+        ...(opts?.scheduledAnchorMs !== undefined
+          ? { scheduledAnchorMs: opts.scheduledAnchorMs }
+          : {}),
+        ...(opts.tasks?.length ? { tasks: opts.tasks } : {}),
       });
     },
     runHeartbeatOnce: async (opts) => {
