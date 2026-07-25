@@ -176,7 +176,10 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +1: model-independent agent-harness preflight failure contract.
       // +3: channel DM policy factory and its account/patch callback contracts.
       // +1: typed owner-required error for session store path resolution.
-      4721,
+      // +1: native approval messaging target resolver.
+      // +1: shared plugin SecretRef setup plan helper.
+      // +1: shared multi-claim ingress lifecycle fan-in.
+      4724,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
@@ -199,7 +202,9 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +6: canonical session delivery normalization, access, and projection helpers.
       // +2: focused media-local-roots helpers.
       // +3: channel DM policy factory and its account/patch callbacks.
-      2860,
+      // +1: native approval messaging target resolver.
+      // +1: shared multi-claim ingress lifecycle fan-in.
+      2862,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(

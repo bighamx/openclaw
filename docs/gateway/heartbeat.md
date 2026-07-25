@@ -73,10 +73,22 @@ Example config:
 
 ## What the heartbeat prompt is for
 
-The default prompt is intentionally broad:
+The default prompt is intentionally narrow: follow the heartbeat monitor scratch
+context when provided, keep recurring work in cron jobs, and reply
+`HEARTBEAT_OK` when nothing needs attention. It explicitly tells the agent
+**not** to infer or repeat old tasks from prior chats, so a default install stays
+quiet instead of rehashing stale conversation context.
 
-- **Background tasks**: "Consider outstanding tasks" nudges the agent to review follow-ups (inbox, calendar, reminders, queued work) and surface anything urgent.
-- **Human check-in**: "Checkup sometimes on your human during day time" nudges an occasional lightweight "anything you need?" message, but avoids night-time spam by using your configured local timezone (see [Timezone](/concepts/timezone)).
+Proactive heartbeat behavior is opt-in:
+
+- **Recurring checks**: create [scheduled jobs](/automation/cron-jobs) for inbox
+  review, calendar sweeps, or queued follow-ups. Each job executes its configured
+  payload on its own schedule; the default heartbeat does not infer recurring
+  work from prior chats.
+- **Human check-in**: create a scheduled job if you want an occasional
+  lightweight "anything you need?" message, and constrain its schedule to avoid
+  night-time pings in your configured local timezone (see
+  [Timezone](/concepts/timezone)).
 
 Heartbeat can react to completed [background tasks](/automation/tasks), but a heartbeat run itself does not create a task record.
 
