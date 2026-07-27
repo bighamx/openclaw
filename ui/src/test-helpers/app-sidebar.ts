@@ -20,6 +20,7 @@ import type {
 } from "../components/app-sidebar-workboard.ts";
 import type { SessionDataController } from "../components/session-data-controller.ts";
 import type { SessionOrganizerController } from "../components/session-organizer-controller.ts";
+import type { AgentIdentityCapability } from "../lib/agents/identity.ts";
 import type { SessionCapability } from "../lib/sessions/index.ts";
 import { reconcileSessionHistory } from "../lib/sessions/reconcile.ts";
 import { createApplicationContextProvider } from "./application-context.ts";
@@ -307,15 +308,29 @@ export function createContext(
   sessions: SessionCapability,
   agentsList: AgentsListResult | null = null,
   approvalQueue: readonly ExecApprovalRequest[] = [],
+  agentIdentity: AgentIdentityCapability = {
+    get: () => null,
+    entries: () => [],
+    ensure: async () => undefined,
+    invalidate: () => undefined,
+    subscribe: () => () => undefined,
+  },
 ): ApplicationContext<RouteId> {
   const selectedAgentId = sessions.state.agentId ?? "main";
   return {
     gateway,
     sessions,
     agents: {
-      state: { agentsList },
+      state: {
+        client: gateway.snapshot.client,
+        connected: gateway.snapshot.phase === "connected",
+        agentsLoading: false,
+        agentsError: null,
+        agentsList,
+      },
       subscribe: () => () => undefined,
     },
+    agentIdentity,
     agentSelection: {
       state: { selectedId: selectedAgentId, scopeId: selectedAgentId },
       set: () => undefined,
@@ -335,8 +350,9 @@ export async function mountSidebar(
   variant: SidebarLifecycleState["variant"] = "panel",
   agentsList: AgentsListResult | null = null,
   approvalQueue: readonly ExecApprovalRequest[] = [],
+  agentIdentity?: AgentIdentityCapability,
 ) {
-  const context = createContext(gateway, sessions, agentsList, approvalQueue);
+  const context = createContext(gateway, sessions, agentsList, approvalQueue, agentIdentity);
   const provider = createApplicationContextProvider(context);
   const sidebar = document.createElement(
     "openclaw-app-sidebar",

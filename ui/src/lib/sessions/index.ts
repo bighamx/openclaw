@@ -80,6 +80,7 @@ export type { SessionArchivedFilter } from "./navigation.ts";
 export type SessionListOptions = {
   agentId?: string;
   spawnedBy?: string;
+  boardFace?: "chat" | "dashboard";
   activeMinutes?: number;
   search?: string;
   creatorId?: string;
@@ -386,6 +387,9 @@ function buildSessionListParams(options: SessionListOptions = {}): Record<string
   const spawnedBy = options.spawnedBy?.trim();
   const search = options.search?.trim();
   const creatorId = options.creatorId?.trim();
+  if (options.boardFace) {
+    params.boardFace = options.boardFace;
+  }
   if (agentId) {
     params.agentId = agentId;
   }
@@ -1089,7 +1093,12 @@ export function createSessionCapability(gateway: SessionGateway): SessionCapabil
   };
 
   const refreshReplacement = (agentId?: string | null) => {
-    const options = { ...lastListOptions };
+    // Mutation refreshes replace the visible sidebar rows. A foreground probe
+    // that omitted derived titles must not turn readable names back into ids.
+    const options = {
+      ...lastListOptions,
+      includeDerivedTitles: lastListOptions.includeDerivedTitles ?? true,
+    };
     const normalizedAgentId = agentId?.trim();
     if (normalizedAgentId) {
       options.agentId = normalizedAgentId;
