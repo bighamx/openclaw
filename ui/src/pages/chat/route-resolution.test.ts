@@ -390,6 +390,70 @@ describe("gateway-backed session route resolution", () => {
     ]);
   });
 
+  it("settles a shared short-id prefix with the slug the link carries", async () => {
+    const rows = [
+      row({ key: "agent:roboclaw:thread:12345678-0aaa-4000-8000-000000000001" }),
+      row({
+        key: "agent:roboclaw:thread:12345678-0bbb-4000-8000-000000000002",
+        displayName: "Deploy monitor",
+      }),
+    ];
+    const { context } = contextFor(() => result(rows));
+    const loaded = await loadChatRoute(
+      context,
+      { pathname: "/chat/roboclaw/deploy-monitor-12345678", search: "", hash: "" },
+      "chat",
+      new AbortController().signal,
+    );
+
+    // Both ids start with 12345678; the slug says which one, so the short link still
+    // resolves instead of bouncing to the chooser.
+    expect(loaded).toMatchObject({ kind: "session", sessionKey: rows[1]?.key });
+  });
+
+  it("keeps the chooser when the slug matches neither or both tied sessions", async () => {
+    const rows = [
+      row({ key: "agent:roboclaw:thread:12345678-0aaa-4000-8000-000000000001" }),
+      row({ key: "agent:roboclaw:thread:12345678-0bbb-4000-8000-000000000002" }),
+    ];
+    const { context } = contextFor(() => result(rows));
+    for (const pathname of [
+      // Stale slug: the session was renamed since the link was made.
+      "/chat/roboclaw/an-old-name-12345678",
+      // Both tied sessions share the slug, so it cannot decide.
+      "/chat/roboclaw/default-mode-with-rare-surprises-12345678",
+    ]) {
+      const loaded = await loadChatRoute(
+        context,
+        { pathname, search: "", hash: "" },
+        "chat",
+        new AbortController().signal,
+      );
+
+      expect(loaded).toMatchObject({ kind: "ambiguous", shortId: "12345678" });
+    }
+  });
+
+  it("does not settle a slug tie while the bounded search is incomplete", async () => {
+    // Only one loaded row carries the slug, but pagination stopped early: an unexamined
+    // page could hold the same prefix under the same name, so the chooser has to stand.
+    const storedRow = row({
+      key: "agent:roboclaw:thread:12345678-0aaa-4000-8000-000000000001",
+      displayName: "Deploy monitor",
+    });
+    const { context } = contextFor(({ offset = 0 }) =>
+      result(offset === 0 ? [storedRow] : [], { hasMore: true, nextOffset: offset + 20, offset }),
+    );
+    const loaded = await loadChatRoute(
+      context,
+      { pathname: "/chat/roboclaw/deploy-monitor-12345678", search: "", hash: "" },
+      "chat",
+      new AbortController().signal,
+    );
+
+    expect(loaded).toMatchObject({ kind: "ambiguous", shortId: "12345678", truncated: true });
+  });
+
   it("prefers an exact literal key over slug matches", async () => {
     const literal = row({
       key: "agent:roboclaw:default-mode-with-rare-surprises",
