@@ -87,12 +87,15 @@ const compactState = vi.hoisted(() => ({
   compactEmbeddedAgentSessionMock: vi.fn(),
 }));
 
-vi.mock("../../agents/model-fallback.js", () => ({
+vi.mock("../../agents/model-fallback-runner.js", () => ({
   runWithModelFallback: (params: {
     provider: string;
     model: string;
     run: (provider: string, model: string) => Promise<unknown>;
   }) => runWithModelFallbackMock(params),
+}));
+
+vi.mock("../../agents/model-fallback-attempt.js", () => ({
   isFallbackSummaryError: (err: unknown) =>
     err instanceof Error &&
     err.name === "FallbackSummaryError" &&
@@ -336,7 +339,7 @@ describe("runReplyAgent auto-compaction token update", () => {
     await fs.mkdir(path.dirname(params.storePath), { recursive: true });
     await replaceSessionEntry(
       { storePath: params.storePath, sessionKey: params.sessionKey },
-      params.entry as SessionEntry,
+      params.entry as unknown as SessionEntry,
     );
   }
 
