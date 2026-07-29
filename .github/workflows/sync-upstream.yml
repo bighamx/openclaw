@@ -25,15 +25,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+          fetch-tags: false
+          filter: blob:none
           ref: main
-          # PAT 才能触发后续 Android Build；未配置时回退到 GITHUB_TOKEN
-          token: ${{ secrets.PAT || github.token }}
+          # 始终使用 GITHUB_TOKEN 推送，避免 PAT 的 push 事件与下方显式
+          # workflow_dispatch 同时触发两次 Android Build。
+          token: ${{ github.token }}
 
       - name: Sync and merge upstream
         id: sync
         env:
-          GH_TOKEN: ${{ secrets.PAT || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -46,8 +49,12 @@ jobs:
             git remote add upstream https://github.com/openclaw/openclaw.git
           fi
 
-          git fetch --prune origin
-          git fetch --prune upstream
+          # 只获取同步所需的 main 历史，不下载体积持续增长的 tags 和 blobs。
+          # checkout 使用浅克隆，因此先补齐 origin/main 历史以保留 merge-base。
+          git fetch --no-tags --filter=blob:none --unshallow origin \
+            +refs/heads/main:refs/remotes/origin/main
+          git fetch --no-tags --filter=blob:none upstream \
+            +refs/heads/main:refs/remotes/upstream/main
 
           git checkout main
           git reset --hard origin/main
@@ -232,11 +239,11 @@ jobs:
         if: steps.sync.outputs.synced == 'true' && steps.sync.outputs.android_changed == 'true'
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.PAT || github.token }}
+          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           # 显式指定本仓库，避免 gh 在存在 upstream remote 时误调度到 openclaw/openclaw
-          # push + PAT 通常已能触发构建；此处作为兜底，失败不阻断同步结果
+          # GITHUB_TOKEN 的 push 不会递归触发工作流，因此这里只显式调度一次。
           gh workflow run android-build.yml --repo "$GH_REPO" --ref main
           echo "Dispatched android-build.yml on $GH_REPO"
