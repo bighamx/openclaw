@@ -2106,6 +2106,71 @@ describe("official external plugin catalog", () => {
     ]);
   });
 
+  it("lists BytePlus and its paired plan route as an official external provider", () => {
+    const byteplus = expectCatalogEntry("byteplus");
+    const manifest = getOfficialExternalPluginCatalogManifest(byteplus);
+
+    expect(getOfficialExternalPluginCatalogEntry("byteplus-plan")).toBe(byteplus);
+    expect(resolveOfficialExternalPluginInstall(byteplus)).toEqual({
+      clawhubSpec: "clawhub:@openclaw/byteplus-provider",
+      npmSpec: "@openclaw/byteplus-provider",
+      defaultChoice: "npm",
+      minHostVersion: ">=2026.7.2",
+    });
+    expect(manifest?.contracts?.videoGenerationProviders).toEqual(["byteplus"]);
+    expect(manifest?.providers?.[0]?.aliases).toEqual(["byteplus-plan"]);
+    expect(
+      resolveOfficialExternalProviderPluginIds({
+        providerIds: new Set(["byteplus-plan"]),
+      }),
+    ).toEqual(["byteplus"]);
+    expect(resolveOfficialExternalProviderPluginIdsForEnv({ BYTEPLUS_API_KEY: "key" })).toEqual([
+      "byteplus",
+    ]);
+  });
+
+  it("lists ComfyUI as an official external media provider", () => {
+    const comfy = expectCatalogEntry("comfy");
+    const manifest = getOfficialExternalPluginCatalogManifest(comfy);
+
+    expect(resolveOfficialExternalPluginId(comfy)).toBe("comfy");
+    expect(resolveOfficialExternalPluginInstall(comfy)).toEqual({
+      clawhubSpec: "clawhub:@openclaw/comfy-provider",
+      npmSpec: "@openclaw/comfy-provider",
+      defaultChoice: "npm",
+      minHostVersion: ">=2026.7.2",
+    });
+    expect(manifest?.contracts).toMatchObject({
+      imageGenerationProviders: ["comfy"],
+      musicGenerationProviders: ["comfy"],
+      videoGenerationProviders: ["comfy"],
+    });
+  });
+
+  it("lists Mistral with its model and capability provider contracts", () => {
+    const mistral = expectCatalogEntry("mistral");
+    const manifest = getOfficialExternalPluginCatalogManifest(mistral);
+
+    expect(resolveOfficialExternalPluginId(mistral)).toBe("mistral");
+    expect(resolveOfficialExternalPluginInstall(mistral)).toEqual({
+      clawhubSpec: "clawhub:@openclaw/mistral-provider",
+      npmSpec: "@openclaw/mistral-provider",
+      defaultChoice: "npm",
+      minHostVersion: ">=2026.7.2",
+    });
+    expect(manifest?.providers).toEqual([
+      expect.objectContaining({
+        id: "mistral",
+        envVars: ["MISTRAL_API_KEY"],
+      }),
+    ]);
+    expect(manifest?.contracts).toMatchObject({
+      memoryEmbeddingProviders: ["mistral"],
+      mediaUnderstandingProviders: ["mistral"],
+      realtimeTranscriptionProviders: ["mistral"],
+    });
+  });
+
   it.each([
     ["teams-meetings", "@openclaw/teams-meetings", "teams_meetings", "teams"],
     ["zoom-meetings", "@openclaw/zoom-meetings", "zoom_meetings", "zoom"],

@@ -2315,6 +2315,37 @@ describe("sendMessageTelegram", () => {
     expect(res.messageId).toBe("72");
   });
 
+  it("keeps formatted media captions within Telegram's parsed-character limit", async () => {
+    const chatId = "123";
+    const visibleCaption = "B".repeat(1022);
+    const formattedCaption = `**${visibleCaption}**`;
+    const sendPhoto = vi.fn().mockResolvedValue({ message_id: 72, chat: { id: chatId } });
+    const sendMessage = vi.fn();
+    const api = { sendPhoto, sendMessage } as unknown as {
+      sendPhoto: typeof sendPhoto;
+      sendMessage: typeof sendMessage;
+    };
+
+    mockLoadedMedia({
+      buffer: Buffer.from("fake-image"),
+      contentType: "image/jpeg",
+      fileName: "photo.jpg",
+    });
+
+    await sendMessageTelegram(chatId, formattedCaption, {
+      cfg: TELEGRAM_TEST_CFG,
+      token: "tok",
+      api,
+      mediaUrl: "https://example.com/photo.jpg",
+    });
+
+    expectMediaSendCall(firstMockCall(sendPhoto, "send photo call"), "send photo call", chatId, {
+      caption: `<b>${visibleCaption}</b>`,
+      parse_mode: "HTML",
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it("renders markdown in media captions", async () => {
     const chatId = "123";
     const caption = "hi **boss**";
@@ -2346,52 +2377,67 @@ describe("sendMessageTelegram", () => {
     });
   });
 
-  it("falls back to a plain media caption when Telegram rejects caption HTML", async () => {
-    const chatId = "123";
-    const caption = "hi **boss**";
-    const sendPhoto = vi
-      .fn()
-      .mockRejectedValueOnce(createHtmlParseError("sendPhoto"))
-      .mockResolvedValueOnce({
-        message_id: 91,
-        chat: { id: chatId },
+  it.each([
+    {
+      kind: "ordinary Markdown",
+      caption: "hi **boss**",
+      htmlCaption: "hi <b>boss</b>",
+      plainCaption: "hi **boss**",
+    },
+    {
+      kind: "markup-heavy Markdown",
+      caption: `**${"x".repeat(1022)}**`,
+      htmlCaption: `<b>${"x".repeat(1022)}</b>`,
+      plainCaption: "x".repeat(1022),
+    },
+  ])(
+    "falls back to a valid $kind media caption when Telegram rejects HTML",
+    async ({ caption, htmlCaption, plainCaption }) => {
+      const chatId = "123";
+      const sendPhoto = vi
+        .fn()
+        .mockRejectedValueOnce(createHtmlParseError("sendPhoto"))
+        .mockResolvedValueOnce({
+          message_id: 91,
+          chat: { id: chatId },
+        });
+      const api = { sendPhoto } as unknown as {
+        sendPhoto: typeof sendPhoto;
+      };
+
+      mockLoadedMedia({
+        buffer: Buffer.from("fake-image"),
+        contentType: "image/jpeg",
+        fileName: "photo.jpg",
       });
-    const api = { sendPhoto } as unknown as {
-      sendPhoto: typeof sendPhoto;
-    };
 
-    mockLoadedMedia({
-      buffer: Buffer.from("fake-image"),
-      contentType: "image/jpeg",
-      fileName: "photo.jpg",
-    });
+      const result = await sendMessageTelegram(chatId, caption, {
+        cfg: TELEGRAM_TEST_CFG,
+        token: "tok",
+        api,
+        mediaUrl: "https://example.com/photo.jpg",
+      });
 
-    const result = await sendMessageTelegram(chatId, caption, {
-      cfg: TELEGRAM_TEST_CFG,
-      token: "tok",
-      api,
-      mediaUrl: "https://example.com/photo.jpg",
-    });
-
-    expectMediaSendCall(
-      firstMockCall(sendPhoto, "first send photo call"),
-      "send photo call",
-      chatId,
-      {
-        caption: "hi <b>boss</b>",
-        parse_mode: "HTML",
-      },
-    );
-    expectMediaSendCall(
-      mockCall(sendPhoto, 1, "second send photo call"),
-      "send photo retry call",
-      chatId,
-      {
-        caption,
-      },
-    );
-    expect(result).toEqual({ messageId: "91", chatId });
-  });
+      expectMediaSendCall(
+        firstMockCall(sendPhoto, "first send photo call"),
+        "send photo call",
+        chatId,
+        {
+          caption: htmlCaption,
+          parse_mode: "HTML",
+        },
+      );
+      expectMediaSendCall(
+        mockCall(sendPhoto, 1, "second send photo call"),
+        "send photo retry call",
+        chatId,
+        {
+          caption: plainCaption,
+        },
+      );
+      expect(result).toEqual({ messageId: "91", chatId });
+    },
+  );
 
   it("sends video notes when requested and regular videos otherwise", async () => {
     const chatId = "123";
@@ -2913,6 +2959,86 @@ describe("sendMessageTelegram", () => {
     );
     expect(probeVideoDimensions).not.toHaveBeenCalled();
     expect(res.messageId).toBe("9");
+  });
+
+  it.each([
+    { contentType: "image/png", filename: "image.png", method: "sendPhoto" },
+    { contentType: "video/quicktime", filename: "video.mov", method: "sendVideo" },
+    { contentType: "audio/mpeg", filename: "audio.mp3", method: "sendAudio" },
+    { contentType: "application/pdf", filename: "file.pdf", method: "sendDocument" },
+    { contentType: "image/gif", filename: "animation.gif", method: "sendAnimation" },
+    { contentType: "application/x-custom", filename: "file.bin", method: "sendDocument" },
+  ])("preserves MIME-derived filenames for durable $contentType", async (testCase) => {
+    const sendMedia = vi.fn().mockResolvedValue({
+      message_id: 10,
+      chat: { id: "123" },
+    });
+    const api = { [testCase.method]: sendMedia } as TelegramApiOverride;
+    mockLoadedMedia({ contentType: testCase.contentType });
+
+    await sendMessageTelegram("123", "caption", {
+      cfg: TELEGRAM_TEST_CFG,
+      token: "tok",
+      api,
+      mediaUrl: "https://example.com/media",
+    });
+
+    expect(firstMockCall(sendMedia, testCase.method)[1]).toMatchObject({
+      filename: testCase.filename,
+    });
+  });
+
+  it.each(["PHOTO_INVALID_DIMENSIONS", "PHOTO_TOO_BIG"])(
+    "falls back to a document when Telegram rejects a durable photo with %s",
+    async (reason) => {
+      const sendPhoto = vi.fn().mockRejectedValueOnce(new Error(`400: Bad Request: ${reason}`));
+      const sendDocument = vi.fn().mockResolvedValue({
+        message_id: 10,
+        chat: { id: "123" },
+      });
+      mockLoadedMedia({ contentType: "image/png", fileName: "photo.png" });
+
+      const result = await sendMessageTelegram("123", "caption", {
+        cfg: TELEGRAM_TEST_CFG,
+        token: "tok",
+        api: { sendPhoto, sendDocument },
+        mediaUrl: "https://example.com/photo.png",
+        messageThreadId: 42,
+        replyToMessageId: 512,
+      });
+
+      expect(sendPhoto).toHaveBeenCalledOnce();
+      expectMediaSendCall(
+        firstMockCall(sendDocument, "fallback document"),
+        "fallback document",
+        "123",
+        {
+          caption: "caption",
+          parse_mode: "HTML",
+          message_thread_id: 42,
+          reply_to_message_id: 512,
+          allow_sending_without_reply: true,
+        },
+      );
+      expect(result.messageId).toBe("10");
+    },
+  );
+
+  it("does not retry unrelated durable photo failures as documents", async () => {
+    const sendPhoto = vi.fn().mockRejectedValueOnce(new Error("400: Bad Request: chat migrated"));
+    const sendDocument = vi.fn();
+    mockLoadedMedia({ contentType: "image/png", fileName: "photo.png" });
+
+    await expect(
+      sendMessageTelegram("123", "caption", {
+        cfg: TELEGRAM_TEST_CFG,
+        token: "tok",
+        api: { sendPhoto, sendDocument },
+        mediaUrl: "https://example.com/photo.png",
+      }),
+    ).rejects.toThrow("chat migrated");
+
+    expect(sendDocument).not.toHaveBeenCalled();
   });
 
   it.each([

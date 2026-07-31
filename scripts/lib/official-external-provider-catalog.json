@@ -191,6 +191,63 @@
       }
     },
     {
+      "name": "@openclaw/byteplus-provider",
+      "description": "OpenClaw BytePlus provider plugin.",
+      "source": "official",
+      "kind": "provider",
+      "openclaw": {
+        "plugin": {
+          "id": "byteplus",
+          "label": "BytePlus"
+        },
+        "providers": [
+          {
+            "id": "byteplus",
+            "aliases": [
+              "byteplus-plan"
+            ],
+            "name": "BytePlus",
+            "docs": "/concepts/model-providers#byteplus-international",
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "BYTEPLUS_API_KEY"
+            ],
+            "authChoices": [
+              {
+                "method": "api-key",
+                "choiceId": "byteplus-api-key",
+                "choiceLabel": "BytePlus API key",
+                "groupId": "byteplus",
+                "groupLabel": "BytePlus",
+                "groupHint": "API key",
+                "optionKey": "byteplusApiKey",
+                "cliFlag": "--byteplus-api-key",
+                "cliOption": "--byteplus-api-key <key>",
+                "cliDescription": "BytePlus API key",
+                "onboardingScopes": [
+                  "text-inference"
+                ]
+              }
+            ]
+          }
+        ],
+        "contracts": {
+          "videoGenerationProviders": [
+            "byteplus"
+          ]
+        },
+        "install": {
+          "clawhubSpec": "clawhub:@openclaw/byteplus-provider",
+          "npmSpec": "@openclaw/byteplus-provider",
+          "defaultChoice": "npm",
+          "minHostVersion": ">=2026.7.2"
+        }
+      }
+    },
+    {
       "name": "@openclaw/cerebras-provider",
       "description": "OpenClaw Cerebras provider plugin.",
       "source": "official",
@@ -411,6 +468,69 @@
           "npmSpec": "@openclaw/cloudflare-ai-gateway-provider",
           "defaultChoice": "npm",
           "minHostVersion": ">=2026.6.8"
+        }
+      }
+    },
+    {
+      "name": "@openclaw/comfy-provider",
+      "description": "OpenClaw ComfyUI provider plugin.",
+      "source": "official",
+      "kind": "provider",
+      "openclaw": {
+        "plugin": {
+          "id": "comfy",
+          "label": "ComfyUI"
+        },
+        "providers": [
+          {
+            "id": "comfy",
+            "name": "ComfyUI",
+            "docs": "/providers/comfy",
+            "categories": [
+              "local",
+              "cloud",
+              "media"
+            ],
+            "envVars": [
+              "COMFY_API_KEY",
+              "COMFY_CLOUD_API_KEY"
+            ],
+            "authChoices": [
+              {
+                "method": "cloud-api-key",
+                "choiceId": "comfy-cloud-api-key",
+                "choiceLabel": "Comfy Cloud API key",
+                "choiceHint": "Required for cloud workflows",
+                "groupId": "comfy",
+                "groupLabel": "ComfyUI",
+                "groupHint": "Local or cloud workflows",
+                "optionKey": "comfyApiKey",
+                "cliFlag": "--comfy-api-key",
+                "cliOption": "--comfy-api-key <key>",
+                "cliDescription": "Comfy Cloud API key",
+                "onboardingScopes": [
+                  "image-generation"
+                ]
+              }
+            ]
+          }
+        ],
+        "contracts": {
+          "imageGenerationProviders": [
+            "comfy"
+          ],
+          "musicGenerationProviders": [
+            "comfy"
+          ],
+          "videoGenerationProviders": [
+            "comfy"
+          ]
+        },
+        "install": {
+          "clawhubSpec": "clawhub:@openclaw/comfy-provider",
+          "npmSpec": "@openclaw/comfy-provider",
+          "defaultChoice": "npm",
+          "minHostVersion": ">=2026.7.2"
         }
       }
     },
@@ -736,6 +856,59 @@
           "npmSpec": "@openclaw/meta-provider",
           "defaultChoice": "npm",
           "minHostVersion": ">=2026.6.11"
+        }
+      }
+    },
+    {
+      "name": "@openclaw/mistral-provider",
+      "description": "OpenClaw Mistral provider plugin",
+      "source": "official",
+      "kind": "provider",
+      "openclaw": {
+        "plugin": {
+          "id": "mistral",
+          "label": "Mistral"
+        },
+        "providerEndpoints": [
+          {
+            "endpointClass": "mistral-public",
+            "hosts": ["api.mistral.ai"]
+          }
+        ],
+        "providers": [
+          {
+            "id": "mistral",
+            "name": "Mistral",
+            "docs": "/providers/mistral",
+            "categories": ["cloud", "llm"],
+            "envVars": ["MISTRAL_API_KEY"],
+            "authChoices": [
+              {
+                "method": "api-key",
+                "choiceId": "mistral-api-key",
+                "choiceLabel": "Mistral API key",
+                "groupId": "mistral",
+                "groupLabel": "Mistral AI",
+                "groupHint": "API key",
+                "optionKey": "mistralApiKey",
+                "cliFlag": "--mistral-api-key",
+                "cliOption": "--mistral-api-key <key>",
+                "cliDescription": "Mistral API key",
+                "onboardingScopes": ["text-inference"]
+              }
+            ]
+          }
+        ],
+        "contracts": {
+          "memoryEmbeddingProviders": ["mistral"],
+          "mediaUnderstandingProviders": ["mistral"],
+          "realtimeTranscriptionProviders": ["mistral"]
+        },
+        "install": {
+          "clawhubSpec": "clawhub:@openclaw/mistral-provider",
+          "npmSpec": "@openclaw/mistral-provider",
+          "defaultChoice": "npm",
+          "minHostVersion": ">=2026.7.2"
         }
       }
     },
