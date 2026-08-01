@@ -97,6 +97,7 @@ import {
 } from "./sandbox/workspace-mounts.js";
 import type { ScheduledToolPolicyContext } from "./scheduled-tool-policy.js";
 import { createCodingTools, createReadTool } from "./sessions/index.js";
+import type { TrustedSubagentCompletionHandoff } from "./subagent-announce-handoff.js";
 import { PROCESS_TOOL_DISPLAY_SUMMARY } from "./tool-description-presets.js";
 import { createToolFsPolicy, resolveToolFsConfig } from "./tool-fs-policy.js";
 import { resolveToolLoopDetectionConfig } from "./tool-loop-detection-config.js";
@@ -468,8 +469,8 @@ type OpenClawCodingToolsOptions = {
   /** Prepared conversation-scoped facts for callers that already resolved this run context. */
   conversationCapabilityProfile?: ResolvedConversationCapabilityProfile;
   inputProvenance?: InputProvenance;
-  /** Trusted in-process completion handoff; never derived from model-facing input. */
-  trustedInternalHandoff?: boolean;
+  /** Consumed in-process completion capability; never derived from model-facing input. */
+  trustedInternalHandoff?: TrustedSubagentCompletionHandoff;
   /** Trusted server-stamped authority for an explicitly capped scheduled run. */
   scheduledToolPolicy?: ScheduledToolPolicyContext;
 };
@@ -558,6 +559,13 @@ function createOpenClawCodingToolsInternal(options?: OpenClawCodingToolsOptions)
     const normalized = normalizeToolName(toolName);
     return normalized === "*" || normalized === "message";
   });
+  // A verified completion may retain parent tools, but its mandatory delivery
+  // grant stays bound to the current source regardless of allowlist width.
+  const sourceReplyOnly =
+    capabilityProfile.policy.requesterPolicySource === "completion-handoff" &&
+    options?.inputProvenance?.kind === "inter_session" &&
+    options.inputProvenance.sourceTool === "subagent_announce" &&
+    options.sourceReplyDeliveryMode === "message_tool_only";
   const localModelLeanPreserveToolNames = resolveLocalModelLeanPreserveToolNames({
     toolNames: capabilityProfile.policy.explicitToolOverrideAllowlist,
     forceMessageTool: options?.forceMessageTool,
@@ -1035,6 +1043,7 @@ function createOpenClawCodingToolsInternal(options?: OpenClawCodingToolsOptions)
             computerContextEpoch: options?.computerContextEpoch,
             requireExplicitMessageTarget: options?.requireExplicitMessageTarget,
             sourceReplyDeliveryMode: options?.sourceReplyDeliveryMode,
+            sourceReplyOnly,
             taskSuggestionDeliveryMode: options?.taskSuggestionDeliveryMode,
             inboundEventKind: options?.inboundEventKind,
             disableMessageTool: options?.disableMessageTool || options?.swarmCollector,

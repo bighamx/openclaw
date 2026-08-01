@@ -7693,6 +7693,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
   - H2: Delivery Evidence
   - H2: Existing outbound adapters
   - H2: Durable sends
+  - H3: Automatic unknown-send reconciliation
   - H2: Deferred delivery admission
   - H2: Compatibility dispatch
 
@@ -9153,6 +9154,7 @@ Do not edit it by hand; run `pnpm docs:map:gen`.
 - Route: /reference/rich-output-protocol
 - Headings:
   - H2: Media attachments
+  - H2: Legacy MEDIA: lines
   - H2: `[embed ...]`
   - H2: Stored rendering shape
   - H2: Related
