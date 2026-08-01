@@ -10,11 +10,7 @@ import type {
 } from "openai/resources/chat/completions.js";
 import { getEnvApiKey } from "../env-api-keys.js";
 import { getAiTransportHost } from "../host.js";
-import {
-  applyProviderReportedUsageCost,
-  calculateCost,
-  clampThinkingLevel,
-} from "../model-utils.js";
+import { clampThinkingLevel } from "../model-utils.js";
 import { convertMessages } from "../openai-completions-messages.js";
 import type { OpenAICompletionsOptions } from "../provider-options.js";
 import {
@@ -22,6 +18,11 @@ import {
   type ResolvedOpenAICompletionsCompat,
 } from "../transports/openai-completions-compat.js";
 import { resolveOpenAIReasoningEffortMap } from "../transports/openai-reasoning-compat.js";
+import {
+  isOpenAICompletionsThinkingEnabled,
+  parseOpenAICompletionsUsage,
+  readOpenAICompletionsContentDeltas,
+} from "../transports/openai-transport-shared.js";
 import { transportAbortError } from "../transports/transport-stream-shared.js";
 import type {
   AssistantMessage,
@@ -274,12 +275,12 @@ export const streamOpenAICompletions: StreamFunction<
         }
         return textBlock;
       };
-      const ensureThinkingBlock = (thinkingSignature: string) => {
+      const ensureThinkingBlock = (thinkingSignature: string | undefined) => {
         if (!thinkingBlock) {
           thinkingBlock = {
             type: "thinking",
             thinking: "",
-            thinkingSignature,
+            ...(thinkingSignature ? { thinkingSignature } : {}),
           };
           appendBlock(thinkingBlock);
           stream.push({
@@ -312,7 +313,7 @@ export const streamOpenAICompletions: StreamFunction<
           partial: output,
         });
       };
-      const appendThinkingDelta = (thinkingSignature: string, delta: string) => {
+      const appendThinkingDelta = (thinkingSignature: string | undefined, delta: string) => {
         const block = ensureThinkingBlock(thinkingSignature);
         block.thinking += delta;
         stream.push({
@@ -405,7 +406,9 @@ export const streamOpenAICompletions: StreamFunction<
           output.responseModel ||= chunk.model;
         }
         if (chunk.usage) {
-          output.usage = parseChunkUsage(chunk.usage, model);
+          output.usage = parseOpenAICompletionsUsage(chunk.usage, model, {
+            includeReasoningTokens: false,
+          });
         }
 
         const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;
@@ -416,10 +419,12 @@ export const streamOpenAICompletions: StreamFunction<
         // Fallback: some providers (e.g., Moonshot) return usage
         // in choice.usage instead of the standard chunk.usage
         const choiceUsage = (
-          choice as typeof choice & { usage?: Parameters<typeof parseChunkUsage>[0] }
+          choice as typeof choice & { usage?: Parameters<typeof parseOpenAICompletionsUsage>[0] }
         ).usage;
         if (!chunk.usage && choiceUsage) {
-          output.usage = parseChunkUsage(choiceUsage, model);
+          output.usage = parseOpenAICompletionsUsage(choiceUsage, model, {
+            includeReasoningTokens: false,
+          });
         }
 
         if (choice.finish_reason) {
@@ -449,7 +454,11 @@ export const streamOpenAICompletions: StreamFunction<
             // (e.g., chutes.ai returns both reasoning_content and reasoning with same content)
             const reasoningFields = ["reasoning_content", "reasoning", "reasoning_text"];
             const deltaFields = choiceDelta as Record<string, unknown>;
-            const shouldEmitReasoning = Boolean(model.reasoning && options?.reasoningEffort);
+            const shouldEmitReasoning = Boolean(
+              model.reasoning &&
+              options?.reasoningEffort &&
+              isOpenAICompletionsThinkingEnabled(options.reasoningEffort),
+            );
             let foundReasoningField: string | null = null;
             for (const field of reasoningFields) {
               const value = deltaFields[field];
@@ -471,20 +480,21 @@ export const streamOpenAICompletions: StreamFunction<
                 appendThinkingDelta(thinkingSignature, delta);
               }
             }
-            if (
-              choiceDelta.content !== null &&
-              choiceDelta.content !== undefined &&
-              choiceDelta.content.length > 0
-            ) {
-              appendPartitionedContent(choiceDelta.content, Boolean(foundReasoningField));
-            }
-
-            // Chat Completions can put safety/structured-output refusals in a
-            // top-level `refusal` field with content null. Surface that as
-            // visible text so the assistant turn is not empty.
-            const refusalText = typeof choiceDelta.refusal === "string" ? choiceDelta.refusal : "";
-            if (refusalText.length > 0) {
-              appendPartitionedContent(refusalText, Boolean(foundReasoningField));
+            for (const contentDelta of readOpenAICompletionsContentDeltas(
+              choiceDelta.content,
+              choiceDelta.refusal,
+              foundReasoningField ? [deltaFields[foundReasoningField] as string] : [],
+            )) {
+              if (contentDelta.kind === "thinking") {
+                if (reasoningTagTextPartitioner.hasPending()) {
+                  reasoningTagTextPartitioner.markStrict();
+                }
+                if (shouldEmitReasoning) {
+                  appendThinkingDelta(contentDelta.signature, contentDelta.text);
+                }
+              } else {
+                appendPartitionedContent(contentDelta.text, Boolean(foundReasoningField));
+              }
             }
 
             const toolCallDeltas = normalizedDelta.toolCalls;
@@ -1083,45 +1093,6 @@ function convertTools(
       },
     })),
   };
-}
-
-function parseChunkUsage(
-  rawUsage: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    prompt_cache_hit_tokens?: number;
-    prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
-    cost?: unknown;
-  },
-  model: Model<"openai-completions">,
-): AssistantMessage["usage"] {
-  const promptTokens = rawUsage.prompt_tokens || 0;
-  const cacheReadTokens =
-    rawUsage.prompt_tokens_details?.cached_tokens ?? rawUsage.prompt_cache_hit_tokens ?? 0;
-  const cacheWriteTokens = rawUsage.prompt_tokens_details?.cache_write_tokens || 0;
-
-  // Follow documented OpenAI/OpenRouter semantics: cached_tokens is cache-read
-  // tokens (hits). OpenAI does not document or emit cache_write_tokens, but
-  // OpenRouter-compatible providers can include it as a separate write count.
-  // OpenRouter's own provider/tests affirm the separate mapping:
-  // https://github.com/OpenRouterTeam/ai-sdk-provider/pull/409
-  // Do not subtract writes from cached_tokens, otherwise spec-compliant
-  // providers are under-reported. DS4 mirrors this contract too:
-  // https://github.com/antirez/ds4/pull/29
-  const input = Math.max(0, promptTokens - cacheReadTokens - cacheWriteTokens);
-  // OpenAI completion_tokens already includes reasoning_tokens.
-  const outputTokens = rawUsage.completion_tokens || 0;
-  const usage: AssistantMessage["usage"] = {
-    input,
-    output: outputTokens,
-    cacheRead: cacheReadTokens,
-    cacheWrite: cacheWriteTokens,
-    totalTokens: input + outputTokens + cacheReadTokens + cacheWriteTokens,
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-  };
-  calculateCost(model, usage);
-  applyProviderReportedUsageCost(usage, rawUsage.cost);
-  return usage;
 }
 
 /* oxlint-disable max-lines -- TODO: split this grandfathered oversized file. */

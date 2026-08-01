@@ -5,7 +5,6 @@ import { uniqueStrings } from "@openclaw/normalization-core/string-normalization
 import OpenAI from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions.js";
 import { getEnvApiKey } from "../env-api-keys.js";
-import { applyProviderReportedUsageCost, calculateCost } from "../model-utils.js";
 import { convertMessages } from "../openai-completions-messages.js";
 import type { OpenAICompletionsOptions } from "../provider-options.js";
 import { resolveCacheRetention } from "../providers/cache-retention.js";
@@ -74,11 +73,15 @@ import {
 import {
   GEMINI_THOUGHT_SIGNATURE_VALIDATOR_SKIP,
   createModelStreamCooperativeScheduler,
+  isOpenAICompletionsThinkingEnabled,
   log,
+  parseOpenAICompletionsUsage,
+  readOpenAICompletionsContentDeltas,
   resolvePromptCacheKey,
   sortTransportToolsByName,
   throwIfModelStreamAborted,
   type MutableAssistantOutput,
+  type OpenAICompletionsContentDelta as CompletionsReasoningDelta,
   type OpenAIModeModel,
 } from "./openai-transport-shared.js";
 import { failTransportStream, finalizeTransportStream } from "./transport-stream-shared.js";
@@ -452,7 +455,7 @@ async function processOpenAICompletionsStream(
     }
     previous.text += next.text;
   };
-  const appendThinkingDeltaInternal = (reasoningDelta: { signature: string; text: string }) => {
+  const appendThinkingDeltaInternal = (reasoningDelta: { signature?: string; text: string }) => {
     if (!currentBlock || currentBlock.type !== "thinking") {
       currentBlock = {
         type: "thinking",
@@ -504,7 +507,7 @@ async function processOpenAICompletionsStream(
     }
     isFlushingPendingPostToolCallDeltas = false;
   };
-  const appendThinkingDelta = (reasoningDelta: { signature: string; text: string }) => {
+  const appendThinkingDelta = (reasoningDelta: { signature?: string; text: string }) => {
     flushPendingPostToolCallDeltas();
     appendThinkingDeltaInternal(reasoningDelta);
   };
@@ -626,7 +629,7 @@ async function processOpenAICompletionsStream(
     if (latestBlock?.type === "text" || latestBlock?.type === "toolCall") {
       return;
     }
-    appendThinkingDelta({ signature: "", text: "" });
+    appendThinkingDelta({ text: "" });
   };
   const flushReasoningTagTextPartitionerAtEnd = () => {
     for (const delta of reasoningTagTextPartitioner.flush()) {
@@ -657,7 +660,7 @@ async function processOpenAICompletionsStream(
     output.responseId ||= chunk.id;
     let hasReasoningUsageActivity = false;
     if (chunk.usage) {
-      output.usage = parseTransportChunkUsage(chunk.usage, model);
+      output.usage = parseOpenAICompletionsUsage(chunk.usage, model);
       hasReasoningUsageActivity = hasOpenAICompletionsReasoningUsageActivity(chunk.usage);
     }
     const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;
@@ -668,7 +671,7 @@ async function processOpenAICompletionsStream(
     }
     const choiceUsage = (choice as unknown as { usage?: ChatCompletionChunk["usage"] }).usage;
     if (!chunk.usage && choiceUsage) {
-      output.usage = parseTransportChunkUsage(choiceUsage, model);
+      output.usage = parseOpenAICompletionsUsage(choiceUsage, model);
       hasReasoningUsageActivity = hasOpenAICompletionsReasoningUsageActivity(choiceUsage);
     }
     if (choice.finish_reason) {
@@ -701,49 +704,52 @@ async function processOpenAICompletionsStream(
       if (hasMirroredReasoning) {
         reasoningTagTextPartitioner.markStrict();
       }
-      if (choiceDelta.content) {
-        // Structured content can contain visible text and thinking blocks in the
-        // same delta, so route each extracted block through the normal stream path.
-        const contentDeltas = getCompletionsContentDeltas(choiceDelta.content);
-        for (const contentDelta of contentDeltas) {
-          if (contentDelta.kind === "text") {
-            const routedDeltas = hasMirroredReasoning
-              ? reasoningTagTextPartitioner.push(contentDelta.text)
-              : reasoningTagTextPartitioner.pushVisible(contentDelta.text);
-            for (const routedDelta of routedDeltas) {
-              appendPartitionedVisibleDelta(routedDelta);
-            }
-          } else {
-            reasoningTagTextPartitioner.markStrict();
-            appendRoutedContentDelta(contentDelta);
+      // Share the content/refusal owner to avoid duplicate mirrored refusals.
+      const contentDeltas = readOpenAICompletionsContentDeltas(
+        choiceDelta.content,
+        choiceDelta.refusal,
+        reasoningDeltas
+          .filter((reasoningDelta) => reasoningDelta.kind === "thinking")
+          .map((reasoningDelta) => reasoningDelta.text),
+      );
+      const appendReasoningDeltas = () => {
+        for (const reasoningDelta of reasoningDeltas) {
+          if (reasoningDelta.kind === "thinking" && !emitReasoning) {
+            continue;
+          }
+          if (currentBlock?.type === "toolCall") {
+            queuePostToolCallDelta({ ...reasoningDelta });
+            continue;
+          }
+          if (reasoningDelta.kind === "text") {
+            appendTextDelta(reasoningDelta.text);
+          } else if (emitReasoning) {
+            appendThinkingDelta(reasoningDelta);
           }
         }
+      };
+      // The dedicated field owns reasoning order/signature; a distinct content
+      // thought follows it, while an exact mirror was removed by the decoder.
+      if (hasMirroredReasoning) {
+        appendReasoningDeltas();
       }
-      // Chat Completions can put safety/structured-output refusals in a top-level
-      // `refusal` field with content null. Surface that as visible text so the
-      // assistant turn is not empty (Responses path already routes refusal deltas).
-      const refusalText = typeof choiceDelta.refusal === "string" ? choiceDelta.refusal : "";
-      if (refusalText) {
-        const routedDeltas = hasMirroredReasoning
-          ? reasoningTagTextPartitioner.push(refusalText)
-          : reasoningTagTextPartitioner.pushVisible(refusalText);
-        for (const routedDelta of routedDeltas) {
-          appendPartitionedVisibleDelta(routedDelta);
+      for (const contentDelta of contentDeltas) {
+        if (contentDelta.kind === "text") {
+          const routedDeltas = hasMirroredReasoning
+            ? reasoningTagTextPartitioner.push(contentDelta.text)
+            : reasoningTagTextPartitioner.pushVisible(contentDelta.text);
+          for (const routedDelta of routedDeltas) {
+            appendPartitionedVisibleDelta(routedDelta);
+          }
+        } else {
+          if (reasoningTagTextPartitioner.hasPending()) {
+            reasoningTagTextPartitioner.markStrict();
+          }
+          appendRoutedContentDelta(contentDelta);
         }
       }
-      for (const reasoningDelta of reasoningDeltas) {
-        if (reasoningDelta.kind === "thinking" && !emitReasoning) {
-          continue;
-        }
-        if (currentBlock?.type === "toolCall") {
-          queuePostToolCallDelta({ ...reasoningDelta });
-          continue;
-        }
-        if (reasoningDelta.kind === "text") {
-          appendTextDelta(reasoningDelta.text);
-        } else if (emitReasoning) {
-          appendThinkingDelta(reasoningDelta);
-        }
+      if (!hasMirroredReasoning) {
+        appendReasoningDeltas();
       }
       const toolCallDeltas = normalizedDelta.toolCalls;
       if (toolCallDeltas.length > 0) {
@@ -853,17 +859,6 @@ async function processOpenAICompletionsStream(
     tagPendingCommentaryText(output.content);
   }
 }
-
-type CompletionsReasoningDelta =
-  | {
-      kind: "thinking";
-      signature: string;
-      text: string;
-    }
-  | {
-      kind: "text";
-      text: string;
-    };
 
 function shouldFilterDeepSeekDsmlText(compat: ReturnType<typeof getCompat>) {
   return compat.thinkingFormat === "deepseek";
@@ -1068,49 +1063,6 @@ function longestDeepSeekDsmlToolOpenPrefixSuffixLength(text: string) {
     }
   }
   return 0;
-}
-
-function getCompletionsContentDeltas(content: unknown): CompletionsReasoningDelta[] {
-  if (typeof content === "string") {
-    return content ? [{ kind: "text", text: content }] : [];
-  }
-  if (Array.isArray(content)) {
-    return content.flatMap((item) => getCompletionsContentDeltas(item));
-  }
-  if (!content || typeof content !== "object") {
-    return [];
-  }
-  const record = content as Record<string, unknown>;
-  const type = typeof record.type === "string" ? record.type.toLowerCase() : "";
-  // Some OpenAI-compatible providers, notably Mistral thinking models, stream
-  // `delta.content` as typed objects. Never coerce those objects directly or
-  // they become persisted visible text like "[object Object]".
-  const extractText = (value: unknown): string => {
-    if (typeof value === "string") {
-      return value;
-    }
-    if (Array.isArray(value)) {
-      return value.map((item) => extractText(item)).join("");
-    }
-    if (value && typeof value === "object") {
-      const nested = value as Record<string, unknown>;
-      return extractText(nested.text ?? nested.content ?? nested.thinking);
-    }
-    return "";
-  };
-  const text = extractText(record.text ?? record.content ?? record.thinking);
-  if (!text) {
-    return [];
-  }
-  // Preserve provider reasoning as OpenClaw thinking blocks so channel/UI
-  // surfaces can decide whether to show it instead of leaking it as answer text.
-  if (type.includes("thinking") || type.includes("reasoning")) {
-    return [{ kind: "thinking", signature: "content", text }];
-  }
-  if (type === "text" || type === "output_text" || type.endsWith(".output_text")) {
-    return [{ kind: "text", text }];
-  }
-  return [];
 }
 
 function getCompletionsReasoningDeltas(
@@ -1322,11 +1274,6 @@ function resolveOpenAICompletionsEffectiveContextTokens(
 
 function isQwenOpenAICompletionsThinkingFormat(format: string): boolean {
   return format === "qwen" || format === "qwen-chat-template";
-}
-
-function isOpenAICompletionsThinkingEnabled(effort: OpenAIReasoningEffort): boolean {
-  const normalized = effort.trim().toLowerCase();
-  return normalized !== "off" && normalized !== "none";
 }
 
 function setQwenChatTemplateThinking(params: Record<string, unknown>, enabled: boolean): void {
@@ -1941,37 +1888,6 @@ export function buildOpenAICompletionsParams(
   return params;
 }
 
-function parseTransportChunkUsage(
-  rawUsage: NonNullable<ChatCompletionChunk["usage"]> & {
-    cost?: unknown;
-    prompt_tokens_details?: { cache_write_tokens?: number | null };
-  },
-  model: Model,
-): MutableAssistantOutput["usage"] {
-  // OpenRouter reports cache writes separately inside prompt totals. Keep read/write
-  // buckets out of input so normalized prompt buckets stay disjoint.
-  const cacheWriteTokens = rawUsage.prompt_tokens_details?.cache_write_tokens || 0;
-  const cachedTokens = rawUsage.prompt_tokens_details?.cached_tokens || 0;
-  const promptTokens = rawUsage.prompt_tokens || 0;
-  const input = Math.max(0, promptTokens - cachedTokens - cacheWriteTokens);
-  const outputTokens = rawUsage.completion_tokens || 0;
-  const reasoningTokens = rawUsage.completion_tokens_details?.reasoning_tokens;
-  const usage: MutableAssistantOutput["usage"] = {
-    input,
-    output: outputTokens,
-    cacheRead: cachedTokens,
-    cacheWrite: cacheWriteTokens,
-    ...(typeof reasoningTokens === "number" && Number.isFinite(reasoningTokens)
-      ? { reasoningTokens }
-      : {}),
-    totalTokens: input + outputTokens + cachedTokens + cacheWriteTokens,
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-  };
-  calculateCost(model as never, usage as never);
-  applyProviderReportedUsageCost(usage, rawUsage.cost);
-  return usage;
-}
-
 function hasOpenAICompletionsReasoningUsageActivity(
   rawUsage: NonNullable<ChatCompletionChunk["usage"]>,
 ) {
@@ -1986,7 +1902,7 @@ const completionsTesting = {
   createSseDoneDetector,
   createOpenAICompletionsClient,
   buildOpenAICompletionsClientConfig,
-  parseTransportChunkUsage,
+  parseTransportChunkUsage: parseOpenAICompletionsUsage,
   processOpenAICompletionsStream,
   shouldEmitOpenAICompletionsReasoningForModel,
 };

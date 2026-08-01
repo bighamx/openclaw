@@ -3,12 +3,19 @@ import { resetGatewayWorkAdmission } from "../process/gateway-work-admission.js"
 
 const mocks = vi.hoisted(() => ({
   events: [] as string[],
+  sessionEntryCounts: new Map<string, number>(),
   loadCombinedSessionStoreForGateway: vi.fn((_cfg: unknown, options: { agentId: string }) => {
     mocks.events.push(`sessions.load.${options.agentId}`);
+    const entryCount = mocks.sessionEntryCounts.get(options.agentId) ?? 0;
     return {
       durableStorePath: `/state/${options.agentId}.sqlite`,
       storePath: `/state/${options.agentId}.sqlite`,
-      store: {},
+      store: Object.fromEntries(
+        Array.from({ length: entryCount }, (_, index) => [
+          `agent:${options.agentId}:fixture-${index}`,
+          { sessionId: `session-${index}`, updatedAt: index },
+        ]),
+      ),
     };
   }),
   listSessionsFromStoreAsync: vi.fn(async (params: { opts: { agentId: string } }) => {
@@ -44,6 +51,7 @@ const { scheduleGatewayHandlerPrewarm } = await import("./server-startup-handler
 
 beforeEach(() => {
   mocks.events.length = 0;
+  mocks.sessionEntryCounts.clear();
   mocks.loadCombinedSessionStoreForGateway.mockClear();
   mocks.listSessionsFromStoreAsync.mockClear();
   mocks.listManagedPlugins.mockClear();
@@ -115,6 +123,53 @@ describe("scheduleGatewayHandlerPrewarm", () => {
     sidecar.stop();
   });
 
+  it("waits for gateway readiness before warming handler data", async () => {
+    vi.useFakeTimers();
+    let releaseGatewayReady!: () => void;
+    const gatewayReady = new Promise<void>((resolve) => {
+      releaseGatewayReady = resolve;
+    });
+    const load = vi.fn(async () => {});
+
+    const sidecar = scheduleGatewayHandlerPrewarm({
+      cfgAtStart: {} as never,
+      log: { warn: vi.fn() },
+      items: [{ name: "sessions", load }],
+      waitForPostReadyWork: () => gatewayReady,
+    });
+
+    await vi.advanceTimersToNextTimerAsync();
+    expect(load).not.toHaveBeenCalled();
+
+    releaseGatewayReady();
+    await vi.runAllTimersAsync();
+    expect(load).toHaveBeenCalledOnce();
+    sidecar.stop();
+  });
+
+  it("stays stopped when readiness arrives after shutdown", async () => {
+    vi.useFakeTimers();
+    let releaseGatewayReady!: () => void;
+    const gatewayReady = new Promise<void>((resolve) => {
+      releaseGatewayReady = resolve;
+    });
+    const load = vi.fn(async () => {});
+
+    const sidecar = scheduleGatewayHandlerPrewarm({
+      cfgAtStart: {} as never,
+      log: { warn: vi.fn() },
+      items: [{ name: "sessions", load }],
+      waitForPostReadyWork: () => gatewayReady,
+    });
+
+    await vi.advanceTimersToNextTimerAsync();
+    sidecar.stop();
+    releaseGatewayReady();
+    await vi.runAllTimersAsync();
+
+    expect(load).not.toHaveBeenCalled();
+  });
+
   it("logs failures and continues without changing later request behavior", async () => {
     vi.useFakeTimers();
     const warn = vi.fn();
@@ -144,6 +199,29 @@ describe("scheduleGatewayHandlerPrewarm", () => {
     expect(requestLoad).toHaveBeenCalledOnce();
     expect(laterPrewarm).toHaveBeenCalledOnce();
     await expect(requestLoad()).resolves.toBe("request result");
+  });
+
+  it("skips optional catalog prewarm when the combined session stores are large", async () => {
+    vi.useFakeTimers();
+    mocks.sessionEntryCounts.set("main", 2_001);
+    const cfg = {
+      agents: { list: [{ id: "main", default: true }, { id: "research" }] },
+    } as never;
+
+    scheduleGatewayHandlerPrewarm({
+      cfgAtStart: cfg,
+      log: { warn: vi.fn() },
+    });
+    await vi.runAllTimersAsync();
+
+    expect(mocks.events).toEqual([
+      "sessions.load.main",
+      "sessions.rows.main",
+      "sessions.load.research",
+      "sessions.rows.research",
+      "plugins",
+    ]);
+    expect(mocks.prewarmSessionCatalogList).not.toHaveBeenCalled();
   });
 
   it("stops before scheduling another event-loop turn", async () => {
