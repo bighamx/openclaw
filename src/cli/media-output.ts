@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { detectMime, extensionForMime, normalizeMimeType } from "@openclaw/media-core/mime";
-import { saveMediaBuffer } from "../../media/store.js";
+import { saveMediaBuffer } from "../media/store.js";
+import { publishOutputFileAtomically } from "./output-file.runtime.js";
+
+export { publishOutputFileAtomically };
 
 export async function writeOutputAsset(params: {
   buffer: Buffer;
@@ -42,8 +45,12 @@ export async function writeOutputAsset(params: {
     params.outputCount <= 1
       ? path.join(parsed.dir, `${parsed.name}${ext}`)
       : path.join(parsed.dir, `${parsed.name}-${String(params.outputIndex + 1)}${ext}`);
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, params.buffer);
+  await publishOutputFileAtomically({
+    filePath,
+    writeTemp: async (tempPath) => {
+      await fs.writeFile(tempPath, params.buffer, { flag: "wx" });
+    },
+  });
   return {
     path: filePath,
     mimeType: detectedNormalized ?? params.mimeType,
