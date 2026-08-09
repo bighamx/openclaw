@@ -19,6 +19,7 @@ import {
   executeSqliteQueryTakeFirstSync,
   getNodeSqliteKysely,
 } from "./kysely-sync.js";
+import { writeUpdateInstallReceiptRowSync } from "./restart-sentinel-store.js";
 import type { UpdateCheckResult } from "./update-check.js";
 
 const {
@@ -321,8 +322,12 @@ describe("update-startup", () => {
 
   function mockDevGitStatus(params?: {
     currentSha?: string;
-    upstreamSha?: string;
+    upstream?: string | null;
+    upstreamSha?: string | null;
+    commitAtMs?: number | null;
+    ahead?: number | null;
     behind?: number | null;
+    fetchOk?: boolean;
   }) {
     vi.mocked(resolveOpenClawPackageRoot).mockResolvedValue("/opt/openclaw");
     vi.mocked(checkUpdateStatus).mockResolvedValue({
@@ -334,12 +339,13 @@ describe("update-startup", () => {
         sha: params?.currentSha ?? "current-sha",
         tag: null,
         branch: "main",
-        upstream: "origin/main",
-        upstreamSha: params?.upstreamSha ?? "upstream-sha",
+        upstream: params?.upstream === undefined ? "origin/main" : params.upstream,
+        upstreamSha: params?.upstreamSha === undefined ? "upstream-sha" : params.upstreamSha,
+        commitAtMs: params?.commitAtMs ?? null,
         dirty: false,
-        ahead: 0,
-        behind: params?.behind ?? 2,
-        fetchOk: true,
+        ahead: params?.ahead === undefined ? 0 : params.ahead,
+        behind: params?.behind === undefined ? 2 : params.behind,
+        fetchOk: params?.fetchOk ?? true,
       },
     } satisfies UpdateCheckResult);
   }
@@ -1052,7 +1058,7 @@ describe("update-startup", () => {
     expect(getUpdateSchedule()).toMatchObject({
       channel: "dev",
       autoEnabled: true,
-      install: { kind: "git" },
+      install: { kind: "git", git: { status: "behind", commitsBehind: 2 } },
       target: {
         kind: "git",
         upstreamRef: "origin/main",
@@ -1132,16 +1138,92 @@ describe("update-startup", () => {
 
     expect(runCommandWithTimeout).not.toHaveBeenCalled();
     expect(getUpdateAvailable()).toBeNull();
+    expect(getUpdateSchedule()?.install).toEqual({
+      kind: "git",
+      git: { currentSha: "current-sha", status: "current" },
+    });
+  });
+
+  it("reports commit and verified installation times for the current checkout", async () => {
+    const installedAtMs = Date.now() - 60 * 60 * 1000;
+    const commitAtMs = installedAtMs - 24 * 60 * 60 * 1000;
+    runOpenClawStateWriteTransaction(({ db }) => {
+      writeUpdateInstallReceiptRowSync(db, {
+        kind: "update",
+        status: "ok",
+        ts: installedAtMs,
+        stats: {
+          mode: "git",
+          after: { sha: "current-sha", version: "1.0.0" },
+        },
+      });
+    });
+    mockDevGitStatus({ behind: 0, commitAtMs });
+
+    await runGatewayUpdateCheck({
+      cfg: { update: { channel: "dev" } },
+      log: { info: vi.fn() },
+      isNixMode: false,
+      allowInTests: true,
+    });
+
+    expect(getUpdateSchedule()?.install?.git).toEqual({
+      status: "current",
+      currentSha: "current-sha",
+      commitAtMs,
+      installedAtMs,
+    });
+  });
+
+  it.each([
+    {
+      name: "failed fetch",
+      git: { fetchOk: false, ahead: null, behind: null },
+      expected: { status: "unavailable", reason: "fetch-failed" },
+    },
+    {
+      name: "missing upstream",
+      git: { upstream: null, upstreamSha: null, ahead: null, behind: null },
+      expected: { status: "unavailable", reason: "no-upstream" },
+    },
+    {
+      name: "incomparable history",
+      git: { ahead: null, behind: null },
+      expected: { status: "unavailable", reason: "comparison-failed" },
+    },
+    {
+      name: "ahead checkout",
+      git: { ahead: 2, behind: 0 },
+      expected: { status: "ahead", commitsAhead: 2 },
+    },
+    {
+      name: "diverged checkout",
+      git: { ahead: 1, behind: 3 },
+      expected: { status: "diverged", commitsAhead: 1, commitsBehind: 3 },
+    },
+  ])("reports $name without fabricating current", async ({ git, expected }) => {
+    mockDevGitStatus(git);
+
+    await runGatewayUpdateCheck({
+      cfg: { update: { channel: "dev" } },
+      log: { info: vi.fn() },
+      isNixMode: false,
+      allowInTests: true,
+    });
+
+    expect(getUpdateSchedule()?.install?.git).toEqual({ currentSha: "current-sha", ...expected });
+    expect(getUpdateSchedule()?.install?.git?.status).not.toBe("current");
   });
 
   it("resets a busy dev campaign and forces it at the deadline", async () => {
     mockDevGitStatus();
     let busy = 1;
+    const log = { info: vi.fn() };
     const runAutoUpdate = createAutoUpdateSuccessMock();
 
     await runGatewayUpdateCheck({
       cfg: { update: { channel: "dev", auto: { enabled: true } } },
-      log: { info: vi.fn() },
+      log,
       isNixMode: false,
       allowInTests: true,
       activeWorkInspectors: {
@@ -1151,9 +1233,28 @@ describe("update-startup", () => {
       runAutoUpdate,
     });
     expect(getUpdateSchedule()?.campaign).toMatchObject({ state: "waiting-for-idle" });
+    expect(log.info).toHaveBeenCalledWith(
+      "update campaign waiting-for-idle",
+      expect.objectContaining({
+        campaignId: expect.any(String),
+        state: "waiting-for-idle",
+        channel: "dev",
+        target: { upstreamSha: "upstream-sha", commitsBehind: 2 },
+        forceAtMs: expect.any(Number),
+      }),
+    );
     busy = 0;
     await vi.advanceTimersByTimeAsync(5_000);
     expect(getUpdateSchedule()?.campaign).toMatchObject({ state: "countdown" });
+    expect(log.info).toHaveBeenCalledWith(
+      "update campaign countdown",
+      expect.objectContaining({
+        campaignId: expect.any(String),
+        state: "countdown",
+        channel: "dev",
+        applyAtMs: expect.any(Number),
+      }),
+    );
     busy = 1;
     await vi.advanceTimersByTimeAsync(5_000);
     expect(getUpdateSchedule()?.campaign).toMatchObject({ state: "waiting-for-idle" });
@@ -1162,6 +1263,14 @@ describe("update-startup", () => {
     await vi.advanceTimersByTimeAsync(14 * 60_000 + 50_000);
     expect(getUpdateSchedule()?.campaign?.state).toBe("applying");
     expect(runAutoUpdate).toHaveBeenCalledOnce();
+    expect(log.info).toHaveBeenCalledWith(
+      "auto-update applied",
+      expect.objectContaining({
+        channel: "dev",
+        version: "upstream-sha",
+        forced: true,
+      }),
+    );
   });
 
   it("supersedes and clears dev git campaigns from fresh git facts", async () => {
@@ -1451,10 +1560,19 @@ describe("update-startup", () => {
       skipCooldown: true,
       skipDeferral: true,
     });
+    expect(log.info).toHaveBeenCalledWith(
+      "update campaign waiting-for-idle",
+      expect.objectContaining({
+        campaignId: expect.any(String),
+        channel: "beta",
+        target: "2.0.0-beta.1",
+      }),
+    );
     expect(log.info).toHaveBeenCalledWith("auto-update handoff started", {
       channel: "beta",
       version: "2.0.0-beta.1",
       tag: "beta",
+      forced: false,
       command: "openclaw update --yes --channel beta --tag 2.0.0-beta.1 --timeout 2700",
       logPath: "/tmp/openclaw-handoff.log",
     });
@@ -1484,8 +1602,16 @@ describe("update-startup", () => {
       channel: "beta",
       version: "2.0.0-beta.1",
       tag: "beta",
+      forced: false,
       reason: "Error: spawn ENOENT",
     });
+    expect(log.info).toHaveBeenCalledWith(
+      "update campaign ended",
+      expect.objectContaining({
+        campaignId: expect.any(String),
+        channel: "beta",
+      }),
+    );
     expect(getUpdateSchedule()?.campaign).toBeUndefined();
   });
 

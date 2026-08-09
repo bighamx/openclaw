@@ -42,10 +42,15 @@ import {
 } from "../../infra/update-post-core-finalize.js";
 import {
   buildUpdateRestartSentinelPayload,
+  normalizeControlPlaneUpdateResult,
   type UpdateRestartSentinelMeta,
 } from "../../infra/update-restart-sentinel-payload.js";
 import { resolveUpdateInstallSurface, runGatewayUpdate } from "../../infra/update-runner.js";
-import { getUpdateAvailable, getUpdateSchedule } from "../../infra/update-startup.js";
+import {
+  getUpdateAvailable,
+  getUpdateSchedule,
+  refreshGatewayUpdateStatus,
+} from "../../infra/update-startup.js";
 import { formatControlPlaneActor, resolveControlPlaneActor } from "../control-plane-audit.js";
 import {
   getLatestUpdateRestartSentinel,
@@ -144,6 +149,15 @@ export const updateHandlers: GatewayRequestHandlers = {
       );
       sentinel = getLatestUpdateRestartSentinel();
     }
+    if (context?.getRuntimeConfig) {
+      try {
+        await refreshGatewayUpdateStatus(context.getRuntimeConfig());
+      } catch (err) {
+        context.logGateway?.warn(
+          `update.status checkout refresh failed: ${formatUpdateRunErrorMessage(err)}`,
+        );
+      }
+    }
     const schedule = getUpdateSchedule();
     const result = {
       sentinel,
@@ -159,12 +173,29 @@ export const updateHandlers: GatewayRequestHandlers = {
     }
     respond(true, result);
   },
-  "update.hold": ({ params, respond }) => {
+  "update.hold": ({ params, respond, client, context }) => {
     if (!assertValidParams(params, validateUpdateHoldParams, "update.hold", respond)) {
       return;
     }
+    const actor = resolveControlPlaneActor(client);
+    const campaignBeforeHold = gatewayUpdateCampaign.getState();
     const ok = gatewayUpdateCampaign.hold();
     const schedule = getUpdateSchedule();
+    if (ok) {
+      const heldCampaign = gatewayUpdateCampaign.getState();
+      context?.logGateway?.info(
+        `update.hold granted ${formatControlPlaneActor(actor)} holdUntilMs=${heldCampaign?.holdUntilMs} forceAtMs=${heldCampaign?.forceAtMs}`,
+      );
+    } else {
+      const reason = !campaignBeforeHold
+        ? "no campaign"
+        : campaignBeforeHold.state === "applying"
+          ? "applying"
+          : "already held";
+      context?.logGateway?.info(`update.hold refused ${formatControlPlaneActor(actor)}`, {
+        reason,
+      });
+    }
     const result = {
       ok,
       ...(schedule ? { schedule } : {}),
@@ -193,6 +224,12 @@ export const updateHandlers: GatewayRequestHandlers = {
         ? adoptedCampaign.target.version.trim() || undefined
         : undefined;
     const actor = resolveControlPlaneActor(client);
+    if (adoptedCampaign) {
+      context?.logGateway?.info(
+        `update.run adopted campaign ${adoptedCampaign.campaignId} ${formatControlPlaneActor(actor)}`,
+        { target: adoptedCampaign.target },
+      );
+    }
     const {
       sessionKey,
       deliveryContext: requestedDeliveryContext,
@@ -464,6 +501,8 @@ export const updateHandlers: GatewayRequestHandlers = {
       };
     }
 
+    result = normalizeControlPlaneUpdateResult(result);
+
     // A failed RPC owns the adopted campaign until it explicitly releases it;
     // only a started handoff may leave "applying" for the successor process.
     if (
@@ -473,6 +512,9 @@ export const updateHandlers: GatewayRequestHandlers = {
       gatewayUpdateCampaign.getState()?.id === adoptedCampaignId
     ) {
       gatewayUpdateCampaign.clear();
+      context?.logGateway?.info("update.run failed; adopted campaign cleared", {
+        campaignId: adoptedCampaignId,
+      });
     }
 
     const payload: RestartSentinelPayload = buildUpdateRestartSentinelPayload({

@@ -4690,6 +4690,8 @@ public struct SessionsResolveParams: Codable, Sendable {
     public let key: String?
     public let sessionid: String?
     public let label: String?
+    public let shortid: String?
+    public let slughint: String?
     public let agentid: String?
     public let spawnedby: String?
     public let includeglobal: Bool?
@@ -4700,6 +4702,8 @@ public struct SessionsResolveParams: Codable, Sendable {
         key: String? = nil,
         sessionid: String? = nil,
         label: String? = nil,
+        shortid: String? = nil,
+        slughint: String? = nil,
         agentid: String? = nil,
         spawnedby: String? = nil,
         includeglobal: Bool? = nil,
@@ -4709,6 +4713,8 @@ public struct SessionsResolveParams: Codable, Sendable {
         self.key = key
         self.sessionid = sessionid
         self.label = label
+        self.shortid = shortid
+        self.slughint = slughint
         self.agentid = agentid
         self.spawnedby = spawnedby
         self.includeglobal = includeglobal
@@ -4720,6 +4726,8 @@ public struct SessionsResolveParams: Codable, Sendable {
         case key
         case sessionid = "sessionId"
         case label
+        case shortid = "shortId"
+        case slughint = "slugHint"
         case agentid = "agentId"
         case spawnedby = "spawnedBy"
         case includeglobal = "includeGlobal"
@@ -7794,25 +7802,177 @@ public struct SessionsPatchParams: Codable, Sendable {
     }
 }
 
-public struct SessionsArchiveManyParams: Codable, Sendable {
-    public let targets: [[String: AnyCodable]]
-    public let archived: Bool
+public struct SessionsPatchMutation: Codable, Sendable {
+    public let label: AnyCodable?
+    public let category: AnyCodable?
+    public let boardface: AnyCodable?
+    public let icon: AnyCodable?
+    public let statusnote: AnyCodable?
+    public let attention: AnyCodable?
+    public let ttlminutes: Int?
+    public let archived: Bool?
+    public let pinned: Bool?
+    public let unread: Bool?
+    public let thinkinglevel: AnyCodable?
+    public let fastmode: AnyCodable?
+    public let tooloverrides: AnyCodable?
+    public let verboselevel: AnyCodable?
+    public let tracelevel: AnyCodable?
+    public let reasoninglevel: AnyCodable?
+    public let responseusage: AnyCodable?
+    public let elevatedlevel: AnyCodable?
+    public let exechost: AnyCodable?
+    public let execsecurity: AnyCodable?
+    public let execask: AnyCodable?
+    public let execnode: AnyCodable?
+    public let model: AnyCodable?
+    public let completionownersessionkey: AnyCodable?
+    public let inheritedtoolpolicyversion: AnyCodable?
+    public let inheritedtoolallow: AnyCodable?
+    public let inheritedtooldeny: AnyCodable?
+    public let sendpolicy: AnyCodable?
+    public let groupactivation: AnyCodable?
 
     public init(
-        targets: [[String: AnyCodable]],
-        archived: Bool)
+        label: AnyCodable? = nil,
+        category: AnyCodable? = nil,
+        boardface: AnyCodable? = nil,
+        icon: AnyCodable? = nil,
+        statusnote: AnyCodable? = nil,
+        attention: AnyCodable? = nil,
+        ttlminutes: Int? = nil,
+        archived: Bool? = nil,
+        pinned: Bool? = nil,
+        unread: Bool? = nil,
+        thinkinglevel: AnyCodable? = nil,
+        fastmode: AnyCodable? = nil,
+        tooloverrides: AnyCodable? = nil,
+        verboselevel: AnyCodable? = nil,
+        tracelevel: AnyCodable? = nil,
+        reasoninglevel: AnyCodable? = nil,
+        responseusage: AnyCodable? = nil,
+        elevatedlevel: AnyCodable? = nil,
+        exechost: AnyCodable? = nil,
+        execsecurity: AnyCodable? = nil,
+        execask: AnyCodable? = nil,
+        execnode: AnyCodable? = nil,
+        model: AnyCodable? = nil,
+        completionownersessionkey: AnyCodable? = nil,
+        inheritedtoolpolicyversion: AnyCodable? = nil,
+        inheritedtoolallow: AnyCodable? = nil,
+        inheritedtooldeny: AnyCodable? = nil,
+        sendpolicy: AnyCodable? = nil,
+        groupactivation: AnyCodable? = nil)
+    {
+        self.label = label
+        self.category = category
+        self.boardface = boardface
+        self.icon = icon
+        self.statusnote = statusnote
+        self.attention = attention
+        self.ttlminutes = ttlminutes
+        self.archived = archived
+        self.pinned = pinned
+        self.unread = unread
+        self.thinkinglevel = thinkinglevel
+        self.fastmode = fastmode
+        self.tooloverrides = tooloverrides
+        self.verboselevel = verboselevel
+        self.tracelevel = tracelevel
+        self.reasoninglevel = reasoninglevel
+        self.responseusage = responseusage
+        self.elevatedlevel = elevatedlevel
+        self.exechost = exechost
+        self.execsecurity = execsecurity
+        self.execask = execask
+        self.execnode = execnode
+        self.model = model
+        self.completionownersessionkey = completionownersessionkey
+        self.inheritedtoolpolicyversion = inheritedtoolpolicyversion
+        self.inheritedtoolallow = inheritedtoolallow
+        self.inheritedtooldeny = inheritedtooldeny
+        self.sendpolicy = sendpolicy
+        self.groupactivation = groupactivation
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case label
+        case category
+        case boardface = "boardFace"
+        case icon
+        case statusnote = "statusNote"
+        case attention
+        case ttlminutes = "ttlMinutes"
+        case archived
+        case pinned
+        case unread
+        case thinkinglevel = "thinkingLevel"
+        case fastmode = "fastMode"
+        case tooloverrides = "toolOverrides"
+        case verboselevel = "verboseLevel"
+        case tracelevel = "traceLevel"
+        case reasoninglevel = "reasoningLevel"
+        case responseusage = "responseUsage"
+        case elevatedlevel = "elevatedLevel"
+        case exechost = "execHost"
+        case execsecurity = "execSecurity"
+        case execask = "execAsk"
+        case execnode = "execNode"
+        case model
+        case completionownersessionkey = "completionOwnerSessionKey"
+        case inheritedtoolpolicyversion = "inheritedToolPolicyVersion"
+        case inheritedtoolallow = "inheritedToolAllow"
+        case inheritedtooldeny = "inheritedToolDeny"
+        case sendpolicy = "sendPolicy"
+        case groupactivation = "groupActivation"
+    }
+}
+
+public struct SessionsPatchManyTarget: Codable, Sendable {
+    public let key: String
+    public let agentid: String?
+    public let expectedsessionid: String?
+    public let expectedlifecyclerevision: String?
+
+    public init(
+        key: String,
+        agentid: String? = nil,
+        expectedsessionid: String? = nil,
+        expectedlifecyclerevision: String? = nil)
+    {
+        self.key = key
+        self.agentid = agentid
+        self.expectedsessionid = expectedsessionid
+        self.expectedlifecyclerevision = expectedlifecyclerevision
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case key
+        case agentid = "agentId"
+        case expectedsessionid = "expectedSessionId"
+        case expectedlifecyclerevision = "expectedLifecycleRevision"
+    }
+}
+
+public struct SessionsPatchManyParams: Codable, Sendable {
+    public let targets: [SessionsPatchManyTarget]
+    public let patch: SessionsPatchMutation
+
+    public init(
+        targets: [SessionsPatchManyTarget],
+        patch: SessionsPatchMutation)
     {
         self.targets = targets
-        self.archived = archived
+        self.patch = patch
     }
 
     private enum CodingKeys: String, CodingKey {
         case targets
-        case archived
+        case patch
     }
 }
 
-public struct SessionsArchiveManyResult: Codable, Sendable {
+public struct SessionsPatchManyResult: Codable, Sendable {
     public let outcomes: [AnyCodable]
 
     public init(

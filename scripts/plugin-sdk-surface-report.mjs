@@ -100,6 +100,8 @@ const defaultPublicDeprecatedExportsByEntrypointBudget = Object.freeze({
   core: 2,
   routing: 1,
   health: 0,
+  // +1: shipped channel setup state-migration declaration during its migration window.
+  "channel-entry-contract": 1,
   "channel-streaming": 54,
   "approval-gateway-runtime": 1,
   "approval-handler-runtime": 1,
@@ -164,7 +166,8 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +1: pinned secret reads and first-writer-wins creation.
       // +2: restore the documented session-catalog and tool-results plugin contracts.
       // +1: focused inbound-event delivery correlation for channel plugins.
-      149,
+      // +1: dependency-light agent scope helpers for doctor migration enumeration.
+      150,
       env,
     ),
     publicExports: readPluginSdkSurfaceBudgetEnv(
@@ -223,7 +226,9 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +2: shared channel question-reaction store and preflight-audio factories.
       // +1: shared channel interactive dispatcher with canonical binding authorization.
       // +1: simple channel secret contract factory replacing repeated collectors.
-      4835,
+      // +4: focused agent scope functions for doctor migration enumeration.
+      // +1: shared transcript credential-safety prompt for plugin-owned agent harnesses.
+      4840,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
@@ -274,7 +279,8 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +2: shared channel question-reaction store and preflight-audio factories.
       // +1: shared channel interactive dispatcher with canonical binding authorization.
       // +1: simple channel secret contract factory replacing repeated collectors.
-      2912,
+      // +4: focused agent scope functions for doctor migration enumeration.
+      2916,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(
@@ -286,7 +292,8 @@ export function readPluginSdkSurfaceBudgets(env = process.env) {
       // +1: flushLogger projected through the deprecated text-runtime barrel.
       // +1: shared ingress error factory projected through channel-message.
       // +1: shared ingress retention defaults projected through channel-message.
-      1703,
+      // +1: shipped channel setup state-migration declaration during its migration window.
+      1704,
       env,
     ),
     publicWildcardReexports: readPluginSdkSurfaceBudgetEnv(
