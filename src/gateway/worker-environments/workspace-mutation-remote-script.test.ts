@@ -6,10 +6,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { waitForChildClose, waitForDead, waitForFile } from "../../../test/helpers/process-wait.js";
 import { useAutoCleanupTempDirTracker } from "../../../test/helpers/temp-dir.js";
 import { runCommandWithTimeout } from "../../process/exec.js";
+import { BUNDLE_HASH, prepareLocalWorkspaceRsyncBoundary } from "./tunnel.test-support.js";
+import { REMOTE_GIT_WORKSPACE_RETRY_RESET_JS } from "./workspace-mutation-remote-script.js";
 import {
-  REMOTE_GIT_WORKSPACE_RETRY_RESET_JS,
-  REMOTE_WORKSPACE_RSYNC_RECEIVER_JS,
-} from "./workspace-mutation-remote-script.js";
+  createWorkerWorkspaceRsyncReceiverPathFactory,
+  WORKER_WORKSPACE_RSYNC_DESTINATION,
+  workerWorkspaceRsyncReceiverEntryPath,
+} from "./workspace-sync-helpers.js";
 
 const tempDirs = useAutoCleanupTempDirTracker(afterEach);
 
@@ -25,7 +28,7 @@ function spawnTransaction(argv: string[], env: NodeJS.ProcessEnv) {
     signal,
     stderr,
   }));
-  return { exited };
+  return { pid: child.pid, exited };
 }
 
 describe("remote workspace mutation receiver script", () => {
@@ -60,7 +63,7 @@ describe("remote workspace mutation receiver script", () => {
         String.raw`const fs = require("node:fs");
 const kill = process.kill.bind(process);
 process.kill = function(pid, signal) {
-  if (signal === 0 && pid < 0 && process.argv[4] === process.env.OPENCLAW_TEST_RESET_NONCE) {
+  if (signal === 0 && pid > 0 && process.argv[4] === process.env.OPENCLAW_TEST_RESET_NONCE) {
     fs.writeFileSync(process.env.OPENCLAW_TEST_CONTENDER_MARKER, "");
   }
   return kill(pid, signal);
@@ -79,18 +82,32 @@ process.kill = function(pid, signal) {
         OPENCLAW_TEST_RESET_NONCE: resetNonce,
         OPENCLAW_TEST_CONTENDER_MARKER: contenderMarker,
       };
+      const receiverCommand = createWorkerWorkspaceRsyncReceiverPathFactory({
+        receiverEntryPath: workerWorkspaceRsyncReceiverEntryPath(BUNDLE_HASH),
+        remoteWorkspaceDir: workspace,
+        canonicalHome: home,
+        remoteRelative: relative,
+      })("workspace-root");
+      const boundary = await prepareLocalWorkspaceRsyncBoundary(home, [
+        "rsync",
+        `--rsync-path=${receiverCommand}`,
+        "-e",
+        "ssh",
+        "--",
+        "source",
+        `test:${WORKER_WORKSPACE_RSYNC_DESTINATION}`,
+      ]);
+      const [node, receiverEntry, mode, context] = receiverCommand.split(" ");
+      expect(node).toBe("node");
       const receiver = spawnTransaction(
         [
-          "-e",
-          REMOTE_WORKSPACE_RSYNC_RECEIVER_JS,
-          workspace,
-          home,
-          relative,
+          path.join(home, receiverEntry!),
+          mode!,
+          context!,
           receiverNonce,
-          workspace,
           "--server",
           ".",
-          `${workspace}/`,
+          boundary.argv.at(-1)!.slice("test:".length),
         ],
         env,
       );
@@ -100,10 +117,16 @@ process.kill = function(pid, signal) {
         const workspaceKey = createHash("sha256").update(workspace).digest("hex");
         const lock = path.join(path.dirname(workspace), `.openclaw-accepted-lock-${workspaceKey}`);
         const [ownerName] = await fs.readdir(lock);
-        const receiverPid = Number(
-          /^owner\.receiver\.[a-f0-9]{32}\.([1-9][0-9]*)\./u.exec(ownerName!)?.[1],
-        );
+        const owner =
+          /^owner\.receiver\.[a-f0-9]{32}\.([1-9][0-9]*)\.([1-9][0-9]*)\.[a-f0-9]{32}$/u.exec(
+            ownerName!,
+          );
+        const receiverPid = Number(owner?.[1]);
+        const controllerPid = Number(owner?.[2]);
         expect(Number.isSafeInteger(receiverPid)).toBe(true);
+        expect(Number.isSafeInteger(controllerPid)).toBe(true);
+        expect(controllerPid).toBe(receiver.pid);
+        expect(controllerPid).not.toBe(receiverPid);
         await waitForDead(receiverPid, 10_000);
 
         const reset = runCommandWithTimeout(
