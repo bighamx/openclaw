@@ -704,6 +704,7 @@ export const en: TranslationMap = {
     createFailed: "Couldn't create the session.",
     createOutcomeUnknown:
       "The Gateway changed while this session was starting. Check recent sessions before starting this task again.",
+    cliAgentsGroup: "CLI agents",
     catalogUnavailable: "This session target is unavailable.",
   },
   dashboardsPage: {
@@ -2762,6 +2763,11 @@ export const en: TranslationMap = {
       title: "Lean tools for local models",
       description:
         "Drop heavyweight default tools that smaller local models handle poorly, leaving a shorter set they can use reliably.",
+    },
+    cliAgents: {
+      title: "CLI agents",
+      description:
+        "Show external CLI session engines in the new-session model picker when their plugins support creating sessions.",
     },
     auditMessages: {
       title: "Message audit metadata",
@@ -5092,7 +5098,7 @@ export const en: TranslationMap = {
         usageCredits: "Usage credits",
         budgetValue: "{used} of {limit}",
         limitFiveHour: "5-hour limit",
-        limitWeekly: "Weekly · all models",
+        limitWeekly: "Weekly",
         limitDaily: "Daily limit",
         limitHours: "{hours}-hour limit",
       },
@@ -5151,6 +5157,7 @@ export const en: TranslationMap = {
     },
     attachments: {
       attachedFile: "Attached file",
+      showInTextField: "Show in text field",
       outsideAllowedFolders: "Outside allowed folders",
       unavailable: "Unavailable",
       checking: "Checking...",
