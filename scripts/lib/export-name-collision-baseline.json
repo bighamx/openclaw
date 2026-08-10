@@ -347,22 +347,6 @@
     "sdk": true
   },
   {
-    "name": "dispatchChannelInboundReply",
-    "files": [
-      "src/channels/message/inbound-reply-dispatch.ts",
-      "src/channels/turn/kernel.ts"
-    ],
-    "sdk": true
-  },
-  {
-    "name": "dispatchChannelInboundTurn",
-    "files": [
-      "src/channels/message/inbound-reply-dispatch.ts",
-      "src/channels/turn/kernel.ts"
-    ],
-    "sdk": true
-  },
-  {
     "name": "dispatchReplyWithBufferedBlockDispatcher",
     "files": [
       "src/auto-reply/reply/provider-dispatcher.ts",
@@ -888,21 +872,6 @@
     ]
   },
   {
-    "name": "nodePendingHandlers",
-    "files": [
-      "src/gateway/server-methods/nodes-pending.ts",
-      "src/gateway/server-methods/nodes.pending.ts"
-    ]
-  },
-  {
-    "name": "normalizeAccountId",
-    "files": [
-      "src/routing/account-id.ts",
-      "src/utils/account-id.ts"
-    ],
-    "sdk": true
-  },
-  {
     "name": "normalizeChannelId",
     "files": [
       "src/channels/plugins/registry.ts",
@@ -1063,13 +1032,6 @@
     "files": [
       "src/config/io.observe-recovery.ts",
       "src/config/io.runtime.ts"
-    ]
-  },
-  {
-    "name": "primeConfiguredBindingRegistry",
-    "files": [
-      "src/channels/plugins/binding-registry.ts",
-      "src/channels/plugins/configured-binding-registry.ts"
     ]
   },
   {
@@ -1263,20 +1225,6 @@
     ]
   },
   {
-    "name": "requireValidConfig",
-    "files": [
-      "src/commands/agents.command-shared.ts",
-      "src/commands/channels/shared.ts"
-    ]
-  },
-  {
-    "name": "requireValidConfigFileSnapshot",
-    "files": [
-      "src/commands/agents.command-shared.ts",
-      "src/commands/config-validation.ts"
-    ]
-  },
-  {
     "name": "resetPreparedModelCatalogForTest",
     "files": [
       "src/gateway/server-model-catalog.ts",
@@ -1312,27 +1260,6 @@
     "files": [
       "src/config/sessions/session-accessor.transcript-target.ts",
       "src/gateway/session-utils-store.ts"
-    ]
-  },
-  {
-    "name": "resolveConfiguredBinding",
-    "files": [
-      "src/channels/plugins/binding-registry.ts",
-      "src/channels/plugins/configured-binding-registry.ts"
-    ]
-  },
-  {
-    "name": "resolveConfiguredBindingRecord",
-    "files": [
-      "src/channels/plugins/binding-registry.ts",
-      "src/channels/plugins/configured-binding-registry.ts"
-    ]
-  },
-  {
-    "name": "resolveConfiguredBindingRecordBySessionKey",
-    "files": [
-      "src/channels/plugins/binding-registry.ts",
-      "src/channels/plugins/configured-binding-registry.ts"
     ]
   },
   {
@@ -1466,13 +1393,6 @@
     "sdk": true
   },
   {
-    "name": "resolveQueueSettings",
-    "files": [
-      "src/auto-reply/reply/queue/settings-runtime.ts",
-      "src/auto-reply/reply/queue/settings.ts"
-    ]
-  },
-  {
     "name": "resolveSecretInputString",
     "files": [
       "src/config/types.secrets.ts",
@@ -1500,14 +1420,6 @@
     "files": [
       "src/config/sessions/paths.ts",
       "src/plugin-sdk/session-store-runtime.ts"
-    ],
-    "sdk": true
-  },
-  {
-    "name": "resolveSessionKey",
-    "files": [
-      "src/acp/session-mapper.ts",
-      "src/config/sessions/session-key.ts"
     ],
     "sdk": true
   },
@@ -1541,14 +1453,6 @@
     ]
   },
   {
-    "name": "runChannelInboundEvent",
-    "files": [
-      "src/channels/message/inbound-reply-dispatch.ts",
-      "src/channels/turn/kernel.ts"
-    ],
-    "sdk": true
-  },
-  {
     "name": "runExec",
     "files": [
       "src/agents/code-mode-execution.ts",
@@ -1568,14 +1472,6 @@
     "files": [
       "src/commands/models/auth.ts",
       "src/plugin-sdk/provider-auth-login-flow-runtime.ts"
-    ],
-    "sdk": true
-  },
-  {
-    "name": "runPreparedInboundReply",
-    "files": [
-      "src/channels/message/inbound-reply-dispatch.ts",
-      "src/channels/turn/execution.ts"
     ],
     "sdk": true
   },
@@ -1656,7 +1552,6 @@
   {
     "name": "sleep",
     "files": [
-      "src/agents/utils/sleep.ts",
       "src/tui/tui-pty-test-support.ts",
       "src/utils/sleep.ts"
     ],
