@@ -461,6 +461,30 @@ describe("worker placement dispatch", () => {
     expect(harness.log).toContain("workspace:resume");
   });
 
+  it("preserves a provider destroy failure after teardown owns the stopped tunnel", async () => {
+    const harness = createHarness(placementStore, {
+      destroyFails: true,
+      destroyFailureState: "destroying",
+      resumeFails: true,
+    });
+    const active = await harness.service.dispatch(REQUEST);
+
+    await expect(harness.service.reclaim(REQUEST)).rejects.toThrow("destroy pending");
+
+    expect(harness.environments.get(active.environmentId)).toMatchObject({
+      state: "destroying",
+      ownerEpoch: active.activeOwnerEpoch,
+    });
+    expect(harness.placements.current()).toMatchObject({
+      state: "active",
+      turnClaim: { owner: "worker" },
+    });
+    expect(placementStore.listPendingWorkspaceResults()).toMatchObject([
+      { workspaceAcceptedAtMs: expect.any(Number) },
+    ]);
+    expect(harness.log).not.toContain("workspace:resume");
+  });
+
   it.each<DispatchStage>([
     "barrier",
     "workspace",
@@ -487,6 +511,27 @@ describe("worker placement dispatch", () => {
     if (environmentAcquired) {
       expect(failedAt).toBeGreaterThan(harness.log.indexOf("teardown:destroy"));
     }
+  });
+
+  it("rejects workspace preflight before allocation and allows a corrected redispatch", async () => {
+    const rejectedHarness = createHarness(placementStore, { failAt: "preflight" });
+
+    await expect(rejectedHarness.service.dispatch(REQUEST)).rejects.toMatchObject({
+      code: "invalid_state",
+      message: "preflight failed",
+    });
+
+    expect(rejectedHarness.placements.current()).toBeUndefined();
+    expect(rejectedHarness.log).toEqual(["barrier", "preflight"]);
+    expect(rejectedHarness.environments.create).not.toHaveBeenCalled();
+
+    const correctedHarness = createHarness(placementStore);
+    const active = await correctedHarness.service.dispatch(REQUEST);
+
+    expect(active.state).toBe("active");
+    expect(correctedHarness.log.indexOf("preflight")).toBeLessThan(
+      correctedHarness.log.indexOf("placement:requested"),
+    );
   });
 
   it.each(["requested", "provisioning", "syncing"] as const)(
