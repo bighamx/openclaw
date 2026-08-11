@@ -27,7 +27,6 @@ import { CLAWHUB_INSTALL_ERROR_CODE } from "../plugins/clawhub-error-codes.js";
 import { captureEnv, withEnvAsync } from "../test-utils/env.js";
 import { VERSION } from "../version.js";
 import { createCliRuntimeCapture, getMockCallOutput } from "./test-runtime-capture.js";
-import { isOwningNpmCommand } from "./update-cli.test-helpers.js";
 
 const confirm = vi.fn();
 const select = vi.fn();
@@ -274,11 +273,12 @@ vi.mock("../process/exec.js", () => ({
 
 vi.mock("../utils.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils.js")>();
+  const isMockRecord = (value: unknown) =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
   return {
     ...actual,
     displayString: (input: string) => input,
-    isRecord: (value: unknown) =>
-      typeof value === "object" && value !== null && !Array.isArray(value),
+    isRecord: isMockRecord,
     pathExists: (...args: unknown[]) => pathExists(...args),
     resolveConfigDir: () => "/tmp/openclaw-config",
     sleep: vi.fn(async () => undefined),
@@ -2501,7 +2501,7 @@ describe("update-cli", () => {
   });
 
   it("post-core resume mode skips the core update and only runs post-update tasks", async () => {
-    await runPostCoreCommand({ restart: false });
+    await runPostCoreCommand({ restart: false }, { OPENCLAW_UPDATE_POST_CORE_CONVERGENCE: "1" });
 
     expect(runGatewayUpdate).not.toHaveBeenCalled();
     const installCall = (
@@ -2524,6 +2524,21 @@ describe("update-cli", () => {
         ([, args]) => args[0] === FRESH_POST_UPDATE_ENTRYPOINT && args[1] === "doctor",
       );
     expect(freshDoctorCall).toBeDefined();
+    expect(freshDoctorCall?.[2]).toMatchObject({
+      env: {
+        OPENCLAW_UPDATE_IN_PROGRESS: "1",
+        OPENCLAW_UPDATE_DEFER_CONFIGURED_PLUGIN_INSTALL_REPAIR: "1",
+        OPENCLAW_UPDATE_PARENT_SUPPORTS_DOCTOR_CONFIG_WRITE: "1",
+      },
+    });
+    expect(
+      (freshDoctorCall?.[2] as { env?: NodeJS.ProcessEnv } | undefined)?.env
+        ?.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE,
+    ).toBeUndefined();
+    expect(
+      (freshDoctorCall?.[2] as { baseEnv?: NodeJS.ProcessEnv } | undefined)?.baseEnv
+        ?.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE,
+    ).toBeUndefined();
     expect(vi.mocked(runExec).mock.invocationCallOrder[0] ?? 0).toBeLessThan(
       syncPluginsForUpdateChannel.mock.invocationCallOrder[0] ?? 0,
     );
@@ -5365,6 +5380,9 @@ describe("update-cli", () => {
     const pkgRoot = path.join(brewRoot, "openclaw");
     const brewNpm = path.join(brewPrefix, "bin", "npm");
     const win32PrefixNpm = path.join(brewPrefix, "npm.cmd");
+    const owningNpmCommands = new Set([brewNpm, win32PrefixNpm].map(path.normalize));
+    const isOwningNpmCommand = (value: unknown) =>
+      typeof value === "string" && owningNpmCommands.has(path.normalize(value));
     const pathNpmRoot = createCaseDir("nvm-root");
     mockPackageInstallStatus(pkgRoot);
     pathExists.mockResolvedValue(false);
@@ -5376,7 +5394,7 @@ describe("update-cli", () => {
       if (argv[0] === "npm" && argv[1] === "root" && argv[2] === "-g") {
         return commandResult({ stdout: `${pathNpmRoot}\n` });
       }
-      if (isOwningNpmCommand(argv[0], brewPrefix) && argv[1] === "root" && argv[2] === "-g") {
+      if (isOwningNpmCommand(argv[0]) && argv[1] === "root" && argv[2] === "-g") {
         return commandResult({ stdout: `${brewRoot}\n` });
       }
       return commandResult();
@@ -5395,7 +5413,7 @@ describe("update-cli", () => {
       .mock.calls.find(
         ([argv]) =>
           Array.isArray(argv) &&
-          isOwningNpmCommand(argv[0], brewPrefix) &&
+          isOwningNpmCommand(argv[0]) &&
           argv[1] === "i" &&
           argv[2] === "-g" &&
           argv.includes("openclaw@9999.0.0"),
@@ -7245,13 +7263,13 @@ describe("update-cli", () => {
     });
   });
 
-  it("updateFinalizeCommand runs doctor and plugin convergence with full update env", async () => {
+  it("updateFinalizeCommand defers plugin installation during pre-plugin doctor", async () => {
     await withEnvAsync(
       {
         OPENCLAW_UPDATE_IN_PROGRESS: undefined,
         OPENCLAW_UPDATE_DEFER_CONFIGURED_PLUGIN_INSTALL_REPAIR: undefined,
         OPENCLAW_UPDATE_PARENT_SUPPORTS_DOCTOR_CONFIG_WRITE: undefined,
-        OPENCLAW_UPDATE_POST_CORE_CONVERGENCE: undefined,
+        OPENCLAW_UPDATE_POST_CORE_CONVERGENCE: "1",
       },
       async () => {
         let doctorEnv: NodeJS.ProcessEnv | undefined;
@@ -7271,11 +7289,11 @@ describe("update-cli", () => {
         expect(doctorEnv?.OPENCLAW_UPDATE_IN_PROGRESS).toBe("1");
         expect(doctorEnv?.OPENCLAW_UPDATE_DEFER_CONFIGURED_PLUGIN_INSTALL_REPAIR).toBe("1");
         expect(doctorEnv?.OPENCLAW_UPDATE_PARENT_SUPPORTS_DOCTOR_CONFIG_WRITE).toBe("1");
-        expect(doctorEnv?.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE).toBe("1");
+        expect(doctorEnv?.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE).toBeUndefined();
         expect(process.env.OPENCLAW_UPDATE_IN_PROGRESS).toBeUndefined();
         expect(process.env.OPENCLAW_UPDATE_DEFER_CONFIGURED_PLUGIN_INSTALL_REPAIR).toBeUndefined();
         expect(process.env.OPENCLAW_UPDATE_PARENT_SUPPORTS_DOCTOR_CONFIG_WRITE).toBeUndefined();
-        expect(process.env.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE).toBeUndefined();
+        expect(process.env.OPENCLAW_UPDATE_POST_CORE_CONVERGENCE).toBe("1");
         expect(doctorCommand).toHaveBeenCalledWith(defaultRuntime, {
           nonInteractive: true,
           repair: true,

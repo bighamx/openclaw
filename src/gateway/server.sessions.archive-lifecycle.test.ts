@@ -1,14 +1,14 @@
 // Archive lifecycle tests protect fence-before-cancel, terminal drains, and sentinels.
 import { afterEach, expect, test, vi } from "vitest";
 import { SessionManager } from "../agents/sessions/session-manager.js";
-import { loadSessionEntry, upsertSessionEntry } from "../config/sessions/session-accessor.js";
+import { loadSessionEntry, upsertSessionEntryCore } from "../config/sessions/session-accessor.js";
 import { onAgentEvent } from "../infra/agent-events.js";
 import {
   beginSessionWorkAdmission,
   isSessionLifecycleMutationActive,
   runExclusiveSessionLifecycleMutation,
 } from "../sessions/session-lifecycle-admission.js";
-import { createDeferred } from "../shared/deferred.js";
+import { createDeferredCore } from "../shared/deferred.js";
 import { closeOpenClawStateDatabaseForTest } from "../state/openclaw-state-db.js";
 import { markChatAbortTerminalPersistenceError } from "./chat-abort-lifecycle-internal.js";
 import { registerChatAbortController, removeChatAbortControllerEntry } from "./chat-abort.js";
@@ -65,7 +65,7 @@ function activeRunContext(params: {
   runId: string;
   sessionId: string;
   sessionKey: string;
-  persistence: ReturnType<typeof createDeferred<void>>;
+  persistence: ReturnType<typeof createDeferredCore<void>>;
   ownerConnId?: string;
 }) {
   const chatAbortControllers = new Map();
@@ -306,7 +306,7 @@ test("sessions.patch cancels active work and commits only after admission and te
       interrupted = true;
     },
   });
-  const persistence = createDeferred();
+  const persistence = createDeferredCore();
   const active = activeRunContext({
     runId,
     sessionId,
@@ -385,7 +385,7 @@ test("sharing revocation fences archive before cancellation and forces fresh aut
       interrupted = true;
     },
   });
-  const persistence = createDeferred();
+  const persistence = createDeferredCore();
   const active = activeRunContext({ runId, sessionId, sessionKey, persistence });
   const requestContext = await archiveLifecycleRequestContext(active.context);
   const placement = workerPlacement({ sessionId, sessionKey, state: "active" });
@@ -410,7 +410,7 @@ test("sharing revocation fences archive before cancellation and forces fresh aut
     throw new Error("expected resolved sharing target");
   }
 
-  const releaseAudit = createDeferred();
+  const releaseAudit = createDeferredCore();
   sessionAuditGate.entered.mockClear();
   sessionAuditGate.wait = releaseAudit.promise;
   let sharing: Promise<LifecycleHandlerResponse> | undefined;
@@ -492,11 +492,11 @@ test("archive retains the lifecycle fence until drain and commit before sharing 
     identities: [sessionKey, sessionId],
     assertAllowed: () => {},
   });
-  const persistence = createDeferred();
+  const persistence = createDeferredCore();
   const active = activeRunContext({ runId, sessionId, sessionKey, persistence });
   const requestContext = await archiveLifecycleRequestContext(active.context);
   let placement = workerPlacement({ sessionId, sessionKey, state: "active" });
-  const reclaimGate = createDeferred();
+  const reclaimGate = createDeferredCore();
   const reclaim = vi.fn(async () => {
     await reclaimGate.promise;
     placement = workerPlacement({ sessionId, sessionKey, state: "reclaimed" });
@@ -569,9 +569,9 @@ test("alias archive lets the canonical cloud reclaim barrier reenter without dea
   const sessionId = "session-archive-cloud-alias";
   await writeSessionStore({ entries: { [sessionKey]: sessionStoreEntry(sessionId) } });
   let placement = workerPlacement({ sessionId, sessionKey, state: "active" });
-  const reclaimEntered = createDeferred();
-  const allowNestedReclaim = createDeferred();
-  const contenderRelease = createDeferred();
+  const reclaimEntered = createDeferredCore();
+  const allowNestedReclaim = createDeferredCore();
+  const contenderRelease = createDeferredCore();
   const reclaim = vi.fn(async () => {
     reclaimEntered.resolve();
     await allowNestedReclaim.promise;
@@ -752,7 +752,7 @@ test("sessions.patch returns UNAVAILABLE when terminal persistence fails", async
   const sessionId = "session-archive-persistence-failure";
   const runId = "run-archive-persistence-failure";
   await writeSessionStore({ entries: { [sessionKey]: sessionStoreEntry(sessionId) } });
-  const persistence = createDeferred();
+  const persistence = createDeferredCore();
   const active = activeRunContext({ runId, sessionId, sessionKey, persistence });
   try {
     const archive = directSessionReq(
@@ -862,7 +862,7 @@ test("sessions.patchMany prepares independent archive drains concurrently and re
       [secondKey]: sessionStoreEntry(secondSessionId),
     },
   });
-  const firstDrained = createDeferred();
+  const firstDrained = createDeferredCore();
   const firstRelease = vi.fn();
   const secondRelease = vi.fn();
   const beginInferenceSessionDrain = vi.fn((sessionId: string) => ({
@@ -1012,7 +1012,7 @@ test("sessions.patch rejects a generation replaced after the exact preparation r
   const sessionId = "session-archive-generation-race";
   const runId = "run-archive-generation-race";
   await writeSessionStore({ entries: { [sessionKey]: sessionStoreEntry(sessionId) } });
-  const persistence = createDeferred();
+  const persistence = createDeferredCore();
   const active = activeRunContext({ runId, sessionId, sessionKey, persistence });
   let placement = workerPlacement({ sessionId, sessionKey, state: "active" });
   const dispatch = vi.fn();
@@ -1033,7 +1033,7 @@ test("sessions.patch rejects a generation replaced after the exact preparation r
       },
     );
     await vi.waitFor(() => expect(active.controller.signal.aborted).toBe(true));
-    await upsertSessionEntry(
+    await upsertSessionEntryCore(
       { storePath, sessionKey },
       { sessionId: "session-archive-generation-replacement", updatedAt: 2 },
     );
