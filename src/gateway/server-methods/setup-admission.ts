@@ -28,9 +28,10 @@ export async function runExclusiveSystemAgentSetupActivation<T>(
   }
 }
 
-export function whenAdmittedWizardSessionSettled<T extends { whenSettled(): Promise<unknown> }>(
-  session: T,
-): Promise<unknown> {
+/** Resolves after both the wizard runner and its setup-target admission have settled. */
+export function whenAdmittedWizardSessionSettled(session: {
+  whenSettled(): Promise<unknown>;
+}): Promise<unknown> {
   return wizardSessionAdmissionSettlements.get(session) ?? session.whenSettled();
 }
 
