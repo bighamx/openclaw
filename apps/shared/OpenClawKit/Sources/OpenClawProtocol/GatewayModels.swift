@@ -71,6 +71,11 @@ public enum WorkerTunnelStatus: String, Codable, Sendable {
     case reconnecting = "reconnecting"
 }
 
+public enum WorkerDesktopAppId: String, Codable, Sendable {
+    case browser = "browser"
+    case terminal = "terminal"
+}
+
 public enum WorktreeRepositoryStatus: String, Codable, Sendable {
     case git = "git"
     case notGit = "not_git"
@@ -1804,6 +1809,7 @@ public struct WorkerEnvironmentMetadata: Codable, Sendable {
     public let tunnelstatus: WorkerTunnelStatus
     public let error: String?
     public let desktop: Bool?
+    public let desktopapps: [WorkerDesktopAppId]?
 
     public init(
         providerid: String,
@@ -1814,7 +1820,8 @@ public struct WorkerEnvironmentMetadata: Codable, Sendable {
         attachedsessionids: [String],
         tunnelstatus: WorkerTunnelStatus,
         error: String? = nil,
-        desktop: Bool? = nil)
+        desktop: Bool? = nil,
+        desktopapps: [WorkerDesktopAppId]? = nil)
     {
         self.providerid = providerid
         self.leaseid = leaseid
@@ -1825,6 +1832,7 @@ public struct WorkerEnvironmentMetadata: Codable, Sendable {
         self.tunnelstatus = tunnelstatus
         self.error = error
         self.desktop = desktop
+        self.desktopapps = desktopapps
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -1837,6 +1845,7 @@ public struct WorkerEnvironmentMetadata: Codable, Sendable {
         case tunnelstatus = "tunnelStatus"
         case error
         case desktop
+        case desktopapps = "desktopApps"
     }
 }
 
@@ -2091,6 +2100,42 @@ public struct WorkerDesktopObserveResult: Codable, Sendable {
         case expiresatms = "expiresAtMs"
         case control
         case vncpassword = "vncPassword"
+    }
+}
+
+public struct WorkerDesktopLaunchParams: Codable, Sendable {
+    public let environmentid: String
+    public let app: WorkerDesktopAppId
+
+    public init(
+        environmentid: String,
+        app: WorkerDesktopAppId)
+    {
+        self.environmentid = environmentid
+        self.app = app
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case environmentid = "environmentId"
+        case app
+    }
+}
+
+public struct WorkerDesktopLaunchResult: Codable, Sendable {
+    public let app: WorkerDesktopAppId
+    public let status: String
+
+    public init(
+        app: WorkerDesktopAppId,
+        status: String)
+    {
+        self.app = app
+        self.status = status
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case app
+        case status
     }
 }
 
@@ -2726,6 +2771,7 @@ public struct AgentParams: Codable, Sendable {
     public let acpturnsource: String?
     public let internalruntimehandoffid: String?
     public let internalexecutionidentityretry: Bool?
+    public let internalexecutionidentityrecoveryattempt: Int?
     public let execapprovalfollowupexpectedsessionid: String?
     public let internalevents: [[String: AnyCodable]]?
     public let inputprovenance: [String: AnyCodable]?
@@ -2775,6 +2821,7 @@ public struct AgentParams: Codable, Sendable {
         acpturnsource: String? = nil,
         internalruntimehandoffid: String? = nil,
         internalexecutionidentityretry: Bool? = nil,
+        internalexecutionidentityrecoveryattempt: Int? = nil,
         execapprovalfollowupexpectedsessionid: String? = nil,
         internalevents: [[String: AnyCodable]]? = nil,
         inputprovenance: [String: AnyCodable]? = nil,
@@ -2823,6 +2870,7 @@ public struct AgentParams: Codable, Sendable {
         self.acpturnsource = acpturnsource
         self.internalruntimehandoffid = internalruntimehandoffid
         self.internalexecutionidentityretry = internalexecutionidentityretry
+        self.internalexecutionidentityrecoveryattempt = internalexecutionidentityrecoveryattempt
         self.execapprovalfollowupexpectedsessionid = execapprovalfollowupexpectedsessionid
         self.internalevents = internalevents
         self.inputprovenance = inputprovenance
@@ -2873,6 +2921,7 @@ public struct AgentParams: Codable, Sendable {
         case acpturnsource = "acpTurnSource"
         case internalruntimehandoffid = "internalRuntimeHandoffId"
         case internalexecutionidentityretry = "internalExecutionIdentityRetry"
+        case internalexecutionidentityrecoveryattempt = "internalExecutionIdentityRecoveryAttempt"
         case execapprovalfollowupexpectedsessionid = "execApprovalFollowupExpectedSessionId"
         case internalevents = "internalEvents"
         case inputprovenance = "inputProvenance"

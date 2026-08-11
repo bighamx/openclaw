@@ -51,6 +51,7 @@ import {
 } from "../../tasks/task-status-access.js";
 import { resolveUserPath } from "../../utils.js";
 import { resolveMessageChannel } from "../../utils/message-channel.js";
+import type { PreparedAgentRunAdmission } from "../admitted-run-context.js";
 import type { AgentRunTerminalReplySnapshot } from "../agent-run-terminal-reply.js";
 import { resolveAuthProfileOrder } from "../auth-profiles/order.js";
 import { ensureAuthProfileStore } from "../auth-profiles/store.js";
@@ -65,7 +66,7 @@ import {
   resolveCliExecutionAuthProfileId,
 } from "../cli-execution-auth.js";
 import { runCliAgent } from "../cli-runner.js";
-import { hasClaudeLiveSessionForOwner } from "../cli-runner/claude-live-session.js";
+import { hasClaudeSession } from "../cli-runner/claude-live-registry.js";
 import { resolveCliRuntimeToolsAllow } from "../cli-runner/tool-policy.js";
 import {
   getCliSessionBinding,
@@ -503,6 +504,7 @@ export async function persistCliTurnTranscript(params: {
 }
 
 export function runAgentAttempt(params: {
+  preparedRunAdmission: PreparedAgentRunAdmission;
   providerOverride: string;
   modelOverride: string;
   configuredAuthProfileId?: string;
@@ -852,7 +854,7 @@ export function runAgentAttempt(params: {
       const hasManagedClaudeLiveSession = Boolean(
         isClaudeCliProvider(cliExecutionProvider) &&
         cliSessionBinding?.sessionId &&
-        hasClaudeLiveSessionForOwner({
+        hasClaudeSession({
           backendId: cliExecutionProvider,
           agentAccountId: params.runContext.accountId,
           agentId: params.sessionAgentId,
@@ -920,8 +922,9 @@ export function runAgentAttempt(params: {
           agentId: params.sessionAgentId,
           runId: params.runId,
         },
-        () =>
-          runCliAgent({
+        async () => {
+          return await runCliAgent({
+            preparedRunAdmission: params.preparedRunAdmission,
             sessionId: params.sessionId,
             sessionKey: params.sessionKey,
             sessionTarget: params.sessionTarget,
@@ -1086,7 +1089,8 @@ export function runAgentAttempt(params: {
                   },
                 }
               : {}),
-          }),
+          });
+        },
       );
     };
     return resolveReusableCliSessionBinding().then(async (activeCliSessionBinding) => {
@@ -1128,6 +1132,7 @@ export function runAgentAttempt(params: {
   }
 
   const embeddedRunParams: Parameters<typeof runEmbeddedAgent>[0] = {
+    preparedRunAdmission: params.preparedRunAdmission,
     sessionId: params.sessionId,
     sessionKey: params.sessionKey,
     chatType: params.sessionEntry?.chatType,
