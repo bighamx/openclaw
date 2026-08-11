@@ -2777,7 +2777,9 @@ describe("createFeishuReplyDispatcher streaming behavior", () => {
       domain: "feishu",
       config: {
         renderMode: "card",
-        streaming: { mode: "partial" },
+        // Raw command text requires the documented commandText opt-in; the
+        // default "status" mode renders the tool label only.
+        streaming: { mode: "partial", progress: { commandText: "raw" } },
       },
     });
 
