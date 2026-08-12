@@ -303,6 +303,8 @@ export async function createGatewayHttpTransport(params: {
       resolvedAuth: params.resolvedAuth,
       getResolvedAuth: params.getResolvedAuth,
       rateLimiter: params.rateLimiter,
+      publicRateLimiter: params.joinRateLimiter,
+      workerIngressEnabled: params.workerIngressEnabled,
       log: params.log,
       desktopSessionRegistry: params.desktopSessionRegistry,
     });

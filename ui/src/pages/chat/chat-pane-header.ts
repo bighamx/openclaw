@@ -1,3 +1,4 @@
+import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
 import { html, nothing } from "lit";
 import type { SessionDiscussionInfo } from "../../../../packages/gateway-protocol/src/index.js";
 import type { GatewaySessionRow } from "../../api/types.ts";
@@ -22,7 +23,6 @@ import {
   canDeleteSessionRows,
   resolveUiConfiguredMainKey,
 } from "../../lib/sessions/session-key.ts";
-import { normalizeOptionalString } from "../../lib/string-coerce.ts";
 import { isActiveTask } from "../../lib/tasks/data.ts";
 import { renderBoardViewSwitch } from "./board-session-surface.ts";
 import { resolveChatPanePlacement } from "./chat-pane-placement.ts";
@@ -180,7 +180,7 @@ export abstract class ChatPaneHeader extends ChatPaneSessionMenu {
           session: row,
         })
       : {};
-    const desktopPanelAvailable = isDesktopPanelAvailable(this.context.gateway.snapshot, row);
+    const desktopPanelAvailable = isDesktopPanelAvailable(this.context.gateway.snapshot);
     const openDesktopPanel = () =>
       window.dispatchEvent(
         new CustomEvent<DesktopPanelToggleDetail>(DESKTOP_PANEL_TOGGLE_EVENT, {
