@@ -30,7 +30,11 @@ import {
   publishPreparedBackupArchive,
   type BackupArchivePublication,
 } from "./backup-archive-publication.js";
-import { removePreparedBackupArchive, writeArchiveStreamToFile } from "./backup-create-stream.js";
+import {
+  observeBackupTarEntryProgress,
+  removePreparedBackupArchive,
+  writeArchiveStreamToFile,
+} from "./backup-create-stream.js";
 import { writeTarArchiveWithRetry } from "./backup-tar-retry.js";
 import { isTransientSqliteBackupPath, isVolatileBackupPath } from "./backup-volatile-filter.js";
 import {
@@ -327,7 +331,7 @@ function normalizeBackupFilterPath(value: string): string {
   return value.replaceAll("\\", "/").replace(/\/+$/u, "");
 }
 
-const REINSTALLABLE_STATE_ROOTS = new Set(["dev", "git", "npm", "npm-runtime", "tools"]);
+const NON_AUTHORITATIVE_STATE_ROOTS = new Set(["dev", "git", "npm", "npm-runtime", "tmp", "tools"]);
 
 function buildStateBackupFilter(
   stateDir: string,
@@ -344,7 +348,7 @@ function buildStateBackupFilter(
     }
 
     const segments = normalizedFilePath.slice(statePrefix.length).split("/");
-    if (REINSTALLABLE_STATE_ROOTS.has(segments[0] ?? "")) {
+    if (NON_AUTHORITATIVE_STATE_ROOTS.has(segments[0] ?? "")) {
       const resolvedFilePath = path.resolve(filePath);
       // Configured workspaces nested under a managed root remain authoritative
       // user state. Keep their ancestors traversable without admitting siblings.
@@ -936,11 +940,17 @@ export async function createBackupArchive(
                 linkCache: createBackupLinkCache(),
                 statCache: createBackupVolatileStatCache(volatilePlan),
                 filter: (entryPath, entryStat) => {
-                  reportProgress();
+                  reportProgress({ phase: "traversal", entryPath });
                   return tarFilter(entryPath, entryStat);
                 },
                 onWriteEntry: (entry) => {
-                  reportProgress();
+                  const sourceEntryPath = entry.path;
+                  reportProgress({ phase: "entry", entryPath: sourceEntryPath });
+                  if (entry.type === "File" && (entry.stat?.size ?? 0) > 0) {
+                    observeBackupTarEntryProgress(entry, (bytes) => {
+                      reportProgress({ phase: "raw", entryPath: sourceEntryPath, bytes });
+                    });
+                  }
                   entry.path = remapArchiveEntryPath({
                     entryPath: entry.path,
                     manifestPath,
