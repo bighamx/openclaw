@@ -3078,20 +3078,20 @@ describeBrowserLayout.concurrent("chat responsive browser layout", () => {
 
     it("scrolls the keyboard-active slash option into view in short landscape", async () => {
       const initiallyHidden = await page.evaluate(() => {
-        const menu = document.querySelector<HTMLElement>(".slash-menu");
+        const scrollRegion = document.querySelector<HTMLElement>(".slash-menu__scroll");
         const options = Array.from(
           document.querySelectorAll<HTMLElement>(".slash-menu-item[role='option']"),
         );
         const hiddenOption = options.find((option) => {
-          const menuRect = menu?.getBoundingClientRect();
+          const menuRect = scrollRegion?.getBoundingClientRect();
           const optionRect = option.getBoundingClientRect();
           return Boolean(menuRect && optionRect.bottom > menuRect.bottom + 1);
         });
-        if (!menu || !hiddenOption) {
+        if (!scrollRegion || !hiddenOption) {
           throw new Error("Expected an initially hidden slash option");
         }
-        menu.scrollTop = 0;
-        const menuRect = menu.getBoundingClientRect();
+        scrollRegion.scrollTop = 0;
+        const menuRect = scrollRegion.getBoundingClientRect();
         const itemRect = hiddenOption.getBoundingClientRect();
         return {
           id: hiddenOption.id,
@@ -3112,11 +3112,11 @@ describeBrowserLayout.concurrent("chat responsive browser layout", () => {
       }, initiallyHidden.id);
       await page.waitForFunction((expectedId) => {
         const active = document.getElementById(expectedId);
-        const menu = active?.closest<HTMLElement>(".slash-menu");
-        if (!active || !menu) {
+        const scrollRegion = active?.closest<HTMLElement>(".slash-menu__scroll");
+        if (!active || !scrollRegion) {
           return false;
         }
-        const menuRect = menu.getBoundingClientRect();
+        const menuRect = scrollRegion.getBoundingClientRect();
         const activeRect = active.getBoundingClientRect();
         return activeRect.top >= menuRect.top - 1 && activeRect.bottom <= menuRect.bottom + 1;
       }, initiallyHidden.id);
@@ -3125,17 +3125,17 @@ describeBrowserLayout.concurrent("chat responsive browser layout", () => {
         const input = document.querySelector<HTMLTextAreaElement>(
           ".agent-chat__composer-combobox > textarea",
         );
-        const menu = document.querySelector<HTMLElement>(".slash-menu");
+        const scrollRegion = document.querySelector<HTMLElement>(".slash-menu__scroll");
         const active = document.querySelector<HTMLElement>(".slash-menu-item--active");
-        if (!input || !menu || !active) {
+        if (!input || !scrollRegion || !active) {
           throw new Error("Expected active slash option after keyboard navigation");
         }
-        const menuRect = menu.getBoundingClientRect();
+        const menuRect = scrollRegion.getBoundingClientRect();
         const activeRect = active.getBoundingClientRect();
         return {
           activeDescendant: input.getAttribute("aria-activedescendant"),
           focusedTag: document.activeElement?.tagName,
-          scrollTop: menu.scrollTop,
+          scrollTop: scrollRegion.scrollTop,
           visible: activeRect.top >= menuRect.top - 1 && activeRect.bottom <= menuRect.bottom + 1,
         };
       });
@@ -3145,6 +3145,52 @@ describeBrowserLayout.concurrent("chat responsive browser layout", () => {
       expect(result.scrollTop).toBeGreaterThan(0);
       expect(result.visible).toBe(true);
     });
+  });
+
+  it("keeps overflowing skill suggestions on the nested scroll viewport", async () => {
+    const page = await openBrowserPage(568, 320);
+    try {
+      const items = Array.from({ length: 16 }, (_, index) => {
+        const active = index === 15 ? " slash-menu-item--active" : "";
+        return `<div class="slash-menu-item${active}" role="option">
+          <span class="slash-menu-leading">
+            <span class="slash-menu-icon">${iconSvg()}</span>
+            <span class="slash-menu-name">$skill_${index + 1}</span>
+          </span>
+        </div>`;
+      }).join("");
+      await page.setContent(`<!doctype html><html><head><style>${readUiCss()}</style></head><body>
+        <div class="slash-menu skill-menu" role="listbox">
+          <div class="slash-menu__scroll">${items}</div>
+        </div>
+      </body></html>`);
+
+      const result = await page.evaluate(() => {
+        const active = document.querySelector<HTMLElement>(".slash-menu-item--active");
+        const scrollRegion = active?.closest<HTMLElement>(".slash-menu__scroll");
+        if (!active || !scrollRegion) {
+          throw new Error("Expected an active skill inside the nested viewport");
+        }
+        const viewport = scrollRegion.getBoundingClientRect();
+        const option = active.getBoundingClientRect();
+        scrollRegion.scrollTop += option.bottom - viewport.bottom;
+        const settledOption = active.getBoundingClientRect();
+        const settledViewport = scrollRegion.getBoundingClientRect();
+        return {
+          outerScrollTop: active.closest<HTMLElement>(".skill-menu")?.scrollTop,
+          scrollTop: scrollRegion.scrollTop,
+          visible:
+            settledOption.top >= settledViewport.top - 1 &&
+            settledOption.bottom <= settledViewport.bottom + 1,
+        };
+      });
+
+      expect(result.outerScrollTop).toBe(0);
+      expect(result.scrollTop).toBeGreaterThan(0);
+      expect(result.visible).toBe(true);
+    } finally {
+      await closeBrowserPage(page);
+    }
   });
 
   it("uses the compact mobile grid when the agent filter is not rendered", async () => {
