@@ -58,6 +58,7 @@
     "!dist/plugin-sdk/browser-config.d.ts",
     "!dist/plugin-sdk/bundled-channel-config-schema.d.ts",
     "!dist/plugin-sdk/channel-activity-runtime.d.ts",
+    "!dist/plugin-sdk/channel-config-ui-hints.d.ts",
     "!dist/plugin-sdk/channel-config-writes.d.ts",
     "!dist/plugin-sdk/channel-contract-testing.js",
     "!dist/plugin-sdk/channel-contract-testing.d.ts",
@@ -951,6 +952,9 @@
       "types": "./dist/plugin-sdk/channel-config-helpers.d.ts",
       "default": "./dist/plugin-sdk/channel-config-helpers.js"
     },
+    "./plugin-sdk/channel-config-ui-hints": {
+      "default": "./dist/plugin-sdk/channel-config-ui-hints.js"
+    },
     "./plugin-sdk/channel-config-writes": {
       "default": "./dist/plugin-sdk/channel-config-writes.js"
     },
@@ -1673,8 +1677,7 @@
     "perf:web-fetch": "node --import tsx scripts/bench-web-fetch.ts",
     "perf:kova:summary": "node --import tsx scripts/kova-ci-summary.mts",
     "perf:source:summary": "node --import tsx scripts/openclaw-performance-source-summary.mts",
-    "plugin-sdk:api:check": "node --max-old-space-size=8192 --import tsx scripts/generate-plugin-sdk-api-baseline.ts --check",
-    "plugin-sdk:api:gen": "node --max-old-space-size=8192 --import tsx scripts/generate-plugin-sdk-api-baseline.ts --write",
+    "plugin-sdk:api:diff": "node --max-old-space-size=8192 --import tsx scripts/plugin-sdk-api-diff.mts",
     "plugin-sdk:check-exports": "node --import tsx scripts/sync-plugin-sdk-exports.mts --check",
     "plugin-sdk:surface": "node --max-old-space-size=8192 --import tsx scripts/plugin-sdk-surface-report.mts",
     "plugin-sdk:surface:check": "node --max-old-space-size=8192 --import tsx scripts/plugin-sdk-surface-report.mts --check",

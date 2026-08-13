@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConnectErrorDetailCodes } from "../../packages/gateway-protocol/src/connect-error-details.js";
 import type { GatewayClientOptions } from "../gateway/client.js";
 import {
-  NODE_PROTOCOL_FEATURES_UPDATE_METHOD,
+  NODE_RUNNER_INVENTORY_UPDATE_METHOD,
   NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE,
-} from "../infra/node-worker-supervisor-dialect.js";
+} from "../infra/node-runner-inventory.js";
 import type { configureNodeHost } from "./config.js";
 import { startNodeHostMcpManager, type NodeHostMcpManager } from "./mcp.js";
 import { runNodeHost } from "./runner.js";
@@ -34,6 +34,11 @@ const mocks = vi.hoisted(() => ({
   availabilityChanged: undefined as (() => void) | undefined,
   normalizedPath: null as string | null,
   resolvedExecutables: new Map<string, string>(),
+  nodeWorkerBuild: {
+    bundleHash: "a".repeat(64),
+    openclawVersion: "2026.8.12",
+    protocolFeatures: ["worker-heartbeat-v1"],
+  },
   runtimeClient: undefined as
     | { request: (method: string, params?: unknown) => Promise<unknown> }
     | undefined,
@@ -157,6 +162,10 @@ vi.mock("./mcp.js", () => ({
     callMcpTool: vi.fn(),
     close: mocks.closeMcpManager,
   })),
+}));
+
+vi.mock("./node-worker-build.js", () => ({
+  resolveNodeWorkerBuild: vi.fn(async () => structuredClone(mocks.nodeWorkerBuild)),
 }));
 
 vi.mock("./skills.js", () => ({
@@ -597,6 +606,20 @@ describe("runNodeHost", () => {
     expect(lastCapturedOptions()?.caps).toContain("mcp");
     expect(lastCapturedOptions()?.commands).toContain("mcp.tools.call.v1");
     expect(lastCapturedOptions()?.commands).not.toContain("agent.cli.claude.run.v1");
+    expect(lastCapturedOptions()?.workerRuns).toBeUndefined();
+  });
+
+  it("advertises the local worker build only after node-local opt-in", async () => {
+    mocks.getRuntimeConfig.mockReturnValue({
+      gateway: { handshakeTimeoutMs: 1_000 },
+      nodeHost: { workerRuns: { enabled: true } },
+    } as never);
+
+    await expect(runNodeHost({ gatewayHost: "127.0.0.1", gatewayPort: 18789 })).rejects.toThrow(
+      "event loop readiness timeout",
+    );
+
+    expect(lastCapturedOptions()?.workerRuns).toEqual(mocks.nodeWorkerBuild);
   });
 
   it("advertises Claude agent runs only after node-local opt-in and binary resolution", async () => {
@@ -644,8 +667,30 @@ describe("runNodeHost", () => {
         },
       ],
     });
-    expect(client?.request).toHaveBeenCalledWith(NODE_PROTOCOL_FEATURES_UPDATE_METHOD, {
+    expect(client?.request).toHaveBeenCalledWith(NODE_RUNNER_INVENTORY_UPDATE_METHOD, {
       protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+    });
+  });
+
+  it("publishes the opt-in local worker build in the atomic runner inventory", async () => {
+    mocks.getRuntimeConfig.mockReturnValue({
+      gateway: { handshakeTimeoutMs: 1_000 },
+      nodeHost: { workerRuns: { enabled: true } },
+    } as never);
+    await expect(runNodeHost({ gatewayHost: "127.0.0.1", gatewayPort: 18789 })).rejects.toThrow(
+      "event loop readiness timeout",
+    );
+    const options = mocks.capturedGatewayClientOptions[0];
+    const client = mocks.capturedGatewayClients[0];
+
+    options?.onHelloOk?.({
+      protocol: 4,
+      features: { methods: [], events: [] },
+    } as unknown as Parameters<NonNullable<GatewayClientOptions["onHelloOk"]>>[0]);
+
+    expect(client?.request).toHaveBeenCalledWith(NODE_RUNNER_INVENTORY_UPDATE_METHOD, {
+      protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
+      workerRuns: mocks.nodeWorkerBuild,
     });
   });
 

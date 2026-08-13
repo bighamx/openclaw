@@ -207,6 +207,22 @@ Isolation on node runners: optional worker-in-docker/podman, same sandbox
 axis as gateway-local sessions. Cloud leases keep full-permission-within-the-
 box (the machine is the boundary).
 
+Milestone 6 now has the public worker ingress, transport-neutral launch
+descriptor, durable node-host supervisor, private launch/status/cancel dialect,
+bounded terminal receipts, and the Gateway launch replay/poll/cancel adapter.
+A node freezes its optional local worker build in the connection handshake and
+repeats it in one atomic, reconnect-scoped private runner inventory with the
+supervisor dialect. The Gateway requires those semantic build identities to
+match. Public node and environment projections expose only `sessionHost`; a
+read-scoped topology invalidation makes clients refetch without exposing the
+build. Provider eligibility and new launch selection require the exact handshake,
+while status and cancellation reacquire only the current supervisor proof and use
+the durable launch identity so an upgrade cannot strand an existing worker.
+Node-local opt-in advertises the current installation; default nodes remain
+non-hosts. Milestone 7 upgrades this to Gateway-pinned, namespaced bundle bytes.
+Slots, isolation, checkouts, workspace transfer, and persistent-runner lifecycle
+remain milestone 6 work.
+
 ### Trust model (operator-decided, v1)
 
 Cloud workers run full-permission because the box is disposable and
@@ -427,6 +443,10 @@ Independently mergeable PR series; 3–5 can interleave after 1c.
    column. Fault-injection tests gate exit: device sleep mid-turn, node WS
    blip mid-turn (turn survives), gateway restart with offline device,
    credential expiry, slot saturation, dispatch-with-no-live-runner timeout.
+   The local-install route lands as three PRs: **A** enables node session-host
+   advertisement and completes receipt/credential provisioning, **B** wires
+   supervised worker launch, and **C** adds workspace transport. Milestone 7
+   then upgrades this paired-machine claim to Gateway-pinned bundle bytes.
 7. **Bundle push + updates**: consent split, push over paired channel,
    version surfacing, stale-node dispatch refusal.
 8. **Stop-and-continue moves**: drain + reclaim + re-dispatch to another
