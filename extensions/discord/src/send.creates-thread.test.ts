@@ -4,7 +4,13 @@ import { createRequireRecord } from "openclaw/plugin-sdk/test-fixtures";
 import { loadWebMediaRaw } from "openclaw/plugin-sdk/web-media";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { RateLimitError } from "./internal/discord.js";
-import { makeDiscordRest } from "./send.test-harness.js";
+import {
+  makeDiscordRest,
+  requestBody,
+  requestPath,
+  timerDelayAt,
+  type MockCallSource,
+} from "./send.test-harness.js";
 
 vi.mock("openclaw/plugin-sdk/web-media", async () => {
   const { discordWebMediaMockFactory } = await import("./send.test-harness.js");
@@ -41,40 +47,7 @@ function discordClientOpts(rest: ReturnType<typeof makeDiscordRest>["rest"]) {
   return { cfg: DISCORD_TEST_CFG, rest, token: "t" };
 }
 
-type MockCallSource = {
-  mock: {
-    calls: ArrayLike<ReadonlyArray<unknown>>;
-  };
-};
-
 const requireRecord = createRequireRecord("object", "expected-label");
-
-function mockArg(source: MockCallSource, callIndex: number, argIndex: number, label: string) {
-  const call = source.mock.calls[callIndex];
-  if (!call) {
-    throw new Error(`expected mock call: ${label}`);
-  }
-  return call[argIndex];
-}
-
-function requestOptions(source: MockCallSource, callIndex = 0) {
-  return requireRecord(
-    mockArg(source, callIndex, 1, `request options ${callIndex}`),
-    "request options",
-  );
-}
-
-function requestPath(source: MockCallSource, callIndex = 0) {
-  return mockArg(source, callIndex, 0, `request path ${callIndex}`);
-}
-
-function requestBody(source: MockCallSource, callIndex = 0) {
-  return requireRecord(requestOptions(source, callIndex).body, `request body ${callIndex}`);
-}
-
-function timerDelayAt(source: MockCallSource, callIndex = 0) {
-  return mockArg(source, callIndex, 1, `timer delay ${callIndex}`);
-}
 
 function createDiscordForumPayloadHarness(parentType: ChannelType = ChannelType.GuildForum) {
   const parentId = "700";
@@ -457,8 +430,9 @@ describe("sendMessageDiscord", () => {
     expect(requestPath(postMock as unknown as MockCallSource, 1)).toBe(
       Routes.channelMessages("t1"),
     );
-    expect(requestBody(postMock as unknown as MockCallSource, 1)).toEqual({
+    expect(requestBody(postMock as unknown as MockCallSource, 1)).toMatchObject({
       content: "Hello thread!",
+      enforce_nonce: true,
     });
   });
 
@@ -483,6 +457,7 @@ describe("sendMessageDiscord", () => {
     expect(thrown).toBeInstanceOf(DiscordThreadInitialMessageError);
     const error = requireRecord(thrown, "thread initial message error");
     expect(error.name).toBe("DiscordThreadInitialMessageError");
+    expect(error.message).toContain("initial message delivery could not be confirmed");
     expect(error.initialMessageError).toBe("missing access");
     expect(error.thread).toEqual({ id: "t1", name: "thread", type: ChannelType.PublicThread });
   });
@@ -507,8 +482,9 @@ describe("sendMessageDiscord", () => {
     expect(requestPath(postMock as unknown as MockCallSource, 1)).toBe(
       Routes.channelMessages("t1"),
     );
-    expect(requestBody(postMock as unknown as MockCallSource, 1)).toEqual({
+    expect(requestBody(postMock as unknown as MockCallSource, 1)).toMatchObject({
       content: "Discussion here",
+      enforce_nonce: true,
     });
   });
 
