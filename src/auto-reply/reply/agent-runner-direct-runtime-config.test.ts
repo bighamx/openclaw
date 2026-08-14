@@ -131,6 +131,7 @@ function createReplyOperation(): TestReplyOperation {
     get sessionId() {
       return sessionId;
     },
+    turnKind: "visible",
     abortSignal: new AbortController().signal,
     resetTriggered: false,
     phase: "queued",
@@ -149,6 +150,8 @@ function createReplyOperation(): TestReplyOperation {
     updateSessionKey: vi.fn(),
     hasOwnedSessionId: vi.fn(() => false),
     bindToolAuthorityFingerprint: vi.fn(),
+    bindToolAuthorityProjector: vi.fn(),
+    projectToolAuthorityFingerprint: vi.fn(),
     bindToolAuthorityRoute: vi.fn(),
     attachBackend: vi.fn(),
     detachBackend: vi.fn(),
@@ -162,6 +165,7 @@ function createReplyOperation(): TestReplyOperation {
     freezeAbort: vi.fn(),
     abortByUser: vi.fn(),
     abortForRestart: vi.fn(),
+    supersede: vi.fn(),
     terminalRecovery: false,
     acceptedSteeredInboundAudio: false,
     markTerminalRecovery: vi.fn(),

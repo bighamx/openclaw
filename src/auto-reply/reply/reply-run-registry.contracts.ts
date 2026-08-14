@@ -1,11 +1,18 @@
+import type { ScheduledToolPolicyContext } from "../../agents/scheduled-tool-policy.js";
+import type { TrustedSubagentCompletionHandoff } from "../../agents/subagents/announce/subagent-announce-handoff.js";
+import type { ChatType } from "../../channels/chat-type.js";
+import type { GroupToolPolicyConfig } from "../../config/types.tools.js";
 import type { ImageContent } from "../../llm/types.js";
 import type { MediaFact } from "../../media/media-facts.js";
 import type { PromptImageOrderEntry } from "../../media/prompt-image-order.js";
+import type { RuntimePluginToolGrant } from "../../plugins/runtime/tool-grant.js";
+import type { InputProvenance } from "../../sessions/input-provenance.js";
 import type { UserTurnTranscriptRecorder } from "../../sessions/user-turn-transcript.types.js";
 import type {
   SourceReplyDeliveryMode,
   TaskSuggestionDeliveryMode,
 } from "../get-reply-options.types.js";
+import type { OriginatingChannelType } from "../templating.js";
 import type { ReplyFollowupAdmissionBarrierTimeoutPolicy } from "./reply-dispatcher.types.js";
 import * as replyRunSettle from "./reply-run-finalization-lease.js";
 
@@ -14,6 +21,8 @@ type ReplyRunKey = string;
 type ReplyBackendKind = "embedded" | "cli";
 
 type ReplyBackendCancelReason = "user_abort" | "restart" | "superseded";
+
+export type ReplyTurnKind = "visible" | "heartbeat" | "queued_followup";
 
 export type ReplyBackendQueueMessageOptions = {
   steeringMode?: "all";
@@ -42,10 +51,49 @@ export type ReplyBackendQueueMessageOptions = {
   userTurnTranscriptRecorder?: UserTurnTranscriptRecorder;
 };
 
-type ReplyToolAuthorityRoute = Readonly<{
+export type ReplyMessageInjectionOptions = ReplyBackendQueueMessageOptions & {
+  /** Consumed by reply ownership and never forwarded to the active backend. */
+  toolAuthorityOverlay?: ReplyToolAuthorityOverlay;
+};
+
+export type ReplyToolAuthorityRoute = Readonly<{
   provider: string;
   model: string;
 }>;
+
+/** Per-message authority facts projected against an active run's frozen owner state. */
+export type ReplyToolAuthorityOverlay = Readonly<{
+  originatingChannel?: OriginatingChannelType;
+  messageProvider?: string;
+  chatType?: ChatType;
+  agentAccountId?: string;
+  conversationToolPolicy?: GroupToolPolicyConfig;
+  groupId?: string;
+  groupChannel?: string;
+  groupSpace?: string;
+  memberRoleIds?: string[];
+  spawnedBy?: string;
+  senderId?: string;
+  senderName?: string;
+  senderUsername?: string;
+  senderE164?: string;
+  senderIsOwner: boolean;
+  inputProvenance?: InputProvenance;
+  trustedInternalHandoff?: TrustedSubagentCompletionHandoff;
+  scheduledToolPolicy?: ScheduledToolPolicyContext;
+  runtimePluginToolGrant?: RuntimePluginToolGrant;
+  toolsAllow?: string[];
+  disableTools: boolean;
+  traceAuthorized: boolean;
+  approvalReviewerDeviceId?: string;
+  clientCaps?: string[];
+  toolBindings?: Readonly<Record<string, unknown>>;
+}>;
+
+export type ReplyToolAuthorityProjector = (
+  overlay: ReplyToolAuthorityOverlay,
+  route: ReplyToolAuthorityRoute,
+) => string;
 
 export type ReplyBackendQueueMessageResult = {
   /** Acceptance was irreversible, but the harness could not prove transcript commitment. */
@@ -96,6 +144,8 @@ export type ReplyMessageInjectionTarget = {
   readonly identity: "leaf" | "run";
   readonly runId?: string;
   readonly originatingLeafEntryId: string | null | undefined;
+  /** Tool authority captured with the exact active operation. */
+  readonly toolAuthorityFingerprint?: string;
 };
 
 type ReplyMessageInjectionRejectionReason =
@@ -150,7 +200,10 @@ type ReplyOperationFailureCode =
   | "run_stalled"
   | "run_failed";
 
-type ReplyOperationAbortCode = "aborted_by_user" | "aborted_for_restart";
+type ReplyOperationAbortCode =
+  | "aborted_by_user"
+  | "aborted_for_restart"
+  | "aborted_for_supersession";
 
 type ReplyOperationResult =
   | { kind: "completed" }
@@ -160,6 +213,7 @@ type ReplyOperationResult =
 export type ReplyOperation = {
   readonly key: ReplyRunKey;
   readonly sessionId: string;
+  readonly turnKind: ReplyTurnKind;
   /** Gateway lifecycle that admitted this process-local owner. */
   readonly lifecycleGeneration?: string;
   readonly routeThreadId?: string | number;
@@ -214,6 +268,10 @@ export type ReplyOperation = {
   markAcceptedSteeredInboundAudio(): void;
   /** Bind provisional request authority before a concrete backend attempt attaches. */
   bindToolAuthorityFingerprint(fingerprint: string): void;
+  /** Bind the active run's immutable authority projector for direct inbound steering. */
+  bindToolAuthorityProjector(projector: ReplyToolAuthorityProjector): void;
+  /** Project an inbound turn through the current concrete route; settled owners fail closed. */
+  projectToolAuthorityFingerprint(overlay: ReplyToolAuthorityOverlay): string | undefined;
   /** Record the concrete candidate route; fallback attempts may replace it. */
   bindToolAuthorityRoute(route: ReplyToolAuthorityRoute): void;
   updateSessionId(nextSessionId: string): void;
@@ -253,6 +311,7 @@ export type ReplyOperation = {
   fail(code: Exclude<ReplyOperationFailureCode, "aborted_by_user">, cause?: unknown): void;
   abortByUser(): boolean;
   abortForRestart(): boolean;
+  supersede(): boolean;
 };
 
 export type ReplyRunRegistry = {

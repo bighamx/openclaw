@@ -1244,6 +1244,8 @@ export const en: TranslationMap = {
     hideValue: "Hide value",
     revealValue: "Reveal value",
     disableStreamToReveal: "Disable stream mode to reveal value",
+    storedSecretNotRevealable:
+      "Stored secrets are never sent to the browser; enter a new value to replace it",
     unsupportedType: "Unsupported type: {type}. Use Raw mode.",
     structuredSecretRaw: "Structured value (SecretRef) - use Raw mode to edit",
     structuredSecretFile: "Structured value (SecretRef) - edit the config file directly",
@@ -1943,6 +1945,7 @@ export const en: TranslationMap = {
     attachFailed: "Could not attach terminal session",
     connecting: "Connecting to session…",
     connectionTimedOut: "Session did not connect within 30 seconds.",
+    refreshRequired: "Control UI updated. Reload this page to continue the terminal action.",
     tabLabel: "shell {n}",
     tabHint: "{agent} · {cwd}",
     agentOwnedBadge: "agent",

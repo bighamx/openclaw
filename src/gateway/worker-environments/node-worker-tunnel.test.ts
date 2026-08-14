@@ -15,12 +15,28 @@ import { useAutoCleanupTempDirTracker } from "../../../test/helpers/temp-dir.js"
 import { NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE } from "../../infra/node-runner-inventory.js";
 import { parseWorkerLaunchPlan } from "../../worker/launch-descriptor.js";
 import type { NodeWorkerSupervisorReceipt } from "../../worker/node-supervisor-protocol.js";
+import {
+  NODE_WORKSPACE_TRANSFER_ERROR_CODE,
+  NodeWorkerWorkspaceTransferError,
+} from "../../worker/node-workspace-transfer-protocol.js";
 import type { NodeWorkerSupervisorTransport } from "../node-registry-private.js";
 import type { createDeviceWorkerRuntime } from "./device-provider.js";
 import { createNodeWorkerTunnelManager } from "./node-worker-tunnel.js";
 import type { NodeWorkspaceTransferService } from "./node-workspace-transfer-service.js";
 import type { WorkerEnvironmentRecord } from "./store.js";
 import { serializeWorkerWorkspaceManifest } from "./workspace-manifest.js";
+
+const workspaceInfo = vi.hoisted(() => vi.fn());
+vi.mock("../../logging/subsystem.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../logging/subsystem.js")>();
+  return {
+    ...actual,
+    createSubsystemLogger: (subsystem: string) => {
+      const logger = actual.createSubsystemLogger(subsystem);
+      return subsystem === "gateway/worker-workspace" ? { ...logger, info: workspaceInfo } : logger;
+    },
+  };
+});
 
 const BUILD = {
   bundleHash: "a".repeat(64),
@@ -222,6 +238,63 @@ describe("node worker tunnel manager", () => {
     expect(outputs).toEqual([]);
   });
 
+  it("preserves a typed workspace transfer cause from the node", async () => {
+    workspaceInfo.mockClear();
+    const record = environment();
+    const localPath = tempDirs.make("node-worker-transfer-error-");
+    const rawManifest = serializeWorkerWorkspaceManifest({
+      version: 1,
+      baseCommit: null,
+      entries: [],
+    });
+    const manifestRef = `sha256:${createHash("sha256").update(rawManifest).digest("hex")}`;
+    const nodeTransport = transport();
+    nodeTransport.invoke = vi.fn(async () => ({
+      ok: false,
+      error: {
+        code: NODE_WORKSPACE_TRANSFER_ERROR_CODE,
+        message: "workspace-transfer-failed: gateway TLS fingerprint mismatch",
+      },
+    }));
+    const transfer = {
+      prepareSync: vi.fn(async () => ({
+        snapshot: {
+          manifest: { version: 1 as const, baseCommit: null, entries: [] },
+          manifestRef,
+          rawManifest,
+          root: localPath,
+        },
+        token: "download-token",
+      })),
+      close: vi.fn(async () => {}),
+      revoke: vi.fn(),
+    } as unknown as NodeWorkspaceTransferService;
+    const manager = createNodeWorkerTunnelManager({
+      gatewayDeviceId: "gateway-device-1",
+      getEnvironment: () => record,
+      getTransport: () => nodeTransport,
+      launchNodeWorker: vi.fn(),
+      validateWorkerTurn: () => true,
+      workspaceTransfer: transfer,
+    });
+    const handle = await manager.start(startRequest());
+
+    await expect(
+      handle.syncWorkspace({ localPath, sessionId: "session-1", generation: 1 }),
+    ).rejects.toMatchObject({
+      name: NodeWorkerWorkspaceTransferError.name,
+      code: NODE_WORKSPACE_TRANSFER_ERROR_CODE,
+      message: "workspace-transfer-failed: gateway TLS fingerprint mismatch",
+    });
+    expect(workspaceInfo).toHaveBeenCalledWith("worker workspace sync path selected", {
+      environmentId: "environment-1",
+      sessionId: "session-1",
+      path: "gateway-push",
+      reason: "not-git-workspace",
+      originAttemptMs: expect.any(Number),
+    });
+  });
+
   it("cancels a replacement start before it can install a late handle", async () => {
     const record = environment();
     const releaseLaunch = createDeferred();
@@ -273,8 +346,10 @@ describe("node worker tunnel manager", () => {
   it("keeps cancellation authorized until an active launch settles", async () => {
     const record = environment();
     let cancellationWasAuthorized = false;
-    const launch: NodeWorkerLaunch = async (request): Promise<TerminalReceipt> =>
-      await new Promise<TerminalReceipt>((resolve) => {
+    const onDispatchReady = vi.fn();
+    const launch: NodeWorkerLaunch = async (request): Promise<TerminalReceipt> => {
+      request.onDispatchReady?.();
+      return await new Promise<TerminalReceipt>((resolve) => {
         request.signal?.addEventListener(
           "abort",
           () => {
@@ -294,6 +369,7 @@ describe("node worker tunnel manager", () => {
           { once: true },
         );
       });
+    };
     const launchNodeWorker = vi.fn(launch);
     const manager = createNodeWorkerTunnelManager({
       gatewayDeviceId: "gateway-device-1",
@@ -304,8 +380,14 @@ describe("node worker tunnel manager", () => {
       workspaceTransfer: workspaceTransfer(),
     });
     const handle = await manager.start(startRequest());
-    const launched = handle.launchTurn({ plan: plan(), placementGeneration: 4, timeoutMs: 5_000 });
+    const launched = handle.launchTurn({
+      plan: plan(),
+      placementGeneration: 4,
+      timeoutMs: 5_000,
+      onDispatchReady,
+    });
     await vi.waitFor(() => expect(launchNodeWorker).toHaveBeenCalledOnce());
+    expect(onDispatchReady).toHaveBeenCalledOnce();
 
     await handle.stop();
 
