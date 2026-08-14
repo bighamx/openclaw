@@ -23,7 +23,7 @@ import { withPluginRuntimeGenerationScope } from "../../plugins/runtime/generati
 import { enqueueCommandInLane } from "../../process/command-queue.js";
 import { resolveUserPath } from "../../utils.js";
 import { normalizeOptionalAgentRuntimeId } from "../agent-runtime-id.js";
-import { resolveAgentDir, resolveDefaultAgentDir, resolveSessionAgentIds } from "../agent-scope.js";
+import { resolveAgentDir, resolveSessionAgentIds } from "../agent-scope.js";
 import { isRecoverableNativeHarnessBindingFailure } from "../harness/compaction-recovery.js";
 import { maybeCompactAgentHarnessSession } from "../harness/compaction.js";
 import { ensureSelectedAgentHarnessPlugin } from "../harness/runtime-plugin.js";
@@ -36,6 +36,7 @@ import { resolveAgentRunSessionTarget } from "../run-session-target.js";
 import { materializePreparedRuntimeModel } from "../runtime-plan/materialize-model.js";
 import { SessionManager } from "../sessions/index.js";
 import { DEFERRED_CONTEXT_ENGINE_COMPACTION_REASON } from "./compact-reasons.js";
+import { compactNativeCliSession } from "./compact.js";
 import type { CompactEmbeddedAgentSessionParams } from "./compact.types.js";
 import { compactionCheckpointStore, persistCompactionCheckpoint } from "./compaction-checkpoint.js";
 import { asCompactionHookRunner, runPostCompactionSideEffects } from "./compaction-hooks.js";
@@ -335,11 +336,24 @@ async function compactEmbeddedAgentSessionImpl(
         ? normalizeOptionalAgentRuntimeId(params.agentHarnessId)
         : undefined,
   });
+  // Native control operations reuse the backend's existing authenticated session.
+  // Run them before generic model preparation so subscription-only CLI sessions do
+  // not incorrectly require an OpenClaw model API credential.
+  const nativeCliResult = await compactNativeCliSession({
+    runtime: runtimeSelection.selectedHarnessRuntime,
+    compactParams: {
+      ...params,
+      agentDir,
+      workspaceDir: resolvedWorkspaceDir,
+    },
+  });
+  if (nativeCliResult) {
+    return nativeCliResult;
+  }
   const lease = await acquireAgentRunPreparedModelRuntime({
     config: params.config ?? {},
     agentId: agentIds.sessionAgentId,
     agentDir,
-    inheritedAuthDir: resolveDefaultAgentDir(params.config ?? {}),
     workspaceDir: resolvedWorkspaceDir,
     ...(params.allowGatewaySubagentBinding ? { allowGatewaySubagentBinding: true } : {}),
     runtimePluginSelections: [
@@ -836,15 +850,22 @@ async function compactResolvedContextEngine(
           normalizeOptionalAgentRuntimeId(preparedHarnessRuntime) === "codex"
             ? "codexNativeCompaction"
             : "nativeHarnessCompaction";
+        const serverEndpointCompaction =
+          (result.result?.details as { compactionKind?: unknown } | undefined)?.compactionKind ===
+            "server-endpoint" && typeof result.result?.tokensAfter === "number";
         return {
           ok: result.ok,
           compacted: result.compacted,
-          compactionKind: "context-engine",
+          compactionKind: serverEndpointCompaction ? "server-endpoint" : "context-engine",
           reason: result.reason,
           result: result.result
             ? {
-                summary: result.result.summary ?? "",
-                firstKeptEntryId: result.result.firstKeptEntryId ?? "",
+                ...(serverEndpointCompaction
+                  ? { kind: "server-endpoint" as const }
+                  : {
+                      summary: result.result.summary ?? "",
+                      firstKeptEntryId: result.result.firstKeptEntryId ?? "",
+                    }),
                 tokensBefore: result.result.tokensBefore,
                 tokensAfter: result.result.tokensAfter,
                 details: mergeSecondaryNativeHarnessCompactionDetails({

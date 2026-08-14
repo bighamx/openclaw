@@ -424,6 +424,7 @@ enum class GatewayMethod(
   DeviceTokenRotate("device.token.rotate"),
   DeviceTokenRevoke("device.token.revoke"),
   DevicePairSetupCode("device.pair.setupCode"),
+  DevicePairSetupStatus("device.pair.setupStatus"),
   NodeRename("node.rename"),
   NodeList("node.list"),
   NodeDescribe("node.describe"),
@@ -581,7 +582,6 @@ enum class GatewayMethod(
   PortalList("portal.list"),
   PortalOpen("portal.open"),
   PortalClose("portal.close"),
-  DeliveryFailuresResubmit("delivery.failures.resubmit"),
 }
 
 enum class GatewayEvent(
@@ -620,6 +620,8 @@ enum class GatewayEvent(
   NodeInvokeRequest("node.invoke.request"),
   DevicePairRequested("device.pair.requested"),
   DevicePairResolved("device.pair.resolved"),
+  DevicePairSetupCompleted("device.pair.setup.completed"),
+  DevicePairSetupDeliveryUncertain("device.pair.setup.deliveryUncertain"),
   SkillsChanged("skills.changed"),
   VoicewakeChanged("voicewake.changed"),
   VoicewakeRoutingChanged("voicewake.routing.changed"),

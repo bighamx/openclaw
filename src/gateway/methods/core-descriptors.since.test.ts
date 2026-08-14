@@ -81,6 +81,7 @@ const TRAIN_2026_7_METHODS = [
 ] as const;
 
 const CURRENT_TRAIN_METHODS = [
+  "device.pair.setupStatus",
   "sessions.patchMany",
   "sessions.recover",
   "update.hold",
@@ -105,7 +106,6 @@ const CURRENT_TRAIN_METHODS = [
   "portal.list",
   "portal.open",
   "portal.close",
-  "delivery.failures.resubmit",
 ] as const;
 
 describe("core gateway method release trains", () => {
