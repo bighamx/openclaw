@@ -495,7 +495,8 @@ function createResponsesTransportExecutor(config: ResponsesTransportExecutorOpti
             throw transportAbortError(options.signal);
           }
           if (output.stopReason === "aborted" || output.stopReason === "error") {
-            throw new Error("An unknown error occurred");
+            // Keep the provider's terminal fact; the catch-side projection would overwrite it.
+            throw new Error(output.errorMessage ?? "An unknown error occurred");
           }
           if (continuationClaim && continuationBaseline && terminal) {
             continuationClaim.commit(continuationBaseline, terminal);
