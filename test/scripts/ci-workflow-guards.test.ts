@@ -175,7 +175,7 @@ function runCiManifestFixture(options: {
   bundledPlanner: boolean;
   changedPlannerImportFails?: boolean;
   changedPaths?: string[] | null;
-  eventName?: "pull_request" | "workflow_dispatch";
+  eventName?: "pull_request" | "push" | "workflow_dispatch";
   historicalCompatibility?: boolean;
   iosCapabilities?: boolean;
   iosBuildCapability?: boolean;
@@ -191,6 +191,7 @@ function runCiManifestFixture(options: {
   nodeFastPluginContracts?: boolean;
   nodeFastCiRouting?: boolean;
   runNode?: boolean;
+  runnerBackend?: "blacksmith" | "github";
 }) {
   const root = mkdtempSync(path.join(tmpdir(), "openclaw-ci-manifest-"));
   try {
@@ -207,9 +208,13 @@ function runCiManifestFixture(options: {
             runner: "ubuntu-24.04",
             shardName: "legacy-node-plan",
           }];
-          export const createNodeTestShardBundles = () => [{
+          export const createNodeTestShardBundles = (options = {}) => [{
             checkName: "bundled-node-plan",
             configs: ["test/vitest/bundled.config.ts"],
+            env: {
+              OPENCLAW_CI_TEST_COMPACT_MODE: options.compactMode ?? "full",
+              OPENCLAW_CI_TEST_RUNNER_BACKEND: options.runnerBackend ?? "",
+            },
             requiresDist: false,
             runner: "ubuntu-24.04",
             shardName: "bundled-node-plan",
@@ -382,6 +387,7 @@ function runCiManifestFixture(options: {
         OPENCLAW_CI_RUN_NODE_FAST_PLUGIN_CONTRACTS: String(
           options.nodeFastPluginContracts ?? false,
         ),
+        OPENCLAW_CI_RUNNER_BACKEND: options.runnerBackend ?? "",
         OPENCLAW_CI_RUN_SKILLS_PYTHON: "true",
         OPENCLAW_CI_RUN_WINDOWS: "true",
         OPENCLAW_CI_WORKFLOW_REVISION: "b".repeat(40),
@@ -1747,6 +1753,66 @@ NODE
     expect(findUnpinnedExternalActions()).toEqual([]);
   });
 
+  it("schedules approved Docker refreshes from independently resolved channels", () => {
+    const workflow = readWorkflow(".github/workflows/docker-image-refresh.yml");
+    const releaseWorkflow = readWorkflow(".github/workflows/docker-release.yml");
+    const plan = workflow.jobs.plan;
+    const publish = workflow.jobs.publish;
+    const planSteps = plan.steps as WorkflowStep[];
+    const mainGuard = expectDefined(
+      planSteps.find((step) => step.name === "Require a main-branch run"),
+      "Docker refresh main-branch guard",
+    );
+    const resolve = expectDefined(
+      planSteps.find((step) => step.name === "Resolve refresh plan"),
+      "Docker refresh plan step",
+    );
+
+    expect(workflow.on.schedule).toEqual([{ cron: "17 3 * * 1" }]);
+    expect(workflow.on.workflow_dispatch.inputs.channel).toEqual({
+      description: "Release channel to rebuild",
+      required: false,
+      default: "both",
+      type: "choice",
+      options: ["stable", "extended-stable", "both"],
+    });
+    expect(workflow.on.workflow_dispatch.inputs.dry_run).toEqual({
+      description: "Resolve and summarize without publishing",
+      required: false,
+      default: false,
+      type: "boolean",
+    });
+    expect(plan.permissions).toEqual({ contents: "read" });
+    expect(mainGuard.run).toContain('[[ "${WORKFLOW_REF}" != "refs/heads/main" ]]');
+    expect(resolve.run).toContain("docker-release-policy.mjs --current");
+    expect(resolve.run).toContain('git rev-parse "refs/tags/${stable_tag}^{commit}"');
+    expect(resolve.run).toContain('git rev-parse "refs/tags/${extended_stable_tag}^{commit}"');
+    expect(resolve.run).toContain('suffix="-r$(date -u +%Y%m%d)"');
+    expect(resolve.run).toContain('echo "matrix=${matrix}"');
+    expect(resolve.run).toContain('} >> "${GITHUB_OUTPUT}"');
+    expect(plan.environment).toBeUndefined();
+    expect(publish.environment).toBeUndefined();
+
+    expect(publish.needs).toBe("plan");
+    expect(publish.if).toBe("needs.plan.outputs.dry_run != 'true'");
+    expect(publish.strategy).toEqual({
+      "fail-fast": false,
+      matrix: { include: "${{ fromJSON(needs.plan.outputs.matrix) }}" },
+    });
+    expect(publish.uses).toBe("./.github/workflows/docker-release.yml");
+    expect(publish.with).toEqual({
+      tag: "${{ matrix.tag }}",
+      release_sha: "${{ matrix.release_sha }}",
+      image_tag_suffix: "${{ needs.plan.outputs.image_tag_suffix }}",
+    });
+    expect(publish.secrets).toEqual({
+      DOCKERHUB_USERNAME: "${{ secrets.DOCKERHUB_USERNAME }}",
+      DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}",
+    });
+    expect(publish.permissions).toEqual({ contents: "read", packages: "write" });
+    expect(releaseWorkflow.jobs.approve_docker_publish.environment).toBe("docker-release");
+  });
+
   it("forbids moving reusable workflow references", () => {
     expect([...OIDC_BOUND_MAIN_REUSABLE_WORKFLOWS]).toEqual([]);
   });
@@ -2596,13 +2662,74 @@ NODE
       "github.event_name == 'pull_request'",
     );
     expect(workflow.jobs["checks-fast-core"].strategy["max-parallel"]).toBe(12);
-    expect(workflow.jobs["checks-node-core-test-nondist-shard"].strategy["max-parallel"]).toBe(28);
+    const nodeMaxParallel =
+      workflow.jobs["checks-node-core-test-nondist-shard"].strategy["max-parallel"];
+    expect(nodeMaxParallel).toBe("${{ vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' && 48 || 28 }}");
+    expect(
+      evaluateWorkflowExpression(nodeMaxParallel, {
+        eventName: "push",
+        repository: "openclaw/openclaw",
+        runnerBackend: "blacksmith",
+        runAttempt: 1,
+      }),
+    ).toBe(28);
+    expect(
+      evaluateWorkflowExpression(nodeMaxParallel, {
+        eventName: "push",
+        repository: "openclaw/openclaw",
+        runnerBackend: "github",
+        runAttempt: 1,
+      }),
+    ).toBe(48);
     expect(workflow.jobs["checks-fast-plugin-contracts-shard"].strategy["max-parallel"]).toBe(12);
     expect(workflow.jobs["checks-fast-channel-contracts-shard"].strategy["max-parallel"]).toBe(12);
     expect(workflow.jobs["check-shard"].strategy["max-parallel"]).toBe(12);
     expect(workflow.jobs["check-additional-shard"].strategy["max-parallel"]).toBe(12);
     expect(workflow.jobs["checks-windows"].strategy["max-parallel"]).toBe(2);
     expect(workflow.jobs.android.strategy["max-parallel"]).toBe(2);
+  });
+
+  it("splits Windows tests only for the GitHub-hosted backend", () => {
+    const workflow = readCiWorkflow();
+    const runStep = workflow.jobs["checks-windows"].steps.find(
+      (step: WorkflowStep) => step.name === "Run ${{ matrix.task }} (${{ matrix.runtime }})",
+    );
+    const blacksmith = runCiManifestFixture({
+      bundledPlanner: true,
+      eventName: "push",
+      historicalCompatibility: false,
+      runnerBackend: "blacksmith",
+    });
+    const github = runCiManifestFixture({
+      bundledPlanner: true,
+      eventName: "push",
+      historicalCompatibility: false,
+      runnerBackend: "github",
+    });
+
+    expect(blacksmith.status, blacksmith.output).toBe(0);
+    expect(github.status, github.output).toBe(0);
+    expect(
+      JSON.parse(
+        expectDefined(blacksmith.outputs.checks_windows_matrix, "Blacksmith Windows matrix"),
+      ).include,
+    ).toEqual([
+      {
+        check_name: "checks-windows-node-test",
+        runtime: "node",
+        task: "test",
+        runner: "blacksmith-8vcpu-windows-2025",
+      },
+    ]);
+    expect(
+      JSON.parse(expectDefined(github.outputs.checks_windows_matrix, "GitHub Windows matrix"))
+        .include,
+    ).toEqual([
+      { check_name: "checks-windows-node-test-1", runtime: "node", task: "test-1" },
+      { check_name: "checks-windows-node-test-2", runtime: "node", task: "test-2" },
+    ]);
+    expect(runStep.run).toContain("test-1)\n    pnpm test:windows:ci:1");
+    expect(runStep.run).toContain("test-2)\n    pnpm test:windows:ci:2");
   });
 
   it("installs the Android SDK platform used by Gradle", () => {
@@ -3115,6 +3242,7 @@ NODE
       "build-artifacts",
       "check-additional-shard",
       "check-docs",
+      "check-lint-hosted-core-shard",
       "check-shard",
       "checks-fast-channel-contracts-shard",
       "checks-fast-core",
@@ -3778,14 +3906,26 @@ server.listen(0, "127.0.0.1", () => writeFileSync(readyPath, String(server.addre
     expect(workflow.jobs["build-artifacts"]["timeout-minutes"]).toBe(
       "${{ (vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && 35 || 20 }}",
     );
+    // PR events validate the artifact build on hosted runners (landing gate
+    // stays satisfiable during Blacksmith outages); Testbox leases are
+    // dispatch-only, mirroring ci-check-testbox.yml.
     expect(buildArtifactsTestbox.jobs["build-artifacts"]["runs-on"]).toBe(
-      "blacksmith-16vcpu-ubuntu-2404",
+      "${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'blacksmith-16vcpu-ubuntu-2404' }}",
     );
+    for (const stepName of ["Begin Testbox", "Run Testbox"]) {
+      expect(
+        buildArtifactsTestbox.jobs["build-artifacts"].steps.find(
+          (step: { name?: string }) => step.name === stepName,
+        ).if,
+      ).toContain("github.event_name == 'workflow_dispatch'");
+    }
     expect(
       buildArtifactsTestbox.jobs["build-artifacts"].steps.find(
         (step: { name?: string }) => step.name === "Build dist on cache miss",
       ).env.NODE_OPTIONS,
-    ).toBe("--max-old-space-size=16384");
+    ).toBe(
+      "${{ github.event_name == 'pull_request' && '--max-old-space-size=8192' || '--max-old-space-size=16384' }}",
+    );
     expect(workflow.jobs["checks-node-core-test-nondist-shard"]["runs-on"]).toContain(
       "blacksmith-4vcpu-ubuntu-2404",
     );
@@ -5111,16 +5251,36 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
 
   it("keeps type-aware oxlint within hosted fork-runner resources", () => {
     const workflow = readCiWorkflow();
+    const manifestStep = workflow.jobs.preflight.steps.find(
+      (step: WorkflowStep) => step.name === "Build CI manifest",
+    );
     const checkShardRun = workflow.jobs["check-shard"].steps.find(
       (step: WorkflowStep) => step.name === "Run check shard",
     ).run;
+    const hostedCoreLint = workflow.jobs["check-lint-hosted-core-shard"];
 
-    expect(checkShardRun).toContain('if [ "$(nproc)" -lt 8 ]; then');
+    expect(manifestStep.env.OPENCLAW_CI_RUNNER_BACKEND).toBe(
+      "${{ vars.OPENCLAW_CI_RUNNER_BACKEND }}",
+    );
+    expect(manifestStep.run).toContain("runnerBackend: process.env.OPENCLAW_CI_RUNNER_BACKEND");
+    expect(checkShardRun).toContain('if [ "$RUNNER_BACKEND" = "github" ]; then');
+    expect(checkShardRun).toContain("lint_args=(--only=extensions --only=scripts --threads=1)");
+    expect(checkShardRun).toContain('elif [ "$(nproc)" -lt 8 ]; then');
     expect(checkShardRun).toContain("lint_args=(--split-core --threads=1)");
     expect(checkShardRun).toContain('pnpm lint "${lint_args[@]}"');
     expect(checkShardRun).toContain(
       'node --import tsx scripts/run-oxlint-shards.mts "${lint_args[@]}"',
     );
+    expect(hostedCoreLint.if).toContain("vars.OPENCLAW_CI_RUNNER_BACKEND == 'github'");
+    expect(hostedCoreLint.strategy).toEqual({
+      "fail-fast": false,
+      "max-parallel": 3,
+      matrix: { stripe: [1, 2, 3] },
+    });
+    expect(
+      hostedCoreLint.steps.find((step: WorkflowStep) => step.name === "Run hosted core lint stripe")
+        .run,
+    ).toContain("--only=core --split-core --core-stripe=${{ matrix.stripe }}/3 --threads=1");
   });
 
   it("runs the suppression-baseline max-lines ratchet against the exact tested tree", () => {
@@ -5355,7 +5515,56 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
     ).toContainEqual(
       expect.objectContaining({
         check_name: "bundled-node-plan",
+        env: {
+          OPENCLAW_CI_TEST_COMPACT_MODE: "full",
+          OPENCLAW_CI_TEST_RUNNER_BACKEND: "",
+        },
         shard_name: "bundled-node-plan",
+      }),
+    );
+
+    const push = runCiManifestFixture({
+      bundledPlanner: true,
+      eventName: "push",
+    });
+    expect(push.status, push.output).toBe(0);
+    expect(
+      JSON.parse(
+        expectDefined(
+          push.outputs.checks_node_core_nondist_matrix,
+          "push node core nondist matrix output",
+        ),
+      ).include,
+    ).toContainEqual(
+      expect.objectContaining({
+        check_name: "bundled-node-plan",
+        env: {
+          OPENCLAW_CI_TEST_COMPACT_MODE: "push",
+          OPENCLAW_CI_TEST_RUNNER_BACKEND: "",
+        },
+      }),
+    );
+
+    const githubPush = runCiManifestFixture({
+      bundledPlanner: true,
+      eventName: "push",
+      runnerBackend: "github",
+    });
+    expect(githubPush.status, githubPush.output).toBe(0);
+    expect(
+      JSON.parse(
+        expectDefined(
+          githubPush.outputs.checks_node_core_nondist_matrix,
+          "GitHub-hosted push node core nondist matrix output",
+        ),
+      ).include,
+    ).toContainEqual(
+      expect.objectContaining({
+        check_name: "bundled-node-plan",
+        env: {
+          OPENCLAW_CI_TEST_COMPACT_MODE: "push",
+          OPENCLAW_CI_TEST_RUNNER_BACKEND: "github",
+        },
       }),
     );
 
@@ -5410,7 +5619,13 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
       ).include,
     ).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ check_name: "bundled-node-plan" }),
+        expect.objectContaining({
+          check_name: "bundled-node-plan",
+          env: {
+            OPENCLAW_CI_TEST_COMPACT_MODE: "pull-request",
+            OPENCLAW_CI_TEST_RUNNER_BACKEND: "",
+          },
+        }),
         expect.objectContaining({ check_name: "changed-extension-fallback-plan" }),
       ]),
     );
@@ -5698,15 +5913,47 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
       "needs.preflight.outputs.run_ui_tests == 'true' && needs.preflight.outputs.compatibility_target != 'true'",
     );
     expect(uiE2e["runs-on"]).not.toBe(ui["runs-on"]);
-    // Three serial workers own Control UI files while the fourth owns browser
-    // extension E2E; all four remain required by the aggregate CI gate.
     expect(uiE2e["timeout-minutes"]).toBe(25);
     expect(uiE2e.env).toEqual({ OPENCLAW_UI_E2E_SKIP_REAL_GATEWAY: "1" });
-    expect(uiE2e.strategy).toEqual({
-      "fail-fast": false,
-      "max-parallel": 4,
-      matrix: { shard: [1, 2, 3, 4] },
+    expect(uiE2e.strategy["fail-fast"]).toBe(false);
+    expect(uiE2e.strategy["max-parallel"]).toBe(
+      "${{ vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' && 8 || 4 }}",
+    );
+    expect(uiE2e.strategy.matrix).toBe("${{ fromJson(needs.preflight.outputs.ui_e2e_matrix) }}");
+    const expectedUiE2eMatrix = (shardCount: number) => ({
+      include: Array.from({ length: shardCount }, (_, index) => {
+        const shard = index + 1;
+        return {
+          shard,
+          shard_count: shardCount,
+          task: shard === shardCount ? "browser-extension" : "control-ui",
+          vitest_shard_count: shardCount - 1,
+        };
+      }),
     });
+    for (const [runnerBackend, shardCount] of [
+      ["blacksmith", 4],
+      ["github", 8],
+    ] as const) {
+      const manifest = runCiManifestFixture({
+        bundledPlanner: true,
+        eventName: "push",
+        historicalCompatibility: false,
+        runnerBackend,
+      });
+      expect(manifest.status, manifest.output).toBe(0);
+      expect(
+        JSON.parse(expectDefined(manifest.outputs.ui_e2e_matrix, `${runnerBackend} UI E2E matrix`)),
+      ).toEqual(expectedUiE2eMatrix(shardCount));
+      expect(
+        evaluateWorkflowExpression(uiE2e.strategy["max-parallel"], {
+          eventName: "push",
+          repository: "openclaw/openclaw",
+          runnerBackend,
+          runAttempt: 1,
+        }),
+      ).toBe(shardCount);
+    }
     expect(workflow.jobs["ci-gate"].needs).toContain("checks-ui-e2e");
     expect(workflow.jobs["ci-gate"].needs).toContain("checks-ui-e2e-real-gateway");
 
@@ -5855,9 +6102,13 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
       uiE2e.steps.find((step: WorkflowStep) => step.name === "Test Control UI end-to-end"),
       "Control UI E2E suite",
     );
-    expect(scenario.if).toBe("matrix.shard != 4");
+    expect(scenario.if).toBe("matrix.task == 'control-ui'");
+    expect(scenario.env).toEqual({
+      SHARD_INDEX: "${{ matrix.shard }}",
+      VITEST_SHARD_COUNT: "${{ matrix.vitest_shard_count }}",
+    });
     expect(scenario.run).toBe(
-      "node scripts/run-vitest.mjs run --config test/vitest/vitest.ui-e2e.config.ts --configLoader runner --shard ${{ matrix.shard }}/3",
+      'node scripts/run-vitest.mjs run --config test/vitest/vitest.ui-e2e.config.ts --configLoader runner --shard "$SHARD_INDEX/$VITEST_SHARD_COUNT"',
     );
     const browserExtension = expectDefined(
       uiE2e.steps.find(
@@ -5865,7 +6116,7 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
       ),
       "browser extension bootstrap E2E suite",
     );
-    expect(browserExtension.if).toBe("matrix.shard == 4");
+    expect(browserExtension.if).toBe("matrix.task == 'browser-extension'");
     expect(browserExtension.run).toBe("pnpm test:e2e:browser-extension");
     for (const { job } of routedUiE2eJobs) {
       const jobContract = JSON.stringify(job);
@@ -6291,6 +6542,7 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
       "checks-node-compat",
       "checks-node-core-test-nondist-shard",
       "check-shard",
+      "check-lint-hosted-core-shard",
       "check-additional-shard",
       "check-docs",
       "skills-python",
@@ -6331,6 +6583,23 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
     expect(verifyStep.run).toContain("Required CI job did not succeed");
     expect(verifyStep.run).toContain("success | skipped");
     expect(verifyStep.run).toContain("Selected CI job did not succeed");
+  });
+
+  it("runs Node 22 compatibility only from manual CI dispatches", () => {
+    const workflow = readCiWorkflow();
+    const compatibilityJob = workflow.jobs["checks-node-compat"];
+    const fullReleaseWorkflow = readWorkflow(".github/workflows/full-release-validation.yml");
+    const fullReleaseDispatch = fullReleaseWorkflow.jobs.normal_ci.steps.find(
+      (step: WorkflowStep) => step.name === "Dispatch and monitor CI",
+    );
+
+    expect(compatibilityJob.name).toBe("checks-node-compat-node22");
+    expect(compatibilityJob.if).toBe(
+      "needs.preflight.outputs.run_build_artifacts == 'true' && github.event_name == 'workflow_dispatch'",
+    );
+    expect(fullReleaseDispatch.env.CHILD_WORKFLOW_KIND).toBe("ci");
+    expect(fullReleaseDispatch.run).toContain('dispatch_and_wait ci.yml "$dispatch_run_name"');
+    expect(fullReleaseDispatch.run).toContain('-f target_ref="$TARGET_SHA"');
   });
 
   it.skipIf(process.platform === "win32")(
@@ -7550,21 +7819,64 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
     expect(workflow.jobs["qa-smoke-ci-artifacts"]).toBeUndefined();
     expect(workflow.jobs["qa-smoke-ci"]).toBeUndefined();
     expect(smokeProfileJob.needs).toEqual(["preflight"]);
-    expect(smokeProfileJob.strategy["max-parallel"]).toBe(4);
-    expect(
-      smokeProfileJob.strategy.matrix.include.map((entry: { slug: string }) => entry.slug),
-    ).toEqual(["profile-1-of-4", "profile-2-of-4", "profile-3-of-4", "profile-4-of-4"]);
-    expect(
-      smokeProfileJob.strategy.matrix.include.filter(
-        (entry: { docker_cache?: boolean }) => entry.docker_cache,
-      ),
-    ).toEqual([
+    expect(smokeProfileJob.strategy["max-parallel"]).toBe(
+      "${{ vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' && 6 || 4 }}",
+    );
+    expect(smokeProfileJob.strategy.matrix).toBe(
+      "${{ fromJson(needs.preflight.outputs.qa_smoke_ci_matrix) }}",
+    );
+    const qaMatrices = Object.fromEntries(
+      (["blacksmith", "github"] as const).map((runnerBackend) => {
+        const manifest = runCiManifestFixture({
+          bundledPlanner: true,
+          eventName: "push",
+          historicalCompatibility: false,
+          runnerBackend,
+        });
+        expect(manifest.status, manifest.output).toBe(0);
+        return [
+          runnerBackend,
+          JSON.parse(
+            expectDefined(manifest.outputs.qa_smoke_ci_matrix, `${runnerBackend} QA smoke matrix`),
+          ).include,
+        ];
+      }),
+    ) as Record<"blacksmith" | "github", Array<{ docker_cache?: boolean; slug: string }>>;
+    expect(qaMatrices.blacksmith.map((entry) => entry.slug)).toEqual([
+      "profile-1-of-4",
+      "profile-2-of-4",
+      "profile-3-of-4",
+      "profile-4-of-4",
+    ]);
+    expect(qaMatrices.github.map((entry) => entry.slug)).toEqual([
+      "profile-1-of-6",
+      "profile-2-of-6",
+      "profile-3-of-6",
+      "profile-4-of-6",
+      "profile-5-of-6",
+      "profile-6-of-6",
+    ]);
+    expect(qaMatrices.blacksmith.filter((entry) => entry.docker_cache)).toEqual([
       expect.objectContaining({
         lane: "profile-2",
         slug: "profile-2-of-4",
         docker_cache: true,
       }),
     ]);
+    expect(qaMatrices.github.filter((entry) => entry.docker_cache)).toEqual([]);
+    for (const [runnerBackend, expected] of [
+      ["blacksmith", 4],
+      ["github", 6],
+    ] as const) {
+      expect(
+        evaluateWorkflowExpression(smokeProfileJob.strategy["max-parallel"], {
+          eventName: "push",
+          repository: "openclaw/openclaw",
+          runnerBackend,
+          runAttempt: 1,
+        }),
+      ).toBe(expected);
+    }
     expect(smokeProfileJob["runs-on"]).toContain("blacksmith-16vcpu-ubuntu-2404");
     expect(smokeDockerCacheStep.uses).toBe(
       "useblacksmith/setup-docker-builder@6ff44f8e5255f9d8aa31ef22f7e57a2d926b7da0",
@@ -7578,6 +7890,8 @@ printf '%s\n' "\${CURL_SUCCESS_IP:-203.0.113.7}"
     );
     expect(smokeDockerCacheStep.with["max-cache-size-mb"]).toBe(800000);
     expect(smokeRunStep.run).toContain("createQaSmokeCiPart");
+    expect(smokeRunStep.run).toContain("createQaSmokeCiPart(partId, partCount)");
+    expect(smokeRunStep.env.PROFILE_PART_COUNT).toBe("${{ matrix.part_count }}");
     expect(smokeRunStep.run).toContain("createQaSmokeCiMatrix");
     expect(smokeRunStep.run).toContain("readQaScenarioPack");
     expect(smokeRunStep.run).toContain("isolate each scenario");
