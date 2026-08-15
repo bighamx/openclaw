@@ -25,7 +25,6 @@ import {
   COMPUTER_ACT_V1_ACTION_NAMES,
   COMPUTER_CONTRACT_MISMATCH,
   COMPUTER_STALE_OBSERVATION,
-  COMPUTER_USE_CONTRACT_ONLY_ACTION_NAMES,
   COMPUTER_USE_V1_ACTION_NAMES,
   COMPUTER_USE_V2_ACTION_NAMES,
   parseComputerActResult,
@@ -79,13 +78,16 @@ const COMPUTER_TOOL_ACTIONS = COMPUTER_USE_V1_ACTION_NAMES;
 type ComputerToolAction = ComputerUseV2ActionName;
 
 const LOCAL_ACTIONS = new Set<ComputerUseV2ActionName>(["screenshot", "wait"]);
-const CONTRACT_ONLY_ACTIONS = new Set<ComputerUseV2ActionName>(
-  COMPUTER_USE_CONTRACT_ONLY_ACTION_NAMES,
-);
+const EXECUTION_OWNED_ACTIONS = new Set<ComputerUseV2ActionName>([
+  "browser_set_input_files",
+  "browser_download",
+  "get_recording_state",
+  "start_recording",
+  "stop_recording",
+  "replay_trajectory",
+]);
 const INPUT_ACTIONS = new Set<ComputerUseV2ActionName>(
-  COMPUTER_USE_V2_ACTION_NAMES.filter(
-    (action) => !LOCAL_ACTIONS.has(action) && !CONTRACT_ONLY_ACTIONS.has(action),
-  ),
+  COMPUTER_USE_V2_ACTION_NAMES.filter((action) => !LOCAL_ACTIONS.has(action)),
 );
 
 function isComputerActAction(action: ComputerToolAction): boolean {
@@ -250,8 +252,15 @@ function createComputerToolSchema(actions: readonly ComputerUseV2ActionName[]) {
     dialogAction: optionalStringEnum(["inspect", "accept", "dismiss"] as const),
     dialogRef: Type.Optional(Type.String()),
     promptText: Type.Optional(Type.String()),
-    files: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 32 })),
-    destinationRoot: Type.Optional(Type.String()),
+    resourceHandle: Type.Optional(
+      Type.String({ description: "Opaque node-owned Computer Use resource handle." }),
+    ),
+    resourceHandles: Type.Optional(
+      Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 32 }),
+    ),
+    recordVideo: Type.Optional(Type.Boolean()),
+    delayMs: Type.Optional(Type.Integer({ minimum: 0, maximum: 10_000 })),
+    stopOnError: Type.Optional(Type.Boolean()),
     pointerAction: optionalStringEnum([
       "hover",
       "right_click",
@@ -367,12 +376,13 @@ function copyBrowserRefs(target: Record<string, unknown>, input: Record<string, 
 function buildComputerActParams(params: {
   action: ComputerToolAction;
   input: Record<string, unknown>;
+  executionId: string;
   screenIndex: number;
   displayFrameId?: string;
   refWidth?: number;
 }): ComputerActParams {
   const { action, input } = params;
-  const wire: Record<string, unknown> = { action };
+  const wire: Record<string, unknown> = { action, executionId: params.executionId };
   if ((COMPUTER_ACT_V1_ACTION_NAMES as readonly string[]).includes(action)) {
     wire.screenIndex = params.screenIndex;
     wire.refWidth = params.refWidth ?? COMPUTER_REF_WIDTH;
@@ -568,21 +578,21 @@ function buildComputerActParams(params: {
       for (const key of ["observationId", "elementRef"] as const) {
         wire[key] = readToolStringParam(input, key, { required: true });
       }
-      const files = input.files;
+      const resourceHandles = input.resourceHandles;
       if (
-        !Array.isArray(files) ||
-        files.length < 1 ||
-        files.length > 32 ||
-        files.some((file) => typeof file !== "string" || !file)
+        !Array.isArray(resourceHandles) ||
+        resourceHandles.length < 1 ||
+        resourceHandles.length > 32 ||
+        resourceHandles.some((handle) => typeof handle !== "string" || !handle)
       ) {
-        throw new Error("files must contain 1-32 non-empty paths");
+        throw new Error("resourceHandles must contain 1-32 opaque resource handles");
       }
-      wire.files = files;
+      wire.resourceHandles = resourceHandles;
       break;
     }
     case "browser_download": {
       copyBrowserRefs(wire, input);
-      for (const key of ["observationId", "elementRef", "destinationRoot"] as const) {
+      for (const key of ["observationId", "elementRef"] as const) {
         wire[key] = readToolStringParam(input, key, { required: true });
       }
       break;
@@ -625,6 +635,16 @@ function buildComputerActParams(params: {
         throw new Error("reason must be a supported escalation reason");
       }
       wire.reason = reason;
+      break;
+    }
+    case "start_recording": {
+      copyOptionalBooleanParam(wire, input, "recordVideo");
+      break;
+    }
+    case "replay_trajectory": {
+      wire.resourceHandle = readToolStringParam(input, "resourceHandle", { required: true });
+      copyOptionalIntegerParam(wire, input, "delayMs", { min: 0, max: 10_000 });
+      copyOptionalBooleanParam(wire, input, "stopOnError");
       break;
     }
     default:
@@ -692,6 +712,7 @@ const READ_ONLY_COMPUTER_ACT_ACTIONS = new Set<ComputerUseV2ActionName>([
   "get_window_state",
   "zoom",
   "get_browser_state",
+  "get_recording_state",
 ]);
 
 function parseComputerActPayload(value: unknown): ComputerActResult {
@@ -794,9 +815,11 @@ async function captureScreenshot(params: {
   nodeId: string;
   screenIndex: number;
   refWidth: number;
+  executionId: string;
   signal?: AbortSignal;
 }): Promise<ScreenshotCapture> {
   const commandParams: ScreenSnapshotParams = {
+    executionId: params.executionId,
     screenIndex: params.screenIndex,
     maxWidth: params.refWidth,
     quality: SCREENSHOT_QUALITY,
@@ -1020,26 +1043,28 @@ export function createComputerTool(options?: {
   idempotencyScope?: string;
   /** Tracks whether the current screenshot pixels still reach model context. */
   contextEpoch?: ComputerContextEpoch;
-  /** Preselected node declaration, when tool preparation already resolved one. */
-  capabilityDescriptor?: ComputerUseCapabilityDescriptor;
+  /** Attempt owner for deterministic provider-execution cleanup. */
+  registerRunCleanup?: (cleanup: (reason: string) => Promise<void>) => void;
 }): AnyAgentTool {
+  const executionId = crypto.randomUUID();
+  const availableActions = (actions: readonly ComputerUseV2ActionName[]) =>
+    options?.registerRunCleanup
+      ? actions
+      : actions.filter((action) => !EXECUTION_OWNED_ACTIONS.has(action));
   const configuredLimits = resolveImageSanitizationLimits(options?.config);
   const referenceWidth = resolveReferenceWidth(configuredLimits);
-  const parameterSchema = createComputerToolSchema(
-    options?.capabilityDescriptor?.actions ?? COMPUTER_TOOL_ACTIONS,
-  );
-  let selectedCapabilities = options?.capabilityDescriptor;
+  const parameterSchema = createComputerToolSchema(availableActions(COMPUTER_TOOL_ACTIONS));
+  let selectedCapabilities: ComputerUseCapabilityDescriptor | undefined;
   let selectedCapabilityNodeId: string | undefined;
   let observationState:
     | { nodeId: string; providerGeneration: string; observationId: string }
     | undefined;
   const replaceParameterSchema = (actions: readonly ComputerUseV2ActionName[]) => {
-    const next = createComputerToolSchema(actions) as unknown as Record<string, unknown>;
-    const target = parameterSchema as unknown as Record<string, unknown>;
-    for (const key of Object.keys(target)) {
-      delete target[key];
+    const next = createComputerToolSchema(actions);
+    for (const key of Object.keys(parameterSchema)) {
+      Reflect.deleteProperty(parameterSchema, key);
     }
-    Object.assign(target, next);
+    Object.assign(parameterSchema, next);
   };
   const bindNodeCapabilities = (node: NodeListNode) => {
     const next = node.computerUse;
@@ -1048,7 +1073,7 @@ export function createComputerTool(options?: {
       selectedCapabilities?.provider.generation !== next?.provider.generation;
     selectedCapabilityNodeId = node.nodeId;
     selectedCapabilities = next;
-    replaceParameterSchema(next?.actions ?? COMPUTER_TOOL_ACTIONS);
+    replaceParameterSchema(availableActions(next?.actions ?? COMPUTER_TOOL_ACTIONS));
     tool.description = buildComputerToolDescription(next);
     if (changed) {
       observationState = undefined;
@@ -1108,6 +1133,36 @@ export function createComputerTool(options?: {
     );
     return result;
   };
+  const executionNodes = new Map<string, GatewayCallOptions>();
+  let disposePromise: Promise<void> | undefined;
+  const dispose = async (reason: string): Promise<void> => {
+    if (disposePromise) {
+      return await disposePromise;
+    }
+    disposePromise = opQueue
+      .catch(() => {})
+      .then(async () => {
+        const nodes = [...executionNodes.entries()];
+        executionNodes.clear();
+        await Promise.allSettled(
+          nodes.map(async ([nodeId, gatewayOpts]) => {
+            await invokeNodeCommand({
+              gatewayOpts,
+              nodeId,
+              command: COMPUTER_ACT_COMMAND,
+              commandParams: {
+                action: "__close_execution",
+                executionId,
+                reason,
+              },
+              idempotencyKey: `computer.close:${executionId}:${nodeId}`,
+            });
+          }),
+        );
+      });
+    return await disposePromise;
+  };
+  options?.registerRunCleanup?.(dispose);
   const tool: AnyAgentTool = {
     label: "Computer",
     name: "computer",
@@ -1115,7 +1170,7 @@ export function createComputerTool(options?: {
     // model-visible screenshot block that coordinate actions depend on.
     catalogMode: "direct-only",
     executionMode: "sequential",
-    description: buildComputerToolDescription(options?.capabilityDescriptor),
+    description: buildComputerToolDescription(),
     parameters: parameterSchema,
     execute: (toolCallId, args, signal) =>
       serialize(async () => {
@@ -1165,15 +1220,13 @@ export function createComputerTool(options?: {
         }
         const capabilitiesForNode =
           selectedCapabilityNodeId === nodeId ? selectedCapabilities : undefined;
-        const advertisedActions = capabilitiesForNode?.actions ?? COMPUTER_TOOL_ACTIONS;
+        executionNodes.set(nodeId, gatewayOpts);
+        const advertisedActions = availableActions(
+          capabilitiesForNode?.actions ?? COMPUTER_TOOL_ACTIONS,
+        );
         if (!advertisedActions.includes(action)) {
           throw new Error(
             `${COMPUTER_CONTRACT_MISMATCH}: node ${nodeId} does not advertise action ${action}`,
-          );
-        }
-        if (CONTRACT_ONLY_ACTIONS.has(action)) {
-          throw new Error(
-            `${COMPUTER_CONTRACT_MISMATCH}: action ${action} is contract-only until its adapter lands`,
           );
         }
         validateCapabilityBoundInput({
@@ -1365,6 +1418,7 @@ export function createComputerTool(options?: {
               nodeId,
               screenIndex,
               refWidth: referenceWidth,
+              executionId,
               signal,
             });
             return await screenshotResult(capture, []);
@@ -1383,6 +1437,7 @@ export function createComputerTool(options?: {
               nodeId,
               screenIndex,
               refWidth: referenceWidth,
+              executionId,
               signal,
             });
             return await screenshotResult(capture, [`waited ${seconds}s`]);
@@ -1397,6 +1452,7 @@ export function createComputerTool(options?: {
         const wireParams = buildComputerActParams({
           action,
           input: params,
+          executionId,
           screenIndex,
           displayFrameId: frameForNode?.displayFrameId,
           refWidth: referenceWidth,
@@ -1424,7 +1480,7 @@ export function createComputerTool(options?: {
               gatewayOpts,
               nodeId,
               command: COMPUTER_ACT_COMMAND,
-              commandParams: wireParams as unknown as Record<string, unknown>,
+              commandParams: { ...wireParams },
               timeoutMs: invokeTimeoutMs,
               idempotencyKey: computerActIdempotencyKey({
                 scope: options?.idempotencyScope,
@@ -1462,6 +1518,7 @@ export function createComputerTool(options?: {
             nodeId,
             screenIndex,
             refWidth: referenceWidth,
+            executionId,
             signal,
           });
           return await screenshotResult(capture, [computerActResultText(action, actResult)]);

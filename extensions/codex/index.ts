@@ -1,3 +1,4 @@
+import { resolveSessionAgentIds } from "openclaw/plugin-sdk/agent-runtime";
 /**
  * Bundled Codex plugin entry: app-server harness, media understanding,
  * migration provider, CLI-session commands, and binding hooks.
@@ -16,6 +17,7 @@ import { createCodexAppServerAgentHarness } from "./harness.js";
 import { buildCodexMediaUnderstandingProvider } from "./media-understanding-provider.js";
 import { readCodexPluginConfig } from "./src/app-server/config.js";
 import { createCodexAppServerConnectionHealthService } from "./src/app-server/connection-health.js";
+import { setManagedCodexPluginRoot } from "./src/app-server/managed-binary.js";
 import {
   CODEX_APP_SERVER_BINDING_MAX_ENTRIES,
   CODEX_APP_SERVER_BINDING_NAMESPACE,
@@ -60,6 +62,9 @@ export default definePluginEntry({
   name: "Codex",
   description: "Codex app-server harness and native session supervision.",
   register(api) {
+    // Bundled modules may execute from a shared dist chunk, so import.meta.url
+    // cannot identify the owning plugin package or its pinned dependencies.
+    setManagedCodexPluginRoot(api.rootDir);
     const resolveCurrentConfig = () =>
       api.runtime.config?.current ? (api.runtime.config.current() as OpenClawConfig) : undefined;
     const resolvePluginConfig = (resolveConfig: () => OpenClawConfig | undefined) => {
@@ -123,21 +128,27 @@ export default definePluginEntry({
     };
     const bindingStore = createLazyCodexAppServerBindingStore(lazyBindingStateStore);
     registerCodexCliMetadata(api);
-    const sessionCatalogControl = createCodexSessionCatalogControl({
+    const sessionCatalogControlFactory = createCodexSessionCatalogControl({
+      config: api.config as OpenClawConfig,
       getPluginConfig: resolveCurrentPluginConfig,
       getRuntimeConfig: resolveCurrentConfig,
     });
+    const nodeSessionCatalogControl = sessionCatalogControlFactory.forRequest(
+      resolveSessionAgentIds({
+        config: resolveCurrentConfig() ?? (api.config as OpenClawConfig),
+      }).sessionAgentId,
+    );
     const sessionCatalogEnabled =
       readCodexPluginConfig(resolveCurrentPluginConfig()).sessionCatalog?.enabled !== false;
     if (sessionCatalogEnabled) {
       codexSessionCatalogRuntime.register({
         api,
         bindingStore,
-        control: sessionCatalogControl,
+        control: sessionCatalogControlFactory,
         getPluginConfig: resolveCurrentPluginConfig,
         getRuntimeConfig: resolveCurrentConfig,
       });
-      for (const command of createCodexSessionCatalogNodeHostCommands(sessionCatalogControl, {
+      for (const command of createCodexSessionCatalogNodeHostCommands(nodeSessionCatalogControl, {
         getPluginConfig: resolveCurrentPluginConfig,
         getRuntimeConfig: resolveCurrentConfig,
       })) {
@@ -170,7 +181,7 @@ export default definePluginEntry({
     api.registerAgentHarness(
       createCodexAppServerAgentHarness({
         bindingStore,
-        sessionCatalogControl,
+        sessionCatalogControlFactory,
         resolveConfig: resolveCurrentConfig,
         resolvePluginConfig: resolveCurrentPluginConfig,
         runtime: api.runtime,
