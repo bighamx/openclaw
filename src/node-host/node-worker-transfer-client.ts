@@ -32,6 +32,12 @@ const TRANSFER_RESULT_MAX_BYTES = 64 * 1024;
 const validatedTlsSocketPins = new WeakMap<TLSSocket, string>();
 const transferLog = createSubsystemLogger("node-host/worker-workspace");
 
+function tlsPinMismatch(): NodeWorkerWorkspaceTransferError {
+  return new NodeWorkerWorkspaceTransferError(
+    "workspace-transfer-failed: gateway TLS fingerprint mismatch",
+  );
+}
+
 function transferUrl(gatewayUrl: string, routePath: string): URL {
   const gateway = new URL(gatewayUrl);
   if (gateway.protocol !== "ws:" && gateway.protocol !== "wss:") {
@@ -87,23 +93,13 @@ function waitForTlsPin(request: ClientRequest, expectedRaw?: string): Promise<vo
       tlsSocket = socket as TLSSocket;
       const validated = validatedTlsSocketPins.get(tlsSocket);
       if (validated) {
-        finish(
-          validated === expected
-            ? undefined
-            : new NodeWorkerWorkspaceTransferError(
-                "workspace-transfer-failed: gateway TLS fingerprint mismatch",
-              ),
-        );
+        finish(validated === expected ? undefined : tlsPinMismatch());
         return;
       }
       verify = () => {
         const actual = normalizeFingerprint(tlsSocket!.getPeerCertificate().fingerprint256 ?? "");
         if (!actual || expected !== actual) {
-          finish(
-            new NodeWorkerWorkspaceTransferError(
-              "workspace-transfer-failed: gateway TLS fingerprint mismatch",
-            ),
-          );
+          finish(tlsPinMismatch());
           return;
         }
         validatedTlsSocketPins.set(tlsSocket!, actual);
@@ -133,11 +129,14 @@ async function openRequest(params: {
 }): Promise<IncomingMessage> {
   const url = transferUrl(params.gatewayUrl, params.routePath);
   const transport = url.protocol === "https:" ? https : http;
+  // Keep the proxy-aware global transport, but require replacement sockets to expose a certificate.
   const request = transport.request(url, {
     method: params.method,
     headers: { authorization: `Bearer ${params.token}`, ...params.headers },
     signal: params.signal,
-    ...(url.protocol === "https:" && params.tlsFingerprint ? { rejectUnauthorized: false } : {}),
+    ...(url.protocol === "https:" && params.tlsFingerprint
+      ? { rejectUnauthorized: false, session: Buffer.alloc(0) }
+      : {}),
   });
   const response = once(request, "response").then(([message]) => message as IncomingMessage);
   const send = async () => {
@@ -699,20 +698,18 @@ export async function runNodeWorkerWorkspaceTransfer(params: {
   signal?: AbortSignal;
 }): Promise<string> {
   try {
-    return await serializeNodeWorkerWorkspace(params.workspaceDir, async () => {
-      await recoverWorkspaceReplacement(params.workspaceDir);
-      return params.transfer.direction === "download"
-        ? await downloadWorkspace({
-            ...params,
-            tlsFingerprint: params.gatewayTlsFingerprint,
-            transfer: params.transfer,
-          })
-        : await uploadWorkspace({
-            ...params,
-            tlsFingerprint: params.gatewayTlsFingerprint,
-            transfer: params.transfer,
-          });
-    });
+    await recoverWorkspaceReplacement(params.workspaceDir);
+    return params.transfer.direction === "download"
+      ? await downloadWorkspace({
+          ...params,
+          tlsFingerprint: params.gatewayTlsFingerprint,
+          transfer: params.transfer,
+        })
+      : await uploadWorkspace({
+          ...params,
+          tlsFingerprint: params.gatewayTlsFingerprint,
+          transfer: params.transfer,
+        });
   } catch (error) {
     if (error instanceof NodeWorkerWorkspaceTransferError) {
       throw error;

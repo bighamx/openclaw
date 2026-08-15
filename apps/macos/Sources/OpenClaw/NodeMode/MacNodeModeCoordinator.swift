@@ -946,8 +946,7 @@ extension MacNodeModeCoordinator {
         }
         var workerEnvironment: [String: String] = [:]
         if provider == .cua, let endpoint = CuaDriverHostCoordinator.shared.workerEndpoint {
-            workerEnvironment[CuaDriverWorkerEnvironment.socketPath] = endpoint.socketPath
-            workerEnvironment[CuaDriverWorkerEnvironment.binaryPath] = endpoint.binaryPath
+            workerEnvironment[CuaDriverWorkerEnvironment.endpoint] = try endpoint.environmentValue()
         }
         let effectiveLaunch = MacNodeHostWorkerLaunch(
             command: launch.command,
@@ -1256,11 +1255,13 @@ extension MacNodeModeCoordinator {
         commands: [String],
         workerManifest: MacNodeHostManifest?) -> OpenClawProtocol.AnyCodable?
     {
-        guard provider == .cua,
-              commands.contains(MacNodeScreenCommand.snapshot.rawValue),
+        guard commands.contains(MacNodeScreenCommand.snapshot.rawValue),
               commands.contains(OpenClawComputerCommand.act.rawValue)
         else { return nil }
-        return workerManifest?.computerUse
+        return switch provider {
+        case .peekaboo: ComputerControlProvider.peekabooComputerUseDescriptor
+        case .cua: workerManifest?.computerUse
+        }
     }
 
     nonisolated static func mergingUnique(_ primary: [String], _ additional: [String]) -> [String] {

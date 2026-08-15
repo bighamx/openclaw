@@ -43,6 +43,7 @@ export const en: TranslationMap = {
     delete: "Delete",
     remove: "Remove",
     dismiss: "Dismiss",
+    dismissAndDontShowAgain: "Dismiss and don't show again",
     unselect: "Unselect",
     enabled: "Enabled",
     disabled: "Disabled",
@@ -727,8 +728,7 @@ export const en: TranslationMap = {
     cloudWorker: "Cloud · {profile}",
     cloudWorkerProvider: "Cloud worker provider: {provider}",
     cloudRequiresWorktree: "Cloud workers require a managed worktree",
-    cloudRequiresOpenClawRuntime:
-      "Cloud workers require the OpenClaw runtime; {runtime} is selected.",
+    cloudRuntimeUnsupported: "The {runtime} runtime does not support cloud workers.",
     cloudRecoveryUnavailable:
       "Cloud workers are unavailable because this connection does not support task recovery. Reconnect or update the Gateway.",
     cloudStartFailed: "The session was created locally, but cloud startup failed: {error}",
@@ -983,6 +983,7 @@ export const en: TranslationMap = {
     markUnreadCount: "Mark {count} as unread",
     markReadCount: "Mark {count} as read",
     forkSession: "Fork",
+    forkFromLastCompleted: "Fork from last completed message",
     forkedSession: "Forked session",
     openPullRequest: "Open PR",
     openInEditorMenu: "Open in",
@@ -4156,6 +4157,11 @@ export const en: TranslationMap = {
       subtitle: "Choose the primary, ordered fallbacks, and utility model.",
       primary: "Default model",
       utility: "Utility model",
+      utilityHelpLabel: "About the utility model",
+      utilityHelpPurpose:
+        "Handles short background tasks such as generated titles, progress narration, and session summaries.",
+      utilityHelpAutomatic:
+        "Automatic uses the primary model provider's recommended small model when available. Generated titles otherwise use the primary model.",
       automatic: "Automatic (provider default)",
       disabled: "Disabled",
       savedSelection: "Saved selection",
@@ -5732,6 +5738,8 @@ export const en: TranslationMap = {
       refresh: "Refresh",
       refreshing: "Refreshing...",
       paused: "Paused",
+      autoDisabledRunFailures: "Auto-disabled · {count} run failures",
+      autoDisabledScheduleErrors: "Auto-disabled · {count} schedule errors",
       tasksTab: "Automations",
       activityTab: "Run history",
     },

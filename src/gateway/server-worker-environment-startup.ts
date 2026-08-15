@@ -19,12 +19,14 @@ import {
   DEVICE_WORKER_PROVIDER_ID,
 } from "./worker-environments/device-provider.js";
 import type { WorkerLiveEventReceiver } from "./worker-environments/live-events.js";
+import { nodeWorkerGatewayNamespace as resolveNodeWorkerGatewayNamespace } from "./worker-environments/node-worker-gateway-namespace.js";
 import type { NodeWorkerWorkspaceBindingResolver } from "./worker-environments/node-worker-tunnel.js";
 import type { NodeWorkspaceTransferHttpCallback } from "./worker-environments/node-workspace-transfer-http-contract.js";
 import type { WorkerSessionPlacementStore } from "./worker-environments/placement-store.js";
 import type { WorkerPlacementDispatchContract } from "./worker-environments/service-contract.js";
 import type { WorkerEnvironmentService } from "./worker-environments/service.js";
 import type { WorkerTunnelManager } from "./worker-environments/tunnel.js";
+import { listRetainedWorkerBundleHashes } from "./worker-environments/worker-bundle-retention.js";
 
 type WorkerEnvironmentStore = ReturnType<
   typeof import("./worker-environments/store.js").createWorkerEnvironmentStore
@@ -48,6 +50,7 @@ export type GatewayWorkerEnvironmentRuntime = {
   workerEnvironmentService?: WorkerEnvironmentService;
   workerLiveEvents?: WorkerLiveEventReceiver;
   workerTunnelManager?: WorkerTunnelManager;
+  nodeWorkerGatewayNamespace?: string;
   bindWorkerSessionDispatch?: (dispatch: WorkerPlacementDispatchContract["dispatch"]) => void;
   bindDeviceNodeControl?: (transport: NodeWorkerSupervisorTransport) => void;
   bindNodeWorkspaceBindingResolver?: (resolver: NodeWorkerWorkspaceBindingResolver) => void;
@@ -135,6 +138,12 @@ export async function createGatewayWorkerEnvironmentRuntime(params: {
   // A crashed gateway can leak local turn claims; drop them before workers re-admit turns.
   params.startup.placementStore.clearLocalTurnClaimsAfterRestart();
   const placementGate = createWorkerSessionPlacementGate(params.startup.placementStore);
+  const workerEnvironmentLog = params.log.child("worker-environments");
+  const listRetainedBundleHashes = () =>
+    listRetainedWorkerBundleHashes({
+      environments: params.startup.store.list(),
+      placements: params.startup.placementStore.list(),
+    });
   let workerBundleProducer: WorkerBundleProducer | undefined;
   let workerNpmArtifact: Promise<WorkerNpmArtifact> | undefined;
   const prepareInstallation = async (install: "bundle" | "npm") => {
@@ -142,10 +151,15 @@ export async function createGatewayWorkerEnvironmentRuntime(params: {
       loadWorkerEnvironmentRuntimeModule(),
       import("../../packages/gateway-protocol/src/schema/worker-admission.js"),
     ]);
-    workerBundleProducer ??= workerRuntime.createWorkerBundleProducer({
+    const producer = (workerBundleProducer ??= workerRuntime.createWorkerBundleProducer({
       protocolFeatures: WORKER_PROTOCOL_FEATURES,
-    });
-    const bundle = await workerBundleProducer.prepare();
+      cacheOwnership: "exclusive",
+      onCacheCleanupError: (error) => {
+        workerEnvironmentLog.warn(`Worker bundle cache cleanup failed: ${String(error)}`);
+      },
+    }));
+    const bundle = await producer.prepare();
+    await producer.prune(listRetainedBundleHashes());
     if (install === "bundle") {
       return bundle;
     }
@@ -181,8 +195,11 @@ export async function createGatewayWorkerEnvironmentRuntime(params: {
   const nodeWorkspaceTransfer = createNodeWorkspaceTransferService({
     getOwner: (environmentId) => params.startup.store.getTransferOwner(environmentId),
   });
+  await nodeWorkspaceTransfer.initialize();
+  const gatewayDeviceId = loadOrCreateProcessDeviceIdentity().deviceId;
+  const nodeWorkerGatewayNamespace = resolveNodeWorkerGatewayNamespace(gatewayDeviceId);
   const nodeWorkerTunnelManager = createNodeWorkerTunnelManager({
-    gatewayDeviceId: loadOrCreateProcessDeviceIdentity().deviceId,
+    gatewayDeviceId,
     getEnvironment: (environmentId) => params.startup.store.get(environmentId),
     getTransport: () => deviceRuntime.getNodeTransport(),
     launchNodeWorker: async (request) => await deviceRuntime.launchNodeWorker(request),
@@ -195,7 +212,6 @@ export async function createGatewayWorkerEnvironmentRuntime(params: {
   let dispatchChild: WorkerPlacementDispatchContract["dispatch"] = async () => {
     throw new Error("Worker session dispatch is unavailable");
   };
-  const workerEnvironmentLog = params.log.child("worker-environments");
   const workerEnvironmentServiceBase = createWorkerEnvironmentService({
     store: params.startup.store,
     getConfig: getRuntimeConfig,
@@ -296,6 +312,7 @@ export async function createGatewayWorkerEnvironmentRuntime(params: {
     workerEnvironmentService,
     workerLiveEvents,
     workerTunnelManager,
+    nodeWorkerGatewayNamespace,
     bindWorkerSessionDispatch: (dispatch) => {
       dispatchChild = dispatch;
     },

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import fsp from "node:fs/promises";
 import type { WorkerAdmissionHandshake } from "../../../packages/gateway-protocol/src/schema/worker-admission.js";
 import { sleepWithAbort } from "../../infra/backoff.js";
@@ -14,10 +13,12 @@ import {
   NODE_WORKSPACE_TRANSFER_ERROR_CODE,
   NodeWorkerWorkspaceTransferError,
 } from "../../worker/node-workspace-transfer-protocol.js";
+import { sameWorkerBuild } from "../../worker/worker-build-identity.js";
 import type {
   NodeWorkerSupervisorNodeProof,
   NodeWorkerSupervisorTransport,
 } from "../node-registry-private.js";
+import { nodeWorkerGatewayNamespace } from "./node-worker-gateway-namespace.js";
 import {
   createNodeWorkerWorkspaceFallback,
   recordNodeSyncPath,
@@ -116,20 +117,6 @@ type NodeTunnelEntry = NodeWorkerTunnelStartRequest & {
   stopPromise?: Promise<void>;
 };
 
-function exactBuild(
-  actual: WorkerAdmissionHandshake | undefined,
-  expected: WorkerAdmissionHandshake,
-): boolean {
-  return (
-    actual?.bundleHash === expected.bundleHash &&
-    actual.openclawVersion === expected.openclawVersion &&
-    actual.protocolFeatures.length === expected.protocolFeatures.length &&
-    actual.protocolFeatures
-      .toSorted()
-      .every((feature, index) => feature === expected.protocolFeatures.toSorted()[index])
-  );
-}
-
 function spawnResultFromReceipt(receipt: NodeWorkerSupervisorReceipt): SpawnResult {
   if (receipt.state === "completed") {
     return {
@@ -196,10 +183,7 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
   const entries = new Map<string, NodeTunnelEntry>();
   const pendingStarts = new Map<string, { ownerEpoch: number; cancelled: boolean }>();
   let resolveWorkspaceBinding: NodeWorkerWorkspaceBindingResolver | undefined;
-  const gatewayNamespace = `gateway-${createHash("sha256")
-    .update(options.gatewayDeviceId)
-    .digest("hex")
-    .slice(0, 32)}`;
+  const gatewayNamespace = nodeWorkerGatewayNamespace(options.gatewayDeviceId);
 
   const hasDurableBinding = (entry: NodeTunnelEntry): boolean => {
     const current = options.getEnvironment(entry.environmentId);
@@ -207,7 +191,7 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
       current &&
       current.ownerEpoch === entry.ownerEpoch &&
       current.bootstrapReceipt?.installKind === "local" &&
-      exactBuild(current.bootstrapReceipt, entry.expectedBuild) &&
+      sameWorkerBuild(current.bootstrapReceipt, entry.expectedBuild) &&
       current.attachedSessionIds.length <= 1 &&
       (current.attachedSessionIds.length === 0 ||
         current.attachedSessionIds[0] === entry.sessionId),
@@ -234,7 +218,8 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
     const node = (await raceWithSignal(transport.listCurrentNodes(), signal)).find(
       (candidate) =>
         candidate.nodeId === entry.deviceId &&
-        exactBuild(candidate.workerRuns, entry.expectedBuild),
+        candidate.workerBuild &&
+        sameWorkerBuild(candidate.workerBuild, entry.expectedBuild),
     );
     if (!node) {
       throw new Error("device worker node is not connected with the expected build");
@@ -442,6 +427,9 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
           manifest: typeof uploaded.current;
           conflictPaths: string[];
         }) => {
+          if (accepted.manifestRef === expectedRemoteRef) {
+            return;
+          }
           const baseSnapshot = options.workspaceTransfer.getSnapshot(
             entry.environmentId,
             request.baseManifestRef,
@@ -653,7 +641,7 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
               current.abortController.signal.aborted ||
               current.deviceId !== request.deviceId ||
               current.sessionId !== request.sessionId ||
-              !exactBuild(current.expectedBuild, request.expectedBuild)
+              !sameWorkerBuild(current.expectedBuild, request.expectedBuild)
             ) {
               throw new Error("node worker tunnel owner binding changed within one epoch");
             }
@@ -713,6 +701,7 @@ export function createNodeWorkerTunnelManager(options: NodeWorkerTunnelManagerOp
         pending.cancelled = true;
       }
       await Promise.all([...entries.values()].map(stopEntry));
+      await options.workspaceTransfer.closeAll();
     },
     status(environmentId: string): WorkerTunnelStatus {
       const entry = entries.get(environmentId);
