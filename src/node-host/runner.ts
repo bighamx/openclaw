@@ -5,6 +5,7 @@ import {
   GATEWAY_CLIENT_NAMES,
 } from "../../packages/gateway-protocol/src/client-info.js";
 import { ConnectErrorDetailCodes } from "../../packages/gateway-protocol/src/connect-error-details.js";
+import { WORKER_BUNDLE_PREWARM_VERSION } from "../../packages/gateway-protocol/src/schema/worker-admission.js";
 import { getRuntimeConfig, type OpenClawConfig } from "../config/config.js";
 import { startGatewayClientWhenEventLoopReady } from "../gateway/client-start-readiness.js";
 import { GatewayClientRequestError, type GatewayReconnectPausedInfo } from "../gateway/client.js";
@@ -460,15 +461,17 @@ export async function runNodeHost(opts: NodeHostRunOptions): Promise<void> {
   };
 
   const publishRunnerInventory = () => {
-    // The handshake keeps the immutable build ceiling. Live inventory withdraws
-    // only new-launch eligibility while full, leaving status/cancel negotiated.
     queueOptionalPublication(
       NODE_RUNNER_INVENTORY_UPDATE_METHOD,
       {
         protocolFeatures: [NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE],
-        ...(workerRunsAvailable && preparedRuntime.manifest.workerRuns
-          ? { workerRuns: preparedRuntime.manifest.workerRuns }
-          : {}),
+        workerHost: preparedRuntime.workerHostingEnabled
+          ? {
+              enabled: true,
+              capacity: workerRunsAvailable ? "available" : "full",
+              bundlePrewarm: WORKER_BUNDLE_PREWARM_VERSION,
+            }
+          : { enabled: false },
       },
       "runner inventory",
     );
@@ -507,7 +510,6 @@ export async function runNodeHost(opts: NodeHostRunOptions): Promise<void> {
       caps: preparedRuntime.manifest.caps,
       commands: preparedRuntime.manifest.commands,
       computerUse: preparedRuntime.manifest.computerUse,
-      workerRuns: preparedRuntime.manifest.workerRuns,
       pathEnv: preparedRuntime.manifest.pathEnv,
       permissions: undefined,
       deviceIdentity: loadOrCreateDeviceIdentity(),

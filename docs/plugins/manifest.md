@@ -30,6 +30,7 @@ See [Plugins](/tools/plugin) for the full plugin system guide, and [Capability m
 - plugin identity, config validation, and config UI hints
 - auth, onboarding, and setup metadata (alias, auto-enable, provider env vars, auth choices)
 - activation hints for control-plane surfaces
+- root CLI command names, descriptions, and subcommand markers (`cliCommands`)
 - shorthand model-family ownership
 - static capability-ownership snapshots (`contracts`)
 - dashboard widget data bindings and action verbs
@@ -157,6 +158,7 @@ See [Plugins](/tools/plugin) for the full plugin system guide, and [Capability m
 | `syntheticAuthRefs`                  | No       | `string[]`                   | Provider or CLI backend refs whose plugin-owned synthetic auth hook should be probed during cold model discovery before runtime loads.                                                                                                                                                                                                                                                           |
 | `nonSecretAuthMarkers`               | No       | `string[]`                   | Bundled-plugin-owned placeholder API key values that represent non-secret local, OAuth, or ambient credential state.                                                                                                                                                                                                                                                                             |
 | `commandAliases`                     | No       | `object[]`                   | Command names owned by this plugin that should produce plugin-aware config and CLI diagnostics before runtime loads.                                                                                                                                                                                                                                                                             |
+| `cliCommands`                        | No       | `object[]`                   | Root CLI commands shown in `openclaw --help` before plugin code loads. Each row requires `name`, `description`, and `hasSubcommands`.                                                                                                                                                                                                                                                            |
 | `providerUsageAuthEnvVars`           | No       | `Record<string, string[]>`   | Usage/billing-only provider credentials. OpenClaw uses these names for usage discovery and secret scrubbing but never for inference auth.                                                                                                                                                                                                                                                        |
 | `providerAuthAliases`                | No       | `Record<string, string>`     | Provider ids that should reuse another provider id for auth lookup, for example a coding provider that shares the base provider API key and auth profiles.                                                                                                                                                                                                                                       |
 | `providerAuthChoices`                | No       | `object[]`                   | Cheap auth-choice metadata for onboarding pickers, preferred-provider resolution, and simple CLI flag wiring.                                                                                                                                                                                                                                                                                    |
@@ -392,7 +394,7 @@ Each `providerBaseUrl` guard supports:
 }
 ```
 
-`toolMetadata` entries also accept `optional` (marks the tool as non-required for plugin activation) and `replaySafe` (marks tool execution as safe to repeat after an incomplete model turn), on top of the shared `configSignals`/`authSignals` fields above.
+`toolMetadata` entries also accept `optional` (marks the tool as non-required for plugin activation), `replaySafe` (marks tool execution as safe to repeat after an incomplete model turn), and `sideEffecting` (marks execution as potentially changing durable or external state), on top of the shared `configSignals`/`authSignals` fields above.
 
 If a tool has no `toolMetadata`, OpenClaw preserves the existing behavior and loads the owning plugin when the tool contract matches policy. For hot-path tools whose factory depends on auth/config, plugin authors should declare `toolMetadata` instead of making core import runtime to ask.
 
@@ -434,6 +436,24 @@ proposal in isolation and commits it only after success. A provider can also
 expose `appGuidedSetup.detectAvailability` to mark its setup choice as detected
 when the local service is reachable but no model qualifies for automatic setup.
 The availability probe is also read-only.
+
+## cliCommands reference
+
+Declare every plugin-owned root command in `cliCommands` so root help and command-owner routing stay metadata-only:
+
+```json
+{
+  "cliCommands": [
+    {
+      "name": "example",
+      "description": "Manage the example integration",
+      "hasSubcommands": true
+    }
+  ]
+}
+```
+
+The manifest row is the canonical help text. Register the same command at runtime with `api.registerCli(..., { descriptors: [...] })`; runtime descriptors may additionally provide `machineOutput`. Nested commands such as `openclaw nodes <feature>` are not root commands and do not belong in `cliCommands`.
 
 ## commandAliases reference
 
