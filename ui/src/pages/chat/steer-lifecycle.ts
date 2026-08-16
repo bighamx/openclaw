@@ -4,6 +4,7 @@ import type { SessionsListResult } from "../../api/types.ts";
 import { setLastActiveSessionKey } from "../../app/settings.ts";
 import { compareChatQueueOrder } from "../../lib/chat/chat-queue-order.ts";
 import type { ChatAttachment, ChatQueueItem } from "../../lib/chat/chat-types.ts";
+import { formatUiError } from "../../lib/format-error.ts";
 import { resolveSessionDisplayName } from "../../lib/session-display.ts";
 import { visibleSessionMatches } from "../../lib/sessions/index.ts";
 import {
@@ -266,9 +267,11 @@ export function retireSteeredChipsForRequestRun(
   for (const item of landed) {
     // A started active turn can still exist only as an optimistic queue row.
     // Promote that target before its landed steer so stable transcript history
-    // cannot render the newer steer ahead of the original prompt.
+    // cannot render the newer steer ahead of the original prompt. Older persisted
+    // chips used pendingRunId as both identities, so retain it as the migration fallback.
+    const targetRunId = item.steerTargetRunId?.trim() || item.pendingRunId;
     const target = state.chatQueue.find(
-      (candidate) => candidate.id !== item.id && candidate.sendRunId === item.pendingRunId,
+      (candidate) => candidate.id !== item.id && candidate.sendRunId === targetRunId,
     );
     if (target) {
       preserveQueuedUserTurn(state, target);
@@ -316,8 +319,9 @@ export function retirePersistedSteeredChips(state: SteerLifecycleHost): void {
 }
 
 function setChatError(host: SteerLifecycleHost, error: string | null): void {
-  host.lastError = error;
-  host.chatError = error;
+  const message = error === null ? null : formatUiError(error);
+  host.lastError = message;
+  host.chatError = message;
 }
 
 type ChatDeliveryFailureHost = Parameters<typeof visibleSessionMatches>[0] & {
@@ -339,9 +343,10 @@ export function surfaceChatDeliveryFailure(
   agentId: string | undefined,
   error: string,
 ): void {
+  const message = formatUiError(error);
   if (visibleSessionMatches(host, sessionKey, agentId)) {
-    host.lastError = error;
-    host.chatError = error;
+    host.lastError = message;
+    host.chatError = message;
     return;
   }
   // Global rows are agent-scoped while sharing one "global" key, so an
@@ -354,7 +359,7 @@ export function surfaceChatDeliveryFailure(
         !scopedAgentId ||
         (session.agentId !== undefined && normalizeAgentId(session.agentId) === scopedAgentId)),
   );
-  showToast({ message: `${resolveSessionDisplayName(sessionKey, row)}: ${error}` });
+  showToast({ message: `${resolveSessionDisplayName(sessionKey, row)}: ${message}` });
 }
 
 export async function sendQueuedChatMessageWithQueueMode(
@@ -423,6 +428,7 @@ export async function sendQueuedChatMessageWithQueueMode(
     sendRunId: claimed.sendRunId,
     sessionKey: claimed.sessionKey,
     agentId: claimed.agentId,
+    ...(claimed.steerTargetRunId ? { steerTargetRunId: claimed.steerTargetRunId } : {}),
   };
   const steeringChip = buildInflightSteerChip(pendingItem, claimed.sendRunId, activeRunId);
   const pendingIndicator = isSteer
@@ -479,9 +485,7 @@ export async function sendQueuedChatMessageWithQueueMode(
   if (!result) {
     // A transport failure does not prove active-run admission was rejected. Keep the
     // durable row parked so reconnect cannot replay it as a separate turn.
-    if (itemStillVisible) {
-      setChatError(host, unconfirmedError);
-    }
+    surfaceChatDeliveryFailure(host, itemSessionKey, item.agentId, unconfirmedError);
     return;
   }
   if (isRejectedSteerChatSend(result)) {
@@ -505,9 +509,7 @@ export async function sendQueuedChatMessageWithQueueMode(
       ...(entry.attachments?.length ? { attachments: entry.attachments } : {}),
     }));
     if (!restored) {
-      if (itemStillVisible) {
-        setChatError(host, unconfirmedError);
-      }
+      surfaceChatDeliveryFailure(host, itemSessionKey, item.agentId, unconfirmedError);
     } else {
       surfaceChatDeliveryFailure(
         host,
@@ -521,9 +523,7 @@ export async function sendQueuedChatMessageWithQueueMode(
   }
   const removed = removeQueuedMessageWithoutReleasing(host, id, itemSessionKey, item.agentId);
   if (!removed) {
-    if (itemStillVisible) {
-      setChatError(host, unconfirmedError);
-    }
+    surfaceChatDeliveryFailure(host, itemSessionKey, item.agentId, unconfirmedError);
     return;
   }
   const userTurnAlreadyVisible = chatMessagesContainQueuedSend(host.chatMessages, claimed, true);

@@ -283,10 +283,12 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       //     (voice-call/matrix runtime-doctor repair names, WhatsApp ack policy,
       //     Slack progress-draft render) so installed plugins survive upgrade (#124041 class).
       // -1: remove the orphan diagnostic traceparent propagation export.
+      // +4: registry-owned native compaction registration contracts for Codex harnesses.
       // -17: retire the messaging-targets subpath, embedded Pi aliases, and shipped
       // channel setup compatibility helpers.
       // +1: concrete plugin side-effect owner resolution for agent harness runtimes.
-      4313,
+      // +1: strict explicit agent-id normalization without default-agent fallback.
+      4318,
       env,
     ),
     publicFunctionExports: readPluginSdkSurfaceBudgetEnv(
@@ -361,7 +363,8 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       // -1: remove the orphan diagnostic traceparent propagation export.
       // -12: retire the callable messaging-targets, embedded Pi, and channel setup helpers.
       // +1: concrete plugin side-effect owner resolution for agent harness runtimes.
-      2565,
+      // +1: strict explicit agent-id normalization without default-agent fallback.
+      2566,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(

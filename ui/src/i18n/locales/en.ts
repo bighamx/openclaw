@@ -589,6 +589,10 @@ export const en: TranslationMap = {
       versionDrift: "version drift",
       versionDriftTitle:
         "Device {nodeVersion}; Gateway {gatewayVersion}. Update the older component to align the fleet.",
+      workerVersion: "Worker {version}",
+      workerMissing: "worker missing",
+      workerMissingTitle:
+        "The Gateway-managed worker bundle is missing. Start a new session on this device to reinstall it.",
       manualWake: "manual wake required",
       manualWakeTitle:
         "The Gateway cannot wake an offline Windows device. Start the machine or restore its network connection.",
@@ -810,6 +814,12 @@ export const en: TranslationMap = {
     cloudSetupInterrupted:
       "This cloud session's setup was interrupted. Check recent sessions before starting this task again.",
     catalogUnavailable: "This session target is unavailable.",
+    restoringPreferences: "Restoring your last session setup…",
+    checkingPlace: "Checking the selected place…",
+    cloudNotReady: "The cloud worker isn't ready yet. Try again in a moment.",
+    agentsUnavailable: "No agents are available on this Gateway yet.",
+    nodeUnavailable: "The selected device is unavailable. Pick another place.",
+    terminalNeedsFolder: "Pick a folder before starting in a terminal.",
     what: "What",
     detail: "Detail",
     local: "Local",
@@ -983,6 +993,13 @@ export const en: TranslationMap = {
     renameSessionPrompt: "Rename session",
     renameSessionMenu: "Rename…",
     setIconMenu: "Set icon",
+    iconEmojiSection: "Emoji",
+    iconGlyphSection: "Icons",
+    customEmojiCell: "Custom emoji…",
+    customEmojiTitle: "Custom emoji",
+    customEmojiSet: "Set",
+    customEmojiHint: "Any emoji works. Press {shortcut} for the system emoji picker.",
+    customEmojiHintNoShortcut: "Any emoji works.",
     removeIcon: "Remove icon",
     pinSession: "Pin session",
     unpinSession: "Unpin session",
@@ -1488,7 +1505,6 @@ export const en: TranslationMap = {
       title: "Security",
       gatewayAuth: "Gateway auth",
       execPolicy: "Exec policy",
-      deviceAuth: "Device auth",
       browserEnabled: "Browser enabled",
       toolProfile: "Tool profile",
     },
@@ -3844,6 +3860,7 @@ export const en: TranslationMap = {
   palette: {
     placeholder: "Search chats and commands…",
     noResults: "No results",
+    searchFailed: "Chat search failed — check the gateway logs and retry",
     categories: {
       search: "Search",
       navigation: "Navigation",
@@ -4502,15 +4519,6 @@ export const en: TranslationMap = {
   },
   login: {
     subtitle: "Gateway Dashboard",
-    deviceAuthMigration: {
-      banner: "This browser still needs one-time device approval after the update.",
-      action: "Secure this browser",
-      secureContextRequired:
-        "This legacy browser remains available temporarily. Reopen it over HTTPS or localhost to secure it with device identity.",
-      pendingUnavailable: "The browser pairing request is not available yet. Retry in a moment.",
-      loadFailed: "Could not load this browser's pairing request: {error}",
-      approvalFailed: "Could not secure this browser: {error}",
-    },
     passwordPlaceholder: "optional",
     showToken: "Show token",
     hideToken: "Hide token",
