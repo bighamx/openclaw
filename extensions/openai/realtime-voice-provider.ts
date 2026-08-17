@@ -93,6 +93,7 @@ type OpenAIInternalRealtimeVoiceProviderApi = {
   resolveBrowserSessionCapabilities?: (ctx: {
     cfg?: RealtimeVoiceBrowserSessionCreateRequest["cfg"];
     providerConfig: RealtimeVoiceProviderConfig;
+    agentId?: string;
     model?: string;
   }) => OpenAIInternalRealtimeVoiceCapabilities;
   isGatewayRelayConfigured?: (ctx: {
@@ -214,6 +215,7 @@ async function createOpenAIRealtimeBrowserSession(
           createBridge: ({ apiKey, callId, onTerminal }) => {
             const bridge = new OpenAIRealtimeBridge({
               cfg: req.cfg,
+              agentId: req.agentId,
               providerConfig: req.providerConfig,
               apiKey,
               callId,
@@ -449,7 +451,7 @@ export function buildOpenAIRealtimeVoiceProvider(options?: {
           hasOpenAIChatGptSubscriptionAuthInput({ cfg, agentId }))
       );
     },
-    resolveBrowserSessionCapabilities: ({ cfg, providerConfig, model }) => {
+    resolveBrowserSessionCapabilities: ({ cfg, providerConfig, agentId, model }) => {
       const config = normalizeProviderConfig(providerConfig);
       if (isSupportedOpenAIGptLiveModel(model ?? config.model)) {
         return {
@@ -460,7 +462,7 @@ export function buildOpenAIRealtimeVoiceProvider(options?: {
       return {
         ...OPENAI_REALTIME_CAPABILITIES,
         ...(options?.quicksilverBrowserSessionBroker !== undefined &&
-        hasOpenAIRealtimePlatformAuthInput({ configuredApiKey: config.apiKey, cfg })
+        hasOpenAIRealtimePlatformAuthInput({ configuredApiKey: config.apiKey, cfg, agentId })
           ? { supportsGatewayControl: true }
           : {}),
       };

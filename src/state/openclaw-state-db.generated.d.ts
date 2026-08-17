@@ -968,6 +968,7 @@ export interface NativeHookRelayBridges {
 export interface NodeHostConfig {
   config_key: string;
   display_name: string | null;
+  gateway_cloudflare_access_json: string | null;
   gateway_context_path: string | null;
   gateway_host: string | null;
   gateway_port: number | null;
@@ -1591,6 +1592,19 @@ export interface WorkerInferenceTurns {
   updated_at_ms: number;
 }
 
+export interface WorkerSessionPlacementMoves {
+  created_at_ms: number;
+  last_error: string | null;
+  operation_id: string;
+  session_id: string;
+  source_environment_id: string;
+  source_generation: number;
+  source_owner_epoch: number;
+  target_id: string | null;
+  target_kind: string;
+  updated_at_ms: number;
+}
+
 export interface WorkerSessionPlacements {
   active_owner_epoch: number | null;
   agent_id: string;
@@ -1862,6 +1876,7 @@ export interface DB {
   worker_environment_ssh_fallback_ports: WorkerEnvironmentSshFallbackPorts;
   worker_environments: WorkerEnvironments;
   worker_inference_turns: WorkerInferenceTurns;
+  worker_session_placement_moves: WorkerSessionPlacementMoves;
   worker_session_placements: WorkerSessionPlacements;
   worker_session_tool_operations: WorkerSessionToolOperations;
   worker_transcript_commit_heads: WorkerTranscriptCommitHeads;

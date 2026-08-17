@@ -8,6 +8,7 @@ import {
   expectDefined,
   installMockGateway,
   pauseVirtualClock,
+  requireRecord,
 } from "./chat-flow.test-support.ts";
 
 const suite = createChatFlowE2eSuite();
@@ -23,9 +24,104 @@ const sessionSecondRowProofDir = path.join(
   "control-ui-e2e",
   "session-status-second-row-implementation",
 );
+const subtitleStabilityProofDir = path.join(
+  process.cwd(),
+  ".artifacts",
+  "control-ui-e2e",
+  "sidebar-subtitle-stability",
+);
 
 suite.define(() => {
-  it("replaces an intermediate running subtitle with the durable final reply", async () => {
+  it("keeps a running subtitle and row height stable when its session is opened", async () => {
+    if (captureUiProofEnabled) {
+      await mkdir(subtitleStabilityProofDir, { recursive: true });
+    }
+    const context = await suite.newBrowserContext({
+      locale: "en-US",
+      serviceWorkers: "block",
+      viewport: { height: 900, width: 1280 },
+      ...(captureUiProofEnabled
+        ? { recordVideo: { dir: subtitleStabilityProofDir, size: { height: 900, width: 1280 } } }
+        : {}),
+    });
+    const page = await context.newPage();
+    const proofVideo = page.video();
+    const firstKey = "agent:main:session-a";
+    const secondKey = "agent:main:session-b";
+    const gateway = await installMockGateway(page, {
+      methodResponses: {
+        "sessions.list": chatSessionListResponse([
+          {
+            key: firstKey,
+            kind: "direct",
+            label: "First running session",
+            updatedAt: 2,
+            activeRunIds: ["run-first"],
+            hasActiveRun: true,
+            status: "running",
+          },
+          {
+            key: secondKey,
+            kind: "direct",
+            label: "Second running session",
+            updatedAt: 1,
+            activeRunIds: ["run-second"],
+            hasActiveRun: true,
+            status: "running",
+          },
+        ]),
+      },
+      sessionKey: firstKey,
+    });
+
+    try {
+      await page.goto(`${suite.server.baseUrl}chat`);
+      const secondRow = page.locator(`.sidebar-recent-session[data-session-key="${secondKey}"]`);
+      await expect
+        .poll(async () =>
+          (await gateway.getRequests("sessions.messages.subscribe")).some(
+            (request) => requireRecord(request.params).key === secondKey,
+          ),
+        )
+        .toBe(true);
+      await gateway.emitGatewayEvent("agent", {
+        sessionKey: secondKey,
+        runId: "run-second",
+        stream: "tool",
+        data: { name: "bash" },
+      });
+      await secondRow.getByText("Using bash").waitFor();
+      const heightBefore = await secondRow.evaluate((row) => row.getBoundingClientRect().height);
+      if (captureUiProofEnabled) {
+        await page.waitForTimeout(800);
+        await secondRow.screenshot({
+          path: path.join(subtitleStabilityProofDir, "01-running-before-open.png"),
+        });
+      }
+
+      await secondRow.locator("a.sidebar-recent-session__link").click();
+      await expect.poll(() => secondRow.getAttribute("class")).toContain("--active");
+      await secondRow.getByText("Using bash").waitFor();
+      const heightAfter = await secondRow.evaluate((row) => row.getBoundingClientRect().height);
+
+      expect(heightAfter).toBe(heightBefore);
+      if (captureUiProofEnabled) {
+        await page.waitForTimeout(800);
+        await secondRow.screenshot({
+          path: path.join(subtitleStabilityProofDir, "02-running-after-open.png"),
+        });
+      }
+    } finally {
+      await suite.closeBrowserContext(context);
+      if (proofVideo) {
+        await proofVideo.saveAs(
+          path.join(subtitleStabilityProofDir, "sidebar-subtitle-stability.webm"),
+        );
+      }
+    }
+  });
+
+  it("replaces an intermediate running subtitle with the unread final digest", async () => {
     if (captureUiProofEnabled) {
       await mkdir(terminalMetadataProofDir, { recursive: true });
     }
@@ -72,7 +168,7 @@ suite.define(() => {
         observerDigest: {
           agentId: "main",
           runId,
-          headline: "Implementing the repair",
+          headline: "Repair landed cleanly",
           health: "done",
           updatedAt: Date.now() + 1,
           revision: 2,
@@ -112,7 +208,7 @@ suite.define(() => {
       await expect
         .poll(async () => (await gateway.getRequests("sessions.list")).length)
         .toBeGreaterThan(listCount);
-      await row.getByText("The repaired sidebar now shows the final reply.").waitFor();
+      await row.getByText("Repair landed cleanly").waitFor();
       expect(await row.textContent()).not.toContain("[[");
       if (captureUiProofEnabled) {
         await page.screenshot({

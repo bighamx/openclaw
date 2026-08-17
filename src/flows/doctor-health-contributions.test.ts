@@ -2022,10 +2022,27 @@ describe("doctor health contributions", () => {
     });
 
     await contribution.run(ctx);
-    expect(mocks.note).toHaveBeenCalledWith(expect.stringContaining("GH_TOKEN"), "GitHub projects");
+    expect(mocks.note).toHaveBeenCalledWith(
+      expect.stringContaining("shared Gateway process environment"),
+      "GitHub projects",
+    );
 
     mocks.note.mockClear();
     await contribution.run({ ...ctx, env: { GH_TOKEN: "configured" } });
+    expect(mocks.note).not.toHaveBeenCalled();
+
+    await contribution.run({
+      ...ctx,
+      cfg: {
+        gateway: {
+          controlUi: {
+            github: {
+              token: { source: "store", provider: "default", id: "CONTROL_UI_GITHUB" },
+            },
+          },
+        },
+      },
+    });
     expect(mocks.note).not.toHaveBeenCalled();
   });
 
@@ -2360,6 +2377,7 @@ describe("doctor health contributions", () => {
     expect(contributionIds).toContain("core/doctor/disk-space");
     expect(contributionIds).toContain("core/doctor/whatsapp-responsiveness");
     expect(contributionIds).toContain("core/doctor/device-pairing");
+    expect(contributionIds).toContain("core/doctor/node-hosting-preconditions");
     expect(contributionIds).toContain("core/doctor/channel-plugin-blockers");
     expect(contributionIds).toContain("core/doctor/channel-package-state-capabilities");
     expect(contributionIds).toContain("core/doctor/channel-preview-warnings");

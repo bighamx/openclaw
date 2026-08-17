@@ -7,8 +7,8 @@ import type {
 } from "@openclaw/acp-core/types";
 import { asNonNegativeFiniteNumber } from "@openclaw/normalization-core/number-coercion";
 import { normalizeOptionalString, type FastMode } from "@openclaw/normalization-core/string-coerce";
+import type { SessionRow, SessionRunStatus } from "../../../packages/gateway-protocol/src/index.js";
 import type { QueueMode } from "../../../packages/gateway-protocol/src/schema/logs-chat.js";
-import type { SessionRunStatus } from "../../../packages/gateway-protocol/src/schema/sessions-row.js";
 import type { SessionObserverDigest } from "../../../packages/gateway-protocol/src/schema/sessions.js";
 import type { SessionAgentStatus } from "../../../packages/gateway-protocol/src/session-agent-status.js";
 import type { ChatType } from "../../channels/chat-type.js";
@@ -31,20 +31,20 @@ import type {
   SessionCreatedActor,
   SessionCreatedVia,
   SessionEntryProvenance,
+  SessionOwnerAssignment,
+  SessionParticipant,
 } from "./session-entry-provenance.js";
 import type { AgentPatchedSessionModelFallback } from "./session-model-fallback.js";
+import type { SessionSystemPromptReport } from "./session-system-prompt-report.js";
+import type { SessionToolOverrides } from "./session-tool-overrides.js";
+
+export type { SessionToolOverrides } from "./session-tool-overrides.js";
+export type { SessionSystemPromptReport } from "./session-system-prompt-report.js";
 
 export type SessionScope = "per-sender" | "global";
 export type SessionChatType = ChatType;
 export const SESSION_TOTAL_TOKENS_VERSION = 1 as const;
 type SessionVisibility = "shared" | "read-only" | "suggest" | "draft";
-
-export type SessionToolOverrides = {
-  mcpServers?: Record<string, boolean>;
-  mcpToolsDeny?: Record<string, string[]>;
-  skills?: Record<string, boolean>;
-  webSearch?: boolean;
-};
 
 export type SessionOrigin = {
   label?: string;
@@ -306,7 +306,8 @@ export type RestartRecoveryRun = {
 };
 
 type SessionEntryCore = SessionRestartRecoveryState &
-  SessionEntryProvenance & {
+  SessionEntryProvenance &
+  Pick<SessionRow, "permissionMode" | "sessionRoot"> & {
     /** Collaboration mode. Missing legacy values are equivalent to "shared". */
     visibility?: SessionVisibility;
     /**
@@ -384,6 +385,12 @@ type SessionEntryCore = SessionRestartRecoveryState &
     createdVia?: SessionCreatedVia;
     /** Actor that caused node creation, with an optional profile, session, or sender id; written once. */
     createdActor?: SessionCreatedActor;
+    /** Mutable responsibility, projected from SQLite; absent means createdActor owns the session. */
+    owner?: SessionOwnerAssignment;
+    /** Earliest external prompt actors, projected from the participant table. */
+    participants?: SessionParticipant[];
+    /** Total external prompt actors after excluding the effective owner. */
+    participantCount?: number;
     /** Node creation time (ms); unlike sessionStartedAt, survives sessionId rotations. */
     createdAt?: number;
     /** Exact source generation and optional cut entry for an actual transcript-copy fork. */
@@ -610,6 +617,8 @@ export type InternalSessionEntryCore = SessionEntryCore & {
   lifecycleRunId?: string;
   /** Run admitted by the session lane; overwritten at admission and checked by transcript writes. */
   activeWriterRunId?: string;
+  /** Private per-generation ownership for the pre-runtime checkout baseline capture. */
+  sessionDiffBaselineCapture?: import("./session-diff-baseline-capture.js").SessionDiffBaselineCapture;
   mainRestartRecovery?: MainRestartRecoveryState;
 };
 
@@ -871,69 +880,4 @@ export type SessionSkillSnapshot = {
   version?: number;
 };
 
-export type SessionSystemPromptReport = {
-  source: "run" | "estimate";
-  generatedAt: number;
-  sessionId?: string;
-  sessionKey?: string;
-  provider?: string;
-  model?: string;
-  workspaceDir?: string;
-  bootstrapMaxChars?: number;
-  bootstrapTotalMaxChars?: number;
-  bootstrapTruncation?: {
-    warningMode?: "off" | "once" | "always";
-    warningShown?: boolean;
-    promptWarningSignature?: string;
-    warningSignaturesSeen?: string[];
-    truncatedFiles?: number;
-    nearLimitFiles?: number;
-    totalNearLimit?: boolean;
-  };
-  sandbox?: {
-    mode?: string;
-    sandboxed?: boolean;
-  };
-  systemPrompt: {
-    chars: number;
-    projectContextChars: number;
-    nonProjectContextChars: number;
-    hash?: string;
-  };
-  currentTurn?: {
-    kind?: "user_request" | "room_event";
-    promptChars: number;
-    runtimeContextChars: number;
-    // Hook prepend/append context sent to the model but absent from the
-    // persisted transcript prompt; consumers add it on top of transcript sums.
-    modelOnlyPromptChars?: number;
-  };
-  injectedWorkspaceFiles: Array<{
-    name: string;
-    path: string;
-    missing: boolean;
-    rawChars: number;
-    injectedChars: number;
-    truncated: boolean;
-  }>;
-  skills: {
-    promptChars: number;
-    hash?: string;
-    entries: Array<{ name: string; blockChars: number }>;
-  };
-  tools: {
-    listChars: number;
-    schemaChars: number;
-    entries: Array<{
-      name: string;
-      summaryChars: number;
-      summaryHash?: string;
-      schemaChars: number;
-      schemaHash?: string;
-      propertiesCount?: number | null;
-    }>;
-  };
-};
-
 export const DEFAULT_RESET_TRIGGERS = ["/new", "/reset"];
-export const DEFAULT_IDLE_MINUTES = 0;

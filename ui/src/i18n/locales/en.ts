@@ -160,6 +160,12 @@ export const en: TranslationMap = {
     issue: "issue",
     ariaLabel: "{state} {kind} {repo} #{number}: {title}, by {author}",
   },
+  sessionPreview: {
+    loading: "Loading session details…",
+    unavailable: "Session preview unavailable",
+    archived: "Archived",
+    ariaLabel: "Session: {title}",
+  },
   channels: {
     lastError: "Last error",
     refreshingStaleSnapshot:
@@ -762,7 +768,8 @@ export const en: TranslationMap = {
     projectsAdminHint: "Admins can register projects from Browse folders",
     projectSearchPlaceholder: "Search projects or paste a Git URL",
     githubProjects: "GitHub",
-    githubTokenHint: "GH_TOKEN is not configured; public GitHub results only.",
+    githubTokenHint:
+      "No Control UI GitHub credential or shared Gateway environment token is configured; public GitHub results only.",
     cloneProject: "Clone",
     cloningProject: "Cloning project…",
     registerProject: "Register as project",
@@ -855,10 +862,16 @@ export const en: TranslationMap = {
     active: "Updated within",
     limit: "Limit",
     createdBy: "Created by {name}",
+    ownedBy: "Owned by {name}",
     archivedBy: "Archived by {name}",
     viewingNow: "viewing now",
-    people: "People",
-    allCreators: "All people",
+    owners: "Owners",
+    allOwners: "All owners",
+    involvingMe: "Involving me",
+    withParticipant: "with {name}",
+    withMoreParticipants: "+{count} more",
+    assignToMe: "Assign to me",
+    assignTo: "Assign to…",
     filterControls: "Session filters",
     sourceFilters: "Session source filters",
     global: "Global",
@@ -1020,6 +1033,19 @@ export const en: TranslationMap = {
     archiveSessionCount: "Archive {count}",
     restoreSession: "Restore session",
     restoreSessionCount: "Restore {count}",
+    moveSession: "Move session…",
+    moveSessionTitle: "Move session",
+    moveSessionDescription: 'Choose where "{session}" should continue.',
+    moveSessionNoReplayWarning:
+      "OpenClaw safely reconciles the current workspace before moving. Active work is never replayed.",
+    moveSessionActiveRunWarning:
+      "The active turn will be interrupted. Partial output is not replayed; send the next turn again after the move.",
+    moveSessionAction: "Move session",
+    moveSessionCatalogFailed: "Could not load available destinations.",
+    moveSessionFailed: "Move failed",
+    moveSessionGatewayTarget: "Gateway",
+    movingSession: "Moving to {target}…",
+    movingSessionGeneric: "Moving session…",
     stopCloudWorker: "Stop cloud worker…",
     stopCloudWorkerConfirm: 'Stop the cloud worker for "{session}"?',
     stopCloudWorkerConfirmAction: "Stop worker",
@@ -5051,6 +5077,16 @@ export const en: TranslationMap = {
     resumeInNewSession: "Resume in new session",
     resumingSession: "Resuming…",
     systemNotice: {
+      guardian: {
+        approvedSummary: "Guardian approved {action}.",
+        deniedLabel: "Guardian denied",
+        deniedSummary: "{action} · risk: {risk}\n\n{rationale}",
+        warningLabel: "Guardian warning",
+        warningFallback: "Guardian stopped the requested action.",
+        requestedAction: "Requested action",
+        unknownRisk: "unknown",
+        noRationale: "No rationale was provided.",
+      },
       restartRecovery: {
         label: "System · restart recovery",
         summary:
@@ -5306,6 +5342,34 @@ export const en: TranslationMap = {
       resetReasoning: "Reset to default ({level})",
       useDefaultReasoning: "Use default reasoning ({level})",
       fastResponsesAria: "Fast responses: {state}",
+    },
+    permissionControls: {
+      label: "Permissions",
+      help: "Choose how this session handles files, commands, and escalation reviews.",
+      default: "Default",
+      defaultDescription: "Follow the agent's configured policy.",
+      rootLabel: "Root",
+      sessionRoot: "Session root: {root}",
+      fullRequiresAdmin: "Full access requires operator.admin access.",
+      updateFailed: "Failed to update permissions: {error}",
+      modes: {
+        "read-only": {
+          label: "Read only",
+          description: "Read within the session root; writes and commands are blocked.",
+        },
+        guarded: {
+          label: "Guarded",
+          description: "A human reviews requests beyond the session root.",
+        },
+        workspace: {
+          label: "Workspace",
+          description: "An AI reviewer checks requests beyond the session root.",
+        },
+        full: {
+          label: "Full access",
+          description: "No reviewer; files and commands are unrestricted.",
+        },
+      },
     },
     rail: {
       title: "Session companion",

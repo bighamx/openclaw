@@ -55,28 +55,37 @@ export function describeSessionVisibilityScope(
   return SESSION_VISIBILITY_SCOPE_COPY[visibility];
 }
 
+type SessionLinkDescriptionOptions = { sessionLinkBase?: string };
+
+export function describeSessionLinkRule(base: string): string {
+  return `When pointing the user at a session, cite its Control UI URL: main session -> \`${base}/chat/<agentId>\`; any other display session key -> \`${base}/chat/<agentId>/~key/\` + key minus \`agent:<agentId>:\`, with \`:\` replaced by \`/\`.`;
+}
+
 /** Describes the sessions_list tool for model-facing instructions. */
-export function describeSessionsListTool(): string {
+export function describeSessionsListTool(options?: SessionLinkDescriptionOptions): string {
   return [
     "List visible sessions; filter kind/label/agentId/search/activity/archive.",
     "Preview recent messages inline via includeLastMessage/messageLimit; includeDerivedTitles adds derived titles.",
     "Use before history/send target selection.",
+    ...(options?.sessionLinkBase ? [describeSessionLinkRule(options.sessionLinkBase)] : []),
   ].join(" ");
 }
 
 /** Describes the sessions_history tool for model-facing instructions. */
-export function describeSessionsHistoryTool(): string {
+export function describeSessionsHistoryTool(options?: SessionLinkDescriptionOptions): string {
   return [
     "Read sanitized visible-session history.",
     "Before reply/debug/resume. Supports limit, offset, search-result sessionId/messageId anchors, and tool messages.",
+    ...(options?.sessionLinkBase ? [describeSessionLinkRule(options.sessionLinkBase)] : []),
   ].join(" ");
 }
 
 /** Describes the sessions_search tool for model-facing instructions. */
-export function describeSessionsSearchTool(): string {
+export function describeSessionsSearchTool(options?: SessionLinkDescriptionOptions): string {
   return [
     "Search your own past sessions for matching user and assistant text.",
     "Follow up with sessions_history using a returned sessionKey, sessionId, and messageId for neighboring context.",
+    ...(options?.sessionLinkBase ? [describeSessionLinkRule(options.sessionLinkBase)] : []),
   ].join(" ");
 }
 
@@ -121,7 +130,7 @@ export function describeSessionsSpawnTool(options?: {
       ? '`mode="run"` one-shot; `mode="session"` persistent/thread-bound only on supporting requester channel.'
       : '`mode="run"` one-shot background.',
     "`agentId` targets a configured agent (see agents_list); `model` overrides its model; `cleanup` delete|keep hidden child session; `sandbox` inherit|require.",
-    '`visible=true`: persistent sidebar dashboard session; use when the user asks to create/open a thread; subagent only; omit `mode` (no `mode="run"`), `thread`, `thinking`, `lightContext`, `attachments`, `attachAs`; inherits the caller tool-policy ceiling; may check out a git worktree via `worktree`/`worktreeName`/`worktreeBaseRef`.',
+    '`visible=true`: persistent sidebar dashboard session; use when the user asks to create/open a thread; subagent only; omit `mode` (no `mode="run"`), `thread`, `thinking`, `lightContext`, `attachments`, `attachAs`; inherits the caller tool-policy ceiling; may check out a git worktree via `worktree`/`worktreeName`/`worktreeBaseRef`. When its accepted result includes `sessionUrl`, channel acknowledgements put the session URL on the first line and `Owner: <label>` on the second line.',
     visibilityLine,
     ...(options?.swarmEnabled
       ? [
