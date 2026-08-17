@@ -12,6 +12,7 @@ export const en: TranslationMap = {
     assistant: "Assistant",
     active: "Active",
     loading: "Loading…",
+    gatewayStarting: "Gateway starting…",
     refreshing: "Refreshing…",
     offline: "Offline",
     connect: "Connect",
@@ -915,8 +916,8 @@ export const en: TranslationMap = {
     openWorkboardCard: "Open Workboard card",
     dashboardAvailable: "Dashboard available",
     approvalNeeded: "Approval needed",
-    queuedMessage: "{count} message queued to send",
-    queuedMessages: "{count} messages queued to send",
+    messageNeedsAttention: "{count} message needs attention",
+    messagesNeedAttention: "{count} messages need attention",
     unsentDraft: "Unsent draft",
     noSessions: "No sessions found.",
     noActiveSessions: "No active sessions.",
@@ -1100,6 +1101,7 @@ export const en: TranslationMap = {
   },
   agents: {
     noAgents: "No agents",
+    createdBy: "Created by {id}",
     defaults: {
       title: "Agent defaults",
       description: "Defaults every agent inherits unless overridden.",
@@ -2600,6 +2602,8 @@ export const en: TranslationMap = {
         "The web app already works. Add a channel only if you want to message OpenClaw from another service.",
       channelSetupAction: "Set up a channel",
       channelSetupDismiss: "Keep using the web app",
+      channelStatusErrorTitle: "Channel status is unavailable",
+      channelStatusErrorBody: "Retry the check, or keep using the web app without a channel.",
     },
   },
   mcpServers: {
@@ -3596,6 +3600,7 @@ export const en: TranslationMap = {
   },
   workboard: {
     widget: {
+      boardLabel: "Workboard board",
       cardLabel: "Workboard card",
       summaryLabel: "Workboard summary",
       loading: "Loading Workboard…",
@@ -3604,6 +3609,7 @@ export const en: TranslationMap = {
       unassigned: "Unassigned",
       openBoard: "Open board",
       statusCounts: "Cards by status",
+      cardCount: "{count} cards",
       noActiveCards: "No ready or running cards.",
     },
     disabledHelpStart: "Workboard is disabled. Enable",
@@ -3659,6 +3665,8 @@ export const en: TranslationMap = {
     allBoards: "All boards",
     boardFilter: "Filter by board",
     defaultBoard: "Default board",
+    automationAttached: "Automation",
+    automationAttachedTitle: "Open Automations",
     boardFilterSummary: "{active} active · {total} total",
     boardFilterArchivedSummary: "Archived · {active} active · {total} total",
     agentFilterUnassigned: "Unassigned (uses {agent})",
@@ -6118,7 +6126,8 @@ export const en: TranslationMap = {
       model: "Model",
       customModel: "Custom model…",
       modelPlaceholder: "openai/gpt-5.2",
-      modelHelp: "Start typing to pick a known model, or enter a custom one.",
+      modelHelp:
+        "Start typing to pick a known model, or enter a custom one. Routine jobs (summaries, triage, classification) run well on a lighter model — cheaper and faster than your default.",
       thinking: "Reasoning",
       thinkingPlaceholder: "low",
       thinkingHelp: "Use a suggested level or enter a provider-specific value.",

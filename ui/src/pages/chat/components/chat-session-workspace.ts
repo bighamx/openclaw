@@ -90,6 +90,13 @@ type OpenRequest = {
 
 type SessionWorkspaceOpenRequest = OpenRequest;
 
+// Re-renders must preserve the document identity or the mounted diff panel
+// treats its loader as new and requests sessions.diff again.
+const sessionDiffSidebarContentByHost = new WeakMap<
+  SessionWorkspaceHost,
+  { content: SidebarContent; sessionKey: string }
+>();
+
 export type SessionWorkspaceHost = {
   sessionKey: string;
   sessions: SessionCapability;
@@ -105,7 +112,7 @@ export type SessionWorkspaceHost = {
   sessionWorkspaceOpenRequest?: SessionWorkspaceOpenRequest;
   sessionWorkspaceDraftScope?: string;
   requestUpdate?: () => void;
-  handleOpenSidebar: (content: SidebarContent) => void;
+  handleOpenSidebar: (content: SidebarContent | null) => void;
 };
 
 /** Agent owning the pane's current session: explicit key scope first, then the
@@ -429,6 +436,7 @@ function openWorkspaceItem<T>(
     if (!state.client || !state.connected) {
       return;
     }
+    state.handleOpenSidebar(null);
     workspace.error = null;
     try {
       const result = await load(request);
@@ -436,7 +444,6 @@ function openWorkspaceItem<T>(
       if (!content) {
         if (isCurrentOpenRequest(state, request)) {
           workspace.error = missingMessage;
-          requestUpdate(state);
         }
         return;
       }
@@ -743,7 +750,16 @@ export function resolveSessionDiffSidebarContent(
     Boolean(state.client) &&
     workspace.list?.sessionKey === state.sessionKey &&
     workspace.list.gitCheckout !== false;
-  return canOpenDiff ? buildSessionDiffSidebarContent(state) : null;
+  if (!canOpenDiff) {
+    return null;
+  }
+  const cached = sessionDiffSidebarContentByHost.get(state);
+  if (cached?.sessionKey === state.sessionKey) {
+    return cached.content;
+  }
+  const content = buildSessionDiffSidebarContent(state);
+  sessionDiffSidebarContentByHost.set(state, { content, sessionKey: state.sessionKey });
+  return content;
 }
 
 /** Sidebar payload whose loader refetches sessions.diff for the pane's session. */
