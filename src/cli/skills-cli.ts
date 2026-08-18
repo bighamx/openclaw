@@ -69,7 +69,7 @@ import { CONFIG_DIR } from "../utils.js";
 import { resolveClawHubRiskAcknowledgementCliOptions } from "./clawhub-risk-acknowledgement.js";
 import { resolveOptionFromCommand } from "./cli-utils.js";
 import { inheritOptionFromParent } from "./command-options.js";
-import { formatCliJsonFailure } from "./failure-output.js";
+import { formatCliJsonFailure, rethrowExpectedCliError } from "./failure-output.js";
 import { resolveInstallPolicyWarningAcknowledgementCliOptions } from "./install-policy-warning-acknowledgement.js";
 import { parseStrictPositiveIntOption } from "./program/helpers.js";
 import { setCommandJsonMode } from "./program/json-mode.js";
@@ -951,6 +951,7 @@ export function registerSkillsCli(program: Command) {
       }
       defaultRuntime.writeStdout(formatSkillCuratorStatus(status));
     } catch (err) {
+      rethrowExpectedCliError(err);
       defaultRuntime.error(formatErrorMessage(err));
       defaultRuntime.exit(1);
     }
@@ -977,6 +978,7 @@ export function registerSkillsCli(program: Command) {
             `${action[0]?.toUpperCase()}${action.slice(1)} ${result.skillKey}\n`,
           );
         } catch (err) {
+          rethrowExpectedCliError(err);
           defaultRuntime.error(formatErrorMessage(err));
           defaultRuntime.exit(1);
         }
@@ -1010,6 +1012,7 @@ export function registerSkillsCli(program: Command) {
       }
       defaultRuntime.writeStdout(format(result));
     } catch (err) {
+      rethrowExpectedCliError(err);
       defaultRuntime.error(formatErrorMessage(err));
       defaultRuntime.exit(1);
     }
