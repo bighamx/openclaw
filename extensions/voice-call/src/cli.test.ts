@@ -6,6 +6,13 @@ import { Command } from "commander";
 import { MAX_TIMER_TIMEOUT_MS } from "openclaw/plugin-sdk/number-runtime";
 import { afterEach, describe, expect, it, vi } from "vitest";
 const callGatewayFromCliMock = vi.hoisted(() => vi.fn());
+const findCallMatchesInStoreMock = vi.hoisted(() => vi.fn());
+const loadActiveCallsFromStoreMock = vi.hoisted(() => vi.fn());
+const tailscaleMocks = vi.hoisted(() => ({
+  cleanup: vi.fn(),
+  getSelfInfo: vi.fn(),
+  setup: vi.fn(),
+}));
 const sleepMock = vi.hoisted(() =>
   vi.fn(
     async (ms: number) =>
@@ -22,6 +29,17 @@ vi.mock("openclaw/plugin-sdk/gateway-runtime", async (importOriginal) => ({
 vi.mock("../api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api.js")>()),
   sleep: sleepMock,
+}));
+vi.mock("./manager/store.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./manager/store.js")>()),
+  findCallMatchesInStore: findCallMatchesInStoreMock,
+  loadActiveCallsFromStore: loadActiveCallsFromStoreMock,
+}));
+vi.mock("./webhook/tailscale.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./webhook/tailscale.js")>()),
+  cleanupTailscaleExposureRoute: tailscaleMocks.cleanup,
+  getTailscaleSelfInfo: tailscaleMocks.getSelfInfo,
+  setupTailscaleExposureRoutes: tailscaleMocks.setup,
 }));
 
 import { registerVoiceCallCli } from "./cli.js";
@@ -41,6 +59,11 @@ function captureStdout() {
 describe("voice-call CLI status fallback", () => {
   afterEach(() => {
     callGatewayFromCliMock.mockReset();
+    findCallMatchesInStoreMock.mockReset();
+    loadActiveCallsFromStoreMock.mockReset();
+    tailscaleMocks.cleanup.mockReset();
+    tailscaleMocks.getSelfInfo.mockReset();
+    tailscaleMocks.setup.mockReset();
     sleepMock.mockReset();
     sleepMock.mockImplementation(
       async (ms: number) =>
@@ -66,53 +89,72 @@ describe("voice-call CLI status fallback", () => {
     return program;
   }
 
-  async function runStatusWithUnavailableGateway(
-    manager: Record<string, unknown>,
-    error = new Error("connect ECONNREFUSED 127.0.0.1:18789"),
-  ): Promise<unknown> {
-    callGatewayFromCliMock.mockRejectedValue(error);
-    const program = buildProgram(manager);
+  async function runStatusWithUnavailableGateway(params: {
+    persisted?: unknown;
+    error?: Error;
+    args?: string[];
+  }): Promise<unknown> {
+    callGatewayFromCliMock.mockRejectedValue(
+      params.error ?? new Error("connect ECONNREFUSED 127.0.0.1:18789"),
+    );
+    findCallMatchesInStoreMock.mockResolvedValue({ byCallId: params.persisted });
+    const ensureRuntime = vi.fn(async () => {
+      throw new Error("status fallback must not initialize the telephony runtime");
+    });
+    const program = new Command();
+    registerVoiceCallCli({
+      program,
+      config: {} as never,
+      ensureRuntime,
+      stateRuntime: {} as never,
+      logger: { info() {}, warn() {}, error() {}, debug() {} } as never,
+    });
     const capturer = captureStdout();
     try {
-      await program.parseAsync(["voicecall", "status", "--call-id", "call-1", "--json"], {
-        from: "user",
-      });
+      await program.parseAsync(
+        ["voicecall", "status", ...(params.args ?? ["--call-id", "call-1"]), "--json"],
+        { from: "user" },
+      );
     } finally {
       capturer.restore();
     }
+    expect(ensureRuntime).not.toHaveBeenCalled();
     return JSON.parse(capturer.output().trim());
   }
 
   it("uses the manager's persisted fallback when the gateway is unavailable", async () => {
     const result = await runStatusWithUnavailableGateway({
-      getActiveCalls: () => [],
-      getCallFromMemoryOrStore: async () => ({
+      persisted: {
         callId: "call-1",
         providerCallId: "CA123",
         state: "completed",
         endReason: "completed",
         endedAt: 1,
-      }),
+      },
     });
     expect(result).toMatchObject({ callId: "call-1", state: "completed" });
   });
 
   it("reports found:false when the call is neither active nor persisted", async () => {
-    const result = await runStatusWithUnavailableGateway({
-      getActiveCalls: () => [],
-      getCallFromMemoryOrStore: async () => undefined,
-    });
+    const result = await runStatusWithUnavailableGateway({});
     expect(result).toEqual({ found: false });
   });
 
+  it("lists persisted active calls without initializing the telephony runtime", async () => {
+    loadActiveCallsFromStoreMock.mockReturnValue({
+      activeCalls: new Map([["call-1", { callId: "call-1", state: "ringing" }]]),
+    });
+    expect(await runStatusWithUnavailableGateway({ args: [] })).toEqual({
+      found: true,
+      calls: [{ callId: "call-1", state: "ringing" }],
+    });
+  });
+
   it("falls back after an abnormal local gateway close", async () => {
-    const result = await runStatusWithUnavailableGateway(
-      {
-        getActiveCalls: () => [],
-        getCallFromMemoryOrStore: async () => ({ callId: "call-1", state: "completed" }),
-      },
-      new Error("gateway closed (1006 abnormal closure (no close frame)): no close reason"),
-    );
+    const result = await runStatusWithUnavailableGateway({
+      persisted: { callId: "call-1", state: "completed" },
+      error: new Error("gateway closed (1006 abnormal closure (no close frame)): no close reason"),
+    });
     expect(result).toMatchObject({ callId: "call-1", state: "completed" });
   });
 
@@ -121,6 +163,115 @@ describe("voice-call CLI status fallback", () => {
     await expect(
       program.parseAsync(["voicecall", "tail", "--since", "0x10"], { from: "user" }),
     ).rejects.toThrow("Invalid numeric value for --since: 0x10");
+  });
+
+  it("exposes the webhook target and enabled stream paths", async () => {
+    tailscaleMocks.setup.mockResolvedValue("https://bot.example.ts.net/voice/webhook");
+    const program = buildProgram(
+      {},
+      {
+        serve: { port: 3334, path: "/voice/webhook" },
+        tailscale: { mode: "off", path: "/voice/webhook" },
+        realtime: { enabled: true, streamPath: "/voice/stream/realtime" },
+        streaming: { enabled: true, streamPath: "/voice/stream" },
+      },
+    );
+    const capturer = captureStdout();
+    try {
+      await program.parseAsync(
+        [
+          "voicecall",
+          "expose",
+          "--mode",
+          "funnel",
+          "--port",
+          "4444",
+          "--path",
+          "/edge/custom/webhook",
+          "--serve-path",
+          "/custom/webhook",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      capturer.restore();
+    }
+
+    expect(tailscaleMocks.setup).toHaveBeenCalledWith({
+      mode: "funnel",
+      routes: [
+        {
+          path: "/edge/custom/webhook",
+          localUrl: "http://127.0.0.1:4444/custom/webhook",
+        },
+        {
+          path: "/edge/voice/stream/realtime",
+          localUrl: "http://127.0.0.1:4444/voice/stream/realtime",
+        },
+        {
+          path: "/voice/stream",
+          localUrl: "http://127.0.0.1:4444/voice/stream",
+        },
+      ],
+    });
+    expect(JSON.parse(capturer.output())).toMatchObject({
+      localUrl: "http://127.0.0.1:4444/custom/webhook",
+      streamPaths: ["/edge/voice/stream/realtime", "/voice/stream"],
+    });
+  });
+
+  it("reports failure when any exposure route cannot be mounted", async () => {
+    tailscaleMocks.setup.mockResolvedValue(null);
+    tailscaleMocks.getSelfInfo.mockResolvedValue(null);
+    const program = buildProgram(
+      {},
+      {
+        serve: { port: 3334, path: "/voice/webhook" },
+        tailscale: { mode: "off", path: "/voice/webhook" },
+        realtime: { enabled: true, streamPath: "/voice/stream/realtime" },
+        streaming: { enabled: false },
+      },
+    );
+    const capturer = captureStdout();
+    try {
+      await program.parseAsync(["voicecall", "expose", "--mode", "funnel"], { from: "user" });
+    } finally {
+      capturer.restore();
+    }
+
+    expect(JSON.parse(capturer.output())).toMatchObject({
+      ok: false,
+      publicUrl: null,
+    });
+  });
+
+  it("clears webhook and stream paths for both Tailscale modes", async () => {
+    const program = buildProgram(
+      {},
+      {
+        serve: { port: 3334, path: "/voice/webhook" },
+        tailscale: { mode: "off", path: "/voice/webhook" },
+        realtime: { enabled: true, streamPath: "/voice/stream/realtime" },
+        streaming: { enabled: true, streamPath: "/voice/stream" },
+      },
+    );
+    const capturer = captureStdout();
+    try {
+      await program.parseAsync(["voicecall", "expose", "--mode", "off"], { from: "user" });
+    } finally {
+      capturer.restore();
+    }
+
+    expect(tailscaleMocks.cleanup.mock.calls).toEqual(
+      ["/voice/webhook", "/voice/stream/realtime", "/voice/stream"].flatMap((exposurePath) => [
+        [{ mode: "serve", path: exposurePath }],
+        [{ mode: "funnel", path: exposurePath }],
+      ]),
+    );
+    expect(JSON.parse(capturer.output())).toMatchObject({
+      mode: "off",
+      streamPaths: ["/voice/stream/realtime", "/voice/stream"],
+    });
   });
 
   async function runCustomLogTailShortRead(

@@ -18,8 +18,16 @@ import {
   normalizeOptionalLowercaseString,
 } from "openclaw/plugin-sdk/string-coerce-runtime";
 import { sleep } from "../api.js";
-import { validateProviderConfig, type VoiceCallConfig } from "./config.js";
-import { getCallHistoryFromStore } from "./manager/store.js";
+import {
+  resolveVoiceCallStreamExposurePaths,
+  validateProviderConfig,
+  type VoiceCallConfig,
+} from "./config.js";
+import {
+  findCallMatchesInStore,
+  getCallHistoryFromStore,
+  loadActiveCallsFromStore,
+} from "./manager/store.js";
 import { setVoiceCallStateRuntime, type VoiceCallStateRuntime } from "./runtime-state.js";
 import type { VoiceCallRuntime } from "./runtime.js";
 import { resolveDefaultVoiceCallStoreDir } from "./store-path.js";
@@ -28,7 +36,7 @@ import { resolveWebhookExposureStatus } from "./webhook-exposure.js";
 import {
   cleanupTailscaleExposureRoute,
   getTailscaleSelfInfo,
-  setupTailscaleExposureRoute,
+  setupTailscaleExposureRoutes,
 } from "./webhook/tailscale.js";
 
 type Logger = {
@@ -716,15 +724,19 @@ export function registerVoiceCallCli(params: {
         writeStdoutJson(gateway.payload);
         return;
       }
-      const rt = await ensureRuntime();
+      // Status is a read-only command. Starting the telephony runtime here would
+      // bind the webhook port and keep this one-shot CLI process alive.
+      ensureHistoryStateRuntime();
+      const storePath = path.dirname(resolveDefaultStorePath(config));
       if (options.callId) {
-        const call = await rt.manager.getCallFromMemoryOrStore(options.callId);
+        const persisted = await findCallMatchesInStore(storePath, options.callId);
+        const call = persisted.byCallId ?? persisted.byProviderCallId;
         writeStdoutJson(call ?? { found: false });
         return;
       }
       writeStdoutJson({
         found: true,
-        calls: rt.manager.getActiveCalls(),
+        calls: Array.from(loadActiveCallsFromStore(storePath).activeCalls.values()),
       });
     });
 
@@ -885,20 +897,31 @@ export function registerVoiceCallCli(params: {
         );
         const servePath = options.servePath ?? config.serve.path ?? "/voice/webhook";
         const tsPath = options.path ?? config.tailscale?.path ?? servePath;
-
-        const localUrl = `http://127.0.0.1:${servePort}`;
+        const streamExposurePaths = resolveVoiceCallStreamExposurePaths(config, {
+          publicWebhookPath: tsPath,
+          localWebhookPath: servePath,
+        });
+        const streamPaths = streamExposurePaths.map(({ publicPath }) => publicPath);
+        const localUrl = `http://127.0.0.1:${servePort}${servePath}`;
 
         if (mode === "off") {
-          await cleanupTailscaleExposureRoute({ mode: "serve", path: tsPath });
-          await cleanupTailscaleExposureRoute({ mode: "funnel", path: tsPath });
-          writeStdoutJson({ ok: true, mode: "off", path: tsPath });
+          for (const exposurePath of [tsPath, ...streamPaths]) {
+            await cleanupTailscaleExposureRoute({ mode: "serve", path: exposurePath });
+            await cleanupTailscaleExposureRoute({ mode: "funnel", path: exposurePath });
+          }
+          writeStdoutJson({ ok: true, mode: "off", path: tsPath, streamPaths });
           return;
         }
 
-        const publicUrl = await setupTailscaleExposureRoute({
+        const publicUrl = await setupTailscaleExposureRoutes({
           mode,
-          path: tsPath,
-          localUrl,
+          routes: [
+            { path: tsPath, localUrl },
+            ...streamExposurePaths.map(({ publicPath, localPath }) => ({
+              path: publicPath,
+              localUrl: `http://127.0.0.1:${servePort}${localPath}`,
+            })),
+          ],
         });
 
         const tsInfo = publicUrl ? null : await getTailscaleSelfInfo();
@@ -910,6 +933,7 @@ export function registerVoiceCallCli(params: {
           ok: Boolean(publicUrl),
           mode,
           path: tsPath,
+          streamPaths,
           localUrl,
           publicUrl,
           hint: publicUrl

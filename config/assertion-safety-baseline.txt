@@ -1397,7 +1397,7 @@ extensions/voice-call/src/realtime-agent-context.ts	1
 extensions/voice-call/src/response-generator.ts	3
 extensions/voice-call/src/runtime.ts	3
 extensions/voice-call/src/tts-provider-voice.ts	1
-extensions/voice-call/src/webhook.ts	12
+extensions/voice-call/src/webhook.ts	11
 extensions/voice-call/src/webhook/realtime-handler.ts	3
 extensions/voice-call/src/webhook/stream-frame-adapter.ts	2
 extensions/volcengine/tts.ts	2
@@ -1621,7 +1621,6 @@ packages/memory-host-sdk/src/host/batch-http.ts	2
 packages/memory-host-sdk/src/host/batch-output.ts	2
 packages/memory-host-sdk/src/host/batch-upload.ts	1
 packages/memory-host-sdk/src/host/config-utils.ts	2
-packages/memory-host-sdk/src/host/fs-utils.ts	3
 packages/memory-host-sdk/src/host/internal.ts	1
 packages/memory-host-sdk/src/host/memory-schema-fts.ts	2
 packages/memory-host-sdk/src/host/memory-schema-migration.ts	1
@@ -1913,7 +1912,6 @@ src/agents/embedded-agent-runner/tool-result-context-guard.ts	13
 src/agents/embedded-agent-runner/tool-result-truncation.ts	23
 src/agents/embedded-agent-runner/tool-schema-runtime.ts	1
 src/agents/embedded-agent-runner/transcript-rewrite.ts	2
-src/agents/embedded-agent-subscribe.handlers.compaction.ts	1
 src/agents/embedded-agent-subscribe.handlers.messages.lifecycle.ts	6
 src/agents/embedded-agent-subscribe.handlers.messages.stream.ts	6
 src/agents/embedded-agent-subscribe.handlers.messages.update.ts	6
@@ -3085,8 +3083,7 @@ src/gateway/server-reload-utils.ts	1
 src/gateway/server-resident-registry.ts	1
 src/gateway/server-restart-sentinel-agent-delivery.ts	3
 src/gateway/server-runtime-handles.ts	11
-src/gateway/server-runtime-state-prepare.ts	3
-src/gateway/server-runtime-state.ts	1
+src/gateway/server-runtime-state-prepare.ts	2
 src/gateway/server-session-events.ts	4
 src/gateway/server-startup-bootstrap.ts	1
 src/gateway/server-startup-config-helpers.ts	1

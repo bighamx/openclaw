@@ -50,6 +50,12 @@ Gateway, then restart the Gateway to load it.
     Set config under `plugins.entries.voice-call.config` (see
     [Configuration](#configuration) below). At minimum: `provider`, provider
     credentials, `fromNumber`, and a publicly reachable webhook URL.
+
+    For an inbound Twilio number, set its **Voice webhook** to the public Voice
+    Call webhook URL with method `POST`. Set the number-level **Status
+    Callback** to the same URL with `?type=status`, also using `POST`, so
+    terminal inbound call statuses reach the plugin.
+
   </Step>
   <Step title="Verify setup">
     ```bash
@@ -202,6 +208,7 @@ that Region. See
     - On ngrok free tier, set `publicUrl` to the exact ngrok URL; signature verification is always enforced.
     - `tunnel.allowNgrokFreeTierLoopbackBypass: true` allows Twilio webhooks with invalid signatures **only** when `tunnel.provider="ngrok"` and `serve.bind` is loopback (ngrok local agent). Local dev only.
     - Ngrok free-tier URLs can change or add interstitial behavior; if `publicUrl` drifts, Twilio signatures fail. Production: prefer a stable domain or a Tailscale funnel.
+    - Tailscale Serve and Funnel automatically expose the realtime or streaming WebSocket path when that audio mode is enabled.
 
   </Accordion>
   <Accordion title="Streaming connection caps">
@@ -275,6 +282,20 @@ Current runtime behavior:
 - If `realtime.provider` points at an unregistered provider, or no realtime voice provider is registered at all, Voice Call logs a warning and skips realtime media instead of failing the whole plugin.
 - `inboundPolicy` must not be `"disabled"` when `realtime.enabled` is true; `validateProviderConfig` rejects that combination.
 - Consult session keys reuse the stored call session when available, then fall back to the configured `sessionScope` (`per-phone` by default, `per-call` for isolated calls, or `main` for the configured agent's main session).
+
+### Hangup detection
+
+Realtime calls normally end when the carrier sends a stream stop event or closes
+the media WebSocket. If an intermediary does not promptly forward that close,
+OpenClaw treats 30 seconds without inbound media as a disconnect, waits a
+2-second grace period for media to resume, and then ends the call.
+
+For inbound Twilio numbers, also configure a Status Callback using `POST` to
+your public webhook URL with `?type=status` appended, for example
+`https://voice.example.com/voice/webhook?type=status`. Include the `completed`
+call event. OpenClaw-created outbound calls configure their callback
+automatically. The callback provides the fastest teardown signal, while stream
+close and the inactivity backstop remain independent of it.
 
 ### Tool policy
 
@@ -686,11 +707,12 @@ playback state:
 
 ### Twilio stream disconnect grace
 
-When a Twilio media stream disconnects, Voice Call waits **2000 ms** before
-auto-ending the call:
+When a Twilio classic streaming or realtime media stream disconnects, Voice
+Call waits **2000 ms** before auto-ending the call:
 
 - If the stream reconnects during that window, auto-end is canceled.
 - If no stream re-registers after the grace period, the call is ended to prevent stuck active calls.
+- Realtime bridge/session resources, queued audio, transcript ownership, and in-flight consult work close immediately. Only call/provider finalization waits for reconnect.
 
 ## Stale call reaper
 
@@ -901,6 +923,18 @@ Confirm the provider console points at the exact public webhook URL:
 ```text
 https://voice.example.com/voice/webhook
 ```
+
+For a Twilio inbound number, configure both number-level callbacks in the
+Twilio Console:
+
+- **Voice webhook:** `https://voice.example.com/voice/webhook` using `POST`.
+- **Status Callback:** `https://voice.example.com/voice/webhook?type=status` using `POST`.
+
+Media Streams `stop`/WebSocket close handling is the primary auto-end path and
+does not depend on the HTTP status callback. Twilio's optional `<Stream
+statusCallback>` is a separate stream-diagnostic signal and is not required for
+teardown. `openclaw voicecall setup` validates local configuration and webhook
+exposure; it cannot inspect or change Twilio Console settings.
 
 Then inspect runtime state:
 
