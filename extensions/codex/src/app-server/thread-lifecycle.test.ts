@@ -46,6 +46,9 @@ type CodexThreadLifecycleTimingLogger = NonNullable<
   NonNullable<Parameters<typeof startOrResumeThreadImpl>[0]["timing"]>["log"]
 >;
 
+const PROGRESS_CARD_SYSTEM_PROMPT =
+  "During multi-step work, keep your progress card current with the progress_card tool; the user follows it instead of reading the transcript.";
+
 describe("Codex incognito thread persistence", () => {
   it("marks only incognito-shaped harness sessions ephemeral", () => {
     const appServer = createAppServerOptions() as never;
@@ -1030,7 +1033,7 @@ describe("Codex app-server native code mode config", () => {
     );
     expect(instructions).toContain("call the matching entry through `tools`");
     expect(instructions).toContain(
-      "Use OpenClaw `sessions_spawn` only for OpenClaw or ACP delegation, never as a substitute for `spawn_agent`.",
+      "Use OpenClaw `sessions_spawn` only for OpenClaw or ACP delegation, never as a substitute for `spawn_agent` on internal legwork.",
     );
   });
 
@@ -1395,6 +1398,22 @@ describe("Codex app-server native code mode config", () => {
 
     expect(instructions).not.toContain("<available_skills>");
   });
+
+  it.each([
+    { name: "available", extraSystemPrompt: PROGRESS_CARD_SYSTEM_PROMPT, expected: true },
+    { name: "denied", extraSystemPrompt: undefined, expected: false },
+  ])(
+    "$name progress-card nudge propagation into thread developer instructions",
+    ({ extraSystemPrompt, expected }) => {
+      const params = createAttemptParams({ provider: "openai" });
+      params.toolsAllow = expected ? ["progress_card"] : ["read"];
+      params.extraSystemPrompt = extraSystemPrompt;
+
+      expect(buildDeveloperInstructions(params).includes(PROGRESS_CARD_SYSTEM_PROMPT)).toBe(
+        expected,
+      );
+    },
+  );
 
   it("enables Codex code mode on thread/start without clobbering other config", () => {
     const request = buildThreadStartParams(createAttemptParams({ provider: "openai" }), {
@@ -3173,11 +3192,12 @@ describe("Codex app-server supervised branch lifecycle", () => {
     vi.restoreAllMocks();
   });
 
-  it("materializes a model-locked canonical branch and injects the same visible snapshot once", async () => {
+  it("materializes a model-locked canonical branch with frozen agent instructions", async () => {
     const sourceThreadId = "thread-source";
     const probeThreadId = "thread-probe";
     const finalThreadId = "thread-final";
     const lastTurnId = "turn-terminal";
+    const agentWorkspaceDeveloperInstructions = "Follow the frozen supervised AGENTS guidance.";
     const workspaceDir = path.join(tempDir, "workspace");
     const attempt = createThreadLifecycleParams(path.join(tempDir, "session.jsonl"), workspaceDir);
     attempt.modelId = "outer-global-default";
@@ -3244,6 +3264,8 @@ describe("Codex app-server supervised branch lifecycle", () => {
       params: attempt,
       cwd: workspaceDir,
       dynamicTools,
+      developerInstructions: agentWorkspaceDeveloperInstructions,
+      agentWorkspaceDeveloperInstructions,
       environmentSelection: [{ environmentId: "local", cwd: workspaceDir }],
       shellEnvironment: { GH_TOKEN: "", GITHUB_TOKEN: "" },
       disableLoginShell: true,
@@ -3269,6 +3291,7 @@ describe("Codex app-server supervised branch lifecycle", () => {
       threadId: sourceThreadId,
       lastTurnId,
       excludeTurns: true,
+      developerInstructions: agentWorkspaceDeveloperInstructions,
       config: {
         allow_login_shell: false,
         shell_environment_policy: {
@@ -3285,6 +3308,7 @@ describe("Codex app-server supervised branch lifecycle", () => {
     expect(startParams).toMatchObject({
       model: "native-effective",
       modelProvider: "native-provider",
+      developerInstructions: agentWorkspaceDeveloperInstructions,
       dynamicTools,
       environments: [{ environmentId: "local", cwd: workspaceDir }],
       config: {
@@ -3320,6 +3344,7 @@ describe("Codex app-server supervised branch lifecycle", () => {
       model: "native-effective",
       modelProvider: "native-provider",
       preserveNativeModel: true,
+      agentWorkspaceDeveloperInstructions,
       conversationSourceTransferComplete: true,
       lifecycle: { action: "forked" },
     });
@@ -3330,6 +3355,7 @@ describe("Codex app-server supervised branch lifecycle", () => {
       model: "native-effective",
       modelProvider: "native-provider",
       preserveNativeModel: true,
+      agentWorkspaceDeveloperInstructions,
       conversationSourceTransferComplete: true,
       appServerRuntimeFingerprint: buildCodexAppServerConnectionFingerprint(commonParams.appServer),
     });
@@ -3344,6 +3370,9 @@ describe("Codex app-server supervised branch lifecycle", () => {
     expect(request.mock.calls[0]?.[1]).toEqual({ threadId: finalThreadId, includeTurns: false });
     expect(request.mock.calls[1]?.[1]).not.toHaveProperty("model");
     expect(request.mock.calls[1]?.[1]).not.toHaveProperty("modelProvider");
+    expect(request.mock.calls[1]?.[1]).toMatchObject({
+      developerInstructions: agentWorkspaceDeveloperInstructions,
+    });
     expect(resumed).toMatchObject({
       threadId: finalThreadId,
       preserveNativeModel: true,
