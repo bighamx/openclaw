@@ -1787,41 +1787,109 @@ button.chat-reply-preview--message:disabled {
 }
 
 .agent-chat__typing-indicator {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: max-content minmax(0, auto);
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-style: italic;
+  width: fit-content;
+  margin: 14px 16px 0 4px;
+  padding-bottom: 26px;
 }
 
 .agent-chat__typing-avatars {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   flex: 0 0 auto;
 }
 
-.agent-chat__typing-indicator .chat-author-avatar {
-  flex-basis: 18px;
-  width: 18px;
-  height: 18px;
+.agent-chat__typing-indicator .chat-avatar {
+  flex-basis: 36px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  margin-bottom: 0;
 }
 
-.agent-chat__typing-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.agent-chat__typing-avatars
+  > :is(.chat-avatar, .chat-avatar-slot)
+  + :is(.chat-avatar, .chat-avatar-slot) {
+  margin-left: -7px;
 }
 
-.agent-chat__typing-indicator--outside {
+.agent-chat__typing-avatars > :is(.chat-avatar, .chat-avatar-slot) {
+  box-shadow: 0 0 0 2px var(--bg);
+  border-radius: 50%;
+}
+
+.agent-chat__typing-bubble {
+  --chat-typing-bubble-bg: var(--bg-muted);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   box-sizing: border-box;
-  width: calc(100% - 36px);
-  max-width: var(--chat-thread-max-width, 48rem);
-  margin: 0 auto -2px;
-  padding-inline: 8px;
+  width: 50px;
+  height: 30px;
+  padding-inline: 12px;
+  border-radius: 15px;
+  background: var(--chat-typing-bubble-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--bg) 28%, transparent);
+}
+
+.agent-chat__typing-tail {
+  position: absolute;
+  left: -6px;
+  bottom: 1px;
+  width: 12px;
+  height: 12px;
+  overflow: visible;
+  fill: var(--chat-typing-bubble-bg);
+}
+
+:root[data-theme-mode="light"] .agent-chat__typing-bubble {
+  --chat-typing-bubble-bg: color-mix(in srgb, var(--text) 9%, var(--bg));
+}
+
+.agent-chat__typing-bubble > span {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: chatTypingDot 1s ease-in-out infinite;
+}
+
+.agent-chat__typing-bubble > span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.agent-chat__typing-bubble > span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+@keyframes chatTypingDot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-chat__typing-bubble > span {
+    animation: none;
+    opacity: 0.8;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2338,7 +2406,8 @@ button.chat-reply-preview--message:disabled {
 }
 
 .chat-pr {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -2350,18 +2419,23 @@ button.chat-reply-preview--message:disabled {
 }
 
 .chat-pr[data-state="merged"] {
-  border-color: color-mix(in srgb, var(--pr-merged) 32%, var(--border));
-  background: color-mix(in srgb, var(--pr-merged) 7%, var(--panel));
+  border-color: color-mix(in srgb, var(--pr-merged) 18%, var(--border));
+  background: color-mix(in srgb, var(--pr-merged) 12%, var(--panel));
 }
 
 .chat-pr__link {
-  display: flex;
-  flex: 1;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 18px minmax(4ch, auto) minmax(0, 1fr);
+  align-items: baseline;
   gap: 8px;
   min-width: 0;
   color: var(--text);
   text-decoration: none;
+}
+
+.chat-pr__link--static {
+  grid-template-columns: 18px minmax(0, 1fr);
+  cursor: default;
 }
 
 .chat-pr__link:hover .chat-pr__number {
@@ -2370,7 +2444,9 @@ button.chat-reply-preview--message:disabled {
 
 .chat-pr__icon {
   display: grid;
-  flex: 0 0 auto;
+  align-self: center;
+  width: 18px;
+  height: 18px;
   place-items: center;
   color: var(--ok);
 }
@@ -2391,10 +2467,6 @@ button.chat-reply-preview--message:disabled {
   color: var(--muted);
 }
 
-.chat-pr__link--static {
-  cursor: default;
-}
-
 .chat-pr__icon svg,
 .chat-pr__warning svg {
   width: 15px;
@@ -2412,13 +2484,21 @@ button.chat-reply-preview--message:disabled {
 }
 
 .chat-pr__number {
-  flex: 0 0 auto;
+  min-width: 0;
   font-weight: 650;
+}
+
+.chat-pr__identity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 
 .chat-pr__repo {
   flex: 0 0 auto;
-  color: var(--muted);
+  color: var(--text);
+  font-weight: 500;
 }
 
 .chat-pr__branch {
@@ -2601,12 +2681,14 @@ button.chat-pr__diff {
 }
 
 .chat-pr__create {
-  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
   padding: 3px 10px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--text);
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
@@ -2614,7 +2696,15 @@ button.chat-pr__diff {
 }
 
 .chat-pr__create:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.chat-pr__create:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text);
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .chat-pr__dismiss {
@@ -2653,8 +2743,7 @@ button.chat-pr__diff {
 }
 
 @media (max-width: 640px) {
-  .chat-pr__branch,
-  .chat-pr__repo {
+  .chat-pr__identity {
     display: none;
   }
 }
@@ -3482,17 +3571,21 @@ button.chat-pr__diff {
   stroke-linejoin: round;
 }
 
+/* Theme overrides adjust the hover fill via this variable instead of their own
+   :hover rules: a :root[data-theme] selector outranks every variant's hover
+   (--voice, --stop), which painted the idle mic with the send button's loud
+   accent hover in dark themes. */
 .chat-send-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--chat-send-hover-background, var(--accent-hover));
   box-shadow: 0 2px 12px var(--accent-glow);
 }
 
-:root[data-theme="dark"] .chat-send-btn:hover:not(:disabled) {
-  background: var(--primary-hover);
+:root[data-theme="dark"] .chat-send-btn {
+  --chat-send-hover-background: var(--primary-hover);
 }
 
-:root[data-theme="openknot"] .chat-send-btn:hover:not(:disabled) {
-  background: var(--primary-hover);
+:root[data-theme="openknot"] .chat-send-btn {
+  --chat-send-hover-background: var(--primary-hover);
 }
 
 /* Outline (not box-shadow) so the hover rules' higher-specificity box-shadow
@@ -3540,11 +3633,11 @@ button.chat-pr__diff {
   --chat-voice-hover-color: var(--text);
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
 }
 
 .chat-talk-control--active {
-  --chat-picker-border: color-mix(in srgb, var(--accent) 24%, transparent);
   --chat-picker-background: color-mix(in srgb, var(--accent) 14%, transparent);
   --chat-picker-color: var(--accent);
   --chat-picker-hover-background: color-mix(in srgb, var(--accent) 20%, transparent);
@@ -3555,24 +3648,20 @@ button.chat-pr__diff {
   display: inline-flex;
 }
 
-.chat-talk-control .chat-send-btn {
-  border-radius: var(--radius-full) 0 0 var(--radius-full);
-}
-
+/* The device picker is a detached round ghost button beside the mic — the mic
+   itself never changes shape. It reserves its width at all times and hover
+   only fades it in; collapsing the width instead shifts the whole
+   right-aligned mic/send cluster sideways under the cursor on mouse-over. */
 .chat-talk-input-picker {
   display: inline-flex;
-  align-self: stretch;
-  width: 20px;
-  transition:
-    width 120ms ease,
-    opacity 100ms ease;
+  align-self: center;
+  width: 22px;
+  transition: opacity var(--duration-fast) ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .chat-talk-control:not(.chat-talk-control--active, :hover, :focus-within)
     .chat-talk-input-picker:not([open]) {
-    width: 0;
-    min-width: 0;
     opacity: 0;
   }
 }
@@ -3581,12 +3670,11 @@ button.chat-pr__diff {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 100%;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: 0;
-  border-left: 1px solid var(--chat-picker-border, var(--border));
-  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  border-radius: var(--radius-full);
   background: var(--chat-picker-background, transparent);
   color: var(--chat-picker-color, var(--muted));
   transition: background var(--duration-fast) ease;
