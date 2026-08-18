@@ -1389,7 +1389,7 @@ extensions/voice-call/src/media-stream.ts	1
 extensions/voice-call/src/providers/mock.ts	7
 extensions/voice-call/src/providers/shared/guarded-json-api.ts	2
 extensions/voice-call/src/providers/shared/response-body.ts	1
-extensions/voice-call/src/providers/twilio.ts	3
+extensions/voice-call/src/providers/twilio.ts	2
 extensions/voice-call/src/providers/twilio/api.ts	3
 extensions/voice-call/src/realtime-agent-context.ts	1
 extensions/voice-call/src/response-generator.ts	3
@@ -1934,7 +1934,7 @@ src/agents/harness/context-engine-lifecycle.ts	3
 src/agents/harness/context-engine-turn-outbox.ts	3
 src/agents/harness/gateway-question.ts	6
 src/agents/harness/hook-helpers.ts	1
-src/agents/harness/host-capability.ts	4
+src/agents/harness/host-capability.ts	3
 src/agents/harness/lifecycle-hook-helpers.ts	1
 src/agents/harness/native-hook-relay-client.ts	2
 src/agents/harness/native-hook-relay-codec.ts	2
@@ -2661,7 +2661,7 @@ src/commands/models/list.status-command.ts	1
 src/commands/models/shared.ts	3
 src/commands/onboard-agent.ts	1
 src/commands/onboard-config.ts	3
-src/commands/onboard-helpers.ts	3
+src/commands/onboard-helpers.ts	2
 src/commands/onboard-non-interactive/local.ts	3
 src/commands/onboard-non-interactive/local/auth-choice-inference.ts	2
 src/commands/onboard-non-interactive/local/auth-choice.plugin-providers.ts	1
@@ -2761,7 +2761,7 @@ src/config/sessions/session-accessor.sqlite-archive.ts	3
 src/config/sessions/session-accessor.sqlite-archive.worker.ts	7
 src/config/sessions/session-accessor.sqlite-canonical-inventory.ts	1
 src/config/sessions/session-accessor.sqlite-checkpoint.ts	3
-src/config/sessions/session-accessor.sqlite-delta.ts	3
+src/config/sessions/session-accessor.sqlite-delta.ts	2
 src/config/sessions/session-accessor.sqlite-entry-availability.ts	1
 src/config/sessions/session-accessor.sqlite-entry-cache.ts	3
 src/config/sessions/session-accessor.sqlite-entry.ts	1
@@ -3081,7 +3081,7 @@ src/gateway/server-resident-registry.ts	1
 src/gateway/server-restart-sentinel-agent-delivery.ts	3
 src/gateway/server-runtime-handles.ts	11
 src/gateway/server-runtime-state-prepare.ts	2
-src/gateway/server-session-events.ts	4
+src/gateway/server-session-events.ts	1
 src/gateway/server-startup-bootstrap.ts	1
 src/gateway/server-startup-config-helpers.ts	1
 src/gateway/server-startup-config.ts	1
@@ -3319,7 +3319,7 @@ src/infra/retry-policy.ts	3
 src/infra/retryable-network-errors.ts	1
 src/infra/session-cost-usage-aggregation.ts	5
 src/infra/session-cost-usage-cache-runtime.ts	1
-src/infra/session-cost-usage-cache.sqlite.ts	2
+src/infra/session-cost-usage-cache.sqlite.ts	1
 src/infra/session-cost-usage-collection.ts	4
 src/infra/session-cost-usage-pricing.ts	6
 src/infra/session-cost-usage-reporting.ts	9
@@ -3818,7 +3818,7 @@ src/skills/loading/config.ts	1
 src/skills/loading/frontmatter.ts	1
 src/skills/loading/source.ts	1
 src/skills/loading/workspace-skill-loader.ts	2
-src/skills/loading/workspace-skill-sync.runtime.ts	2
+src/skills/loading/workspace-skill-sync.runtime.ts	1
 src/skills/runtime/refresh.ts	3
 src/skills/runtime/remote-probe-utils.ts	2
 src/skills/runtime/remote-skills.ts	1
@@ -4124,7 +4124,7 @@ ui/src/lib/chat/tool-display.ts	1
 ui/src/lib/config-form-utils.ts	7
 ui/src/lib/config/config-draft-model.ts	5
 ui/src/lib/config/config-gateway-operations.ts	1
-ui/src/lib/cron/index.ts	16
+ui/src/lib/cron/index.ts	14
 ui/src/lib/gateway-diagnostics.ts	3
 ui/src/lib/gateway-errors.ts	1
 ui/src/lib/keyboard-shortcuts.ts	1
@@ -4168,7 +4168,7 @@ ui/src/pages/chat/chat-command-executor.ts	1
 ui/src/pages/chat/chat-composer-capability-host.ts	4
 ui/src/pages/chat/chat-gateway.ts	2
 ui/src/pages/chat/chat-history-retry.ts	1
-ui/src/pages/chat/chat-history.ts	6
+ui/src/pages/chat/chat-history.ts	5
 ui/src/pages/chat/chat-page-retained-sessions.ts	1
 ui/src/pages/chat/chat-page.ts	1
 ui/src/pages/chat/chat-pane-board.ts	2
@@ -4184,7 +4184,7 @@ ui/src/pages/chat/chat-send-composer.ts	1
 ui/src/pages/chat/chat-send-request.ts	1
 ui/src/pages/chat/chat-send-timing.ts	6
 ui/src/pages/chat/chat-session-companion.ts	5
-ui/src/pages/chat/chat-state-events.ts	8
+ui/src/pages/chat/chat-state-events.ts	6
 ui/src/pages/chat/chat-state-page.ts	5
 ui/src/pages/chat/chat-state-route.ts	1
 ui/src/pages/chat/chat-thread-build.ts	2
@@ -4212,10 +4212,9 @@ ui/src/pages/chat/components/chat-question-card.ts	1
 ui/src/pages/chat/components/chat-selection-popup.ts	1
 ui/src/pages/chat/components/chat-session-rail.ts	4
 ui/src/pages/chat/components/chat-session-sharing.ts	1
-ui/src/pages/chat/components/chat-session-workspace.ts	2
+ui/src/pages/chat/components/chat-session-workspace.ts	1
 ui/src/pages/chat/components/chat-sidebar-editor-menu.ts	2
 ui/src/pages/chat/components/chat-sidebar-region.runtime.ts	2
-ui/src/pages/chat/components/chat-sidebar.ts	2
 ui/src/pages/chat/components/chat-swarm-progress.ts	3
 ui/src/pages/chat/components/chat-thread-interactions.ts	7
 ui/src/pages/chat/components/chat-tool-cards.ts	2
@@ -4280,14 +4279,13 @@ ui/src/pages/model-providers/view.ts	3
 ui/src/pages/model-setup/provider-picker.ts	3
 ui/src/pages/model-setup/view.ts	2
 ui/src/pages/new-session/composer.ts	1
-ui/src/pages/new-session/detail-chip.ts	4
+ui/src/pages/new-session/detail-chip.ts	2
 ui/src/pages/new-session/discovery.ts	4
 ui/src/pages/new-session/draft-place-browser.ts	4
 ui/src/pages/new-session/new-session-runtime.ts	3
 ui/src/pages/new-session/place-browser.ts	1
 ui/src/pages/new-session/place-facts.ts	1
 ui/src/pages/new-session/preferences.ts	1
-ui/src/pages/new-session/project-chip.ts	1
 ui/src/pages/plugin/logbook-view.ts	1
 ui/src/pages/plugin/route.ts	1
 ui/src/pages/plugins/view.ts	2
@@ -4299,7 +4297,7 @@ ui/src/pages/skill-workshop/header-controls.ts	1
 ui/src/pages/skill-workshop/route.ts	1
 ui/src/pages/skill-workshop/self-learning.ts	1
 ui/src/pages/skill-workshop/skill-workshop-page.ts	1
-ui/src/pages/skill-workshop/view.ts	2
+ui/src/pages/skill-workshop/view.ts	1
 ui/src/pages/skills/view.ts	3
 ui/src/pages/usage/heatmap.ts	1
 ui/src/pages/usage/usage-page.ts	1
