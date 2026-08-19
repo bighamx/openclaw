@@ -847,14 +847,14 @@ describe("refreshChatAvatar", () => {
   it.each([
     {
       name: "uses a route-relative avatar endpoint before basePath bootstrap finishes",
-      basePath: "",
+      resourceBasePath: "",
       objectUrl: "blob:local-avatar",
       expectedToken: undefined,
       overrides: {},
     },
     {
       name: "prefers the paired device token for avatar metadata and local avatar URLs",
-      basePath: "/openclaw/",
+      resourceBasePath: "/openclaw/",
       objectUrl: "blob:device-avatar",
       expectedToken: "device-token",
       overrides: {
@@ -868,12 +868,12 @@ describe("refreshChatAvatar", () => {
     },
     {
       name: "fetches local avatars through Authorization headers instead of tokenized URLs",
-      basePath: "/openclaw/",
+      resourceBasePath: "/openclaw/",
       objectUrl: "blob:session-avatar",
       expectedToken: "session-token",
       overrides: { settings: { token: "session-token" } },
     },
-  ])("$name", async ({ basePath, objectUrl, expectedToken, overrides }) => {
+  ])("$name", async ({ resourceBasePath, objectUrl, expectedToken, overrides }) => {
     const createObjectURL = vi.fn(() => objectUrl);
     const revokeObjectURL = vi.fn();
     vi.stubGlobal(
@@ -883,7 +883,7 @@ describe("refreshChatAvatar", () => {
         static override revokeObjectURL = revokeObjectURL;
       },
     );
-    const metadataUrl = `${basePath.replace(/\/$/, "")}/avatar/main?meta=1`;
+    const metadataUrl = `${resourceBasePath.replace(/\/$/, "")}/avatar/main?meta=1`;
     const fetchMock = vi.fn<typeof fetch>((input: string | URL | Request) => {
       const url = requestUrl(input);
       if (url === metadataUrl) {
@@ -895,7 +895,7 @@ describe("refreshChatAvatar", () => {
       throw new Error(`Unexpected avatar URL: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    const host = makeChatHost({ basePath, sessionKey: "agent:main", ...overrides });
+    const host = makeChatHost({ resourceBasePath, sessionKey: "agent:main", ...overrides });
 
     await refreshChatAvatar(host);
 
@@ -919,7 +919,10 @@ describe("refreshChatAvatar", () => {
       .mockResolvedValue(createJsonResponse({}, { ok: false }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const host = makeChatHost({ basePath: "/openclaw/", sessionKey: "agent:ops:main" });
+    const host = makeChatHost({
+      resourceBasePath: "/openclaw/",
+      sessionKey: "agent:ops:main",
+    });
     await refreshChatAvatar(host);
 
     expect(fetchUrl(fetchMock, 0)).toBe("/openclaw/avatar/ops?meta=1");
@@ -938,7 +941,7 @@ describe("refreshChatAvatar", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const host = makeChatHost({ basePath: "", sessionKey: "agent:main" });
+    const host = makeChatHost({ resourceBasePath: "", sessionKey: "agent:main" });
     await refreshChatAvatar(host);
 
     expect(host.chatAvatarUrl).toBeNull();
@@ -957,7 +960,7 @@ describe("refreshChatAvatar", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const host = makeChatHost({ basePath: "", sessionKey: "agent:main" });
+    const host = makeChatHost({ resourceBasePath: "", sessionKey: "agent:main" });
     await refreshChatAvatar(host);
 
     expect(host.chatAvatarUrl).toBeNull();
@@ -1015,7 +1018,7 @@ describe("refreshChatAvatar", () => {
       throw new Error(`Unexpected avatar URL: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    const host = makeChatHost({ basePath: "", ...overrides });
+    const host = makeChatHost({ resourceBasePath: "", ...overrides });
 
     const firstRefresh = refreshChatAvatar(host);
     fixture.switchAgent(host);
@@ -1422,7 +1425,7 @@ describe("handleSendChat", () => {
 
     const host = makeChatHost({
       requestHandlers: {
-        "sessions.steer": {
+        "chat.send": {
           status: "started",
           runId: "redirect-run",
           messageSeq: 2,
@@ -1445,9 +1448,11 @@ describe("handleSendChat", () => {
     settingsPatch.resolve(true);
     await send;
 
-    expect(host.request).toHaveBeenCalledWith("sessions.steer", {
-      key: "agent:main",
+    expect(host.request).toHaveBeenCalledWith("chat.send", {
+      sessionKey: "agent:main",
       message: "start over",
+      queueMode: "interrupt",
+      idempotencyKey: expect.any(String),
     });
     expect(host.request).toHaveBeenCalledTimes(1);
     expect(host.chatMessage).toBe("new draft");
@@ -3783,7 +3788,8 @@ describe("handleSendChat", () => {
         }),
       ),
     );
-    expect(host.chatRunId).toBe("steer-run");
+    expect(host.chatRunId).toBe("run-1");
+    expect(host.chatStream).toBe("Working...");
     expect(host.chatQueue).toEqual([
       expect.objectContaining({
         queueMode: "steer",
@@ -3794,6 +3800,19 @@ describe("handleSendChat", () => {
     const payload = findRequestPayload(host.request, "chat.send", "default steer payload");
     expect(payload).not.toHaveProperty("expectedRunId");
     expect(payload).not.toHaveProperty("expectedLeafEntryId");
+  });
+
+  it("adopts a steer-mode ACK when no run is active", async () => {
+    const host = makeChatHost({
+      requestHandlers: {
+        "chat.send": { status: "started", runId: "started-run" },
+      },
+      chatMessage: "start through steer mode",
+    });
+
+    await handleSendChat(host, undefined, { followUpMode: "steer" });
+
+    expect(host.chatRunId).toBe("started-run");
   });
 
   it("sends a fresh mode-bearing row ahead of older outbox reconciliation", async () => {
