@@ -333,8 +333,8 @@ describe("gateway server chat", () => {
     return res;
   };
   const waitForAgentRunDrained = async (runId: string) => {
-    await waitForAgentRunOk(runId);
     await waitForFast(() => expect(getActiveGatewayRootWorkCount()).toBe(0));
+    await waitForAgentRunOk(runId, 0);
   };
   const abortChatRun = async (runId: string) => {
     const res = await rpcReq(ws, "chat.abort", {
