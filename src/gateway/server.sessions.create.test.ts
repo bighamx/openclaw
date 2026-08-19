@@ -1431,7 +1431,7 @@ test("sessions.create rolls back failed provisioning before a same-key creator p
       await managedWorktrees.remove({
         id: successorWorktreeId,
         reason: "test-cleanup",
-        force: true,
+        allowSnapshotLoss: true,
       });
     }
     closeOpenClawStateDatabaseForTest();
@@ -1525,7 +1525,11 @@ test("sessions.create provisions and reuses a session worktree for later runs", 
   } finally {
     createSpy.mockRestore();
     if (worktreeId) {
-      await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+      await managedWorktrees.remove({
+        id: worktreeId,
+        reason: "test-cleanup",
+        allowSnapshotLoss: true,
+      });
     }
     closeOpenClawStateDatabaseForTest();
     testState.agentConfig = undefined;
@@ -1664,7 +1668,11 @@ test("sessions.create runs an existing managed worktree cwd for initial and foll
   } finally {
     ws.close();
     getAcpSessionManager.mockRestore();
-    await managedWorktrees.remove({ id: worktree.id, reason: "test-cleanup", force: true });
+    await managedWorktrees.remove({
+      id: worktree.id,
+      reason: "test-cleanup",
+      allowSnapshotLoss: true,
+    });
     closeOpenClawStateDatabaseForTest();
     testState.agentsConfig = undefined;
     await openClawState.cleanup();
@@ -1686,19 +1694,34 @@ test("sessions.create preserves a committed worktree when initial-turn setup fai
     new Error("synthetic post-commit initial-turn failure"),
   );
   try {
-    await expect(
-      directSessionReq(
-        "sessions.create",
-        {
-          agentId: "main",
-          key,
-          message: "start the committed session",
-          worktree: true,
-          worktreeName: "post-commit-worktree",
+    const created = await directSessionReq<{
+      key: string;
+      runError: { code: string; message: string };
+      runStarted: boolean;
+      sessionId: string;
+    }>(
+      "sessions.create",
+      {
+        agentId: "main",
+        key,
+        message: "start the committed session",
+        worktree: true,
+        worktreeName: "post-commit-worktree",
+      },
+      { client: { connect: { scopes: ["operator.admin"] } } as never },
+    );
+    expect(created).toMatchObject({
+      ok: true,
+      payload: {
+        key,
+        runError: {
+          code: "UNAVAILABLE",
+          message: "synthetic post-commit initial-turn failure",
         },
-        { client: { connect: { scopes: ["operator.admin"] } } as never },
-      ),
-    ).rejects.toThrow("synthetic post-commit initial-turn failure");
+        runStarted: false,
+        sessionId: expect.any(String),
+      },
+    });
 
     expect(loadSessionEntry({ sessionKey: key, storePath })).toMatchObject({
       sessionId: expect.any(String),
@@ -1712,7 +1735,11 @@ test("sessions.create preserves a committed worktree when initial-turn setup fai
     worktreeId = owned?.id;
   } finally {
     if (worktreeId) {
-      await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+      await managedWorktrees.remove({
+        id: worktreeId,
+        reason: "test-cleanup",
+        allowSnapshotLoss: true,
+      });
     }
     closeOpenClawStateDatabaseForTest();
     testState.agentConfig = undefined;
@@ -1888,7 +1915,11 @@ test.each([
       expect(dashboardTitleGenerationMocks.generate).toHaveBeenCalledOnce();
     } finally {
       if (worktreeId) {
-        await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+        await managedWorktrees.remove({
+          id: worktreeId,
+          reason: "test-cleanup",
+          allowSnapshotLoss: true,
+        });
       }
       setActivePluginRegistry(createEmptyPluginRegistry());
       closeOpenClawStateDatabaseForTest();
@@ -1986,7 +2017,11 @@ test.each([
       expect(dashboardTitleGenerationMocks.generate).toHaveBeenCalledOnce();
     } finally {
       if (worktreeId) {
-        await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+        await managedWorktrees.remove({
+          id: worktreeId,
+          reason: "test-cleanup",
+          allowSnapshotLoss: true,
+        });
       }
       closeOpenClawStateDatabaseForTest();
       testState.agentConfig = undefined;
@@ -2022,7 +2057,11 @@ test("sessions.create keeps the crustacean fallback when no title source exists"
     expect(dashboardTitleGenerationMocks.generate).not.toHaveBeenCalled();
   } finally {
     if (worktreeId) {
-      await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+      await managedWorktrees.remove({
+        id: worktreeId,
+        reason: "test-cleanup",
+        allowSnapshotLoss: true,
+      });
     }
     closeOpenClawStateDatabaseForTest();
     testState.agentConfig = undefined;
@@ -2540,7 +2579,11 @@ test("sessions.create skips the worktree setup script for non-admin callers", as
     await expect(fs.stat(path.join(worktree, "setup-marker.txt"))).rejects.toThrow();
   } finally {
     if (worktreeId) {
-      await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+      await managedWorktrees.remove({
+        id: worktreeId,
+        reason: "test-cleanup",
+        allowSnapshotLoss: true,
+      });
     }
     closeOpenClawStateDatabaseForTest();
     testState.agentConfig = undefined;
@@ -2684,7 +2727,11 @@ test("sessions.create reset-in-place detaches the prior worktree permission boun
     releaseWorktreeRemoval();
     restoreRemoveIfLossless();
     if (worktreeId && getRegistryWorktree(process.env, worktreeId)?.removedAt === undefined) {
-      await managedWorktrees.remove({ id: worktreeId, reason: "test-cleanup", force: true });
+      await managedWorktrees.remove({
+        id: worktreeId,
+        reason: "test-cleanup",
+        allowSnapshotLoss: true,
+      });
     }
     closeOpenClawStateDatabaseForTest();
     testState.agentConfig = undefined;
