@@ -7,6 +7,7 @@ import type {
   SidebarWorkboardSnapshot,
 } from "../components/app-sidebar-workboard.ts";
 import { icons } from "../components/icons.ts";
+import { renderLazyElementModal } from "../components/lazy-view-error.ts";
 import { CUSTODIAN_PANEL_TOGGLE_EVENT } from "../components/panel-toggle-contract.ts";
 import {
   renderLazySettingsSidebar,
@@ -22,7 +23,6 @@ import { findSettingsSearchBlocks } from "../pages/config/settings-search.ts";
 import type { NewSessionTarget } from "../pages/new-session/location.ts";
 import { pluginTabKey, pluginTabRefFromSearch } from "../pages/plugin/route.ts";
 import type { ShellRouteState } from "./app-host-route-state.ts";
-import { resolveTerminalThemeMode } from "./app-root.ts";
 import { isBrowserPanelAvailable, isDesktopPanelAvailable } from "./app-shell-chrome.ts";
 import type { OutboxStoreRuntime, StoredOutboxScopeHost } from "./app-shell-gateway.ts";
 import type { ApplicationRuntime } from "./bootstrap.ts";
@@ -34,8 +34,8 @@ import {
 } from "./device-scope-upgrade.ts";
 import {
   DEBUG_OVERLAY_ELEMENT,
-  ensureOptionalElementForHost,
   isOptionalElementDefined,
+  type LazyCustomElementRequestController,
   type OptionalCustomElement,
 } from "./lazy-custom-element.ts";
 import { isMobileNavLayout, shouldMergeChatChrome } from "./mobile-nav-layout.ts";
@@ -51,7 +51,6 @@ import {
 } from "./settings.ts";
 import type { UpdateProgress } from "./update-confirmation.ts";
 
-const EMPTY_OUTBOX_ATTENTION_COUNT_FOR_SESSION = () => 0;
 const EMPTY_SESSION_HAS_DRAFT = () => false;
 const PALETTE_SHORTCUT = /Mac|iP(hone|ad|od)/i.test(globalThis.navigator?.platform ?? "")
   ? "⌘K"
@@ -74,7 +73,7 @@ function renderScopeUpgradeBanner(
   ) {
     return nothing;
   }
-  void ensureOptionalElementForHost(host, SCOPE_UPGRADE_BANNER_ELEMENT).catch(() => undefined);
+  host.lazyCustomElements.preload(SCOPE_UPGRADE_BANNER_ELEMENT);
   if (isOptionalElementDefined(SCOPE_UPGRADE_BANNER_ELEMENT)) {
     return html`<openclaw-device-scope-upgrade-banner
       .props=${{
@@ -100,6 +99,7 @@ export interface ShellViewHost {
   readonly custodianMinimizeRequestId: number;
   readonly desktopNavigationExpanded: boolean;
   readonly execApprovalElement: OptionalCustomElement;
+  readonly lazyCustomElements: LazyCustomElementRequestController;
   readonly nativeHistoryState: NativeHistoryState;
   readonly navDrawerOpen: boolean;
   readonly navigationSidebar: HTMLElement;
@@ -245,7 +245,7 @@ export function renderApplicationShell(host: ShellViewHost) {
         const scopeKey = outboxStoreRuntime.storedChatOutboxScopeKey(scope);
         return storedOutboxes?.attentionCountsByScope.get(scopeKey) ?? 0;
       }
-    : EMPTY_OUTBOX_ATTENTION_COUNT_FOR_SESSION;
+    : () => 0;
   const hasSessionDraft = outboxStoreRuntime
     ? (sessionKey: string) => {
         const scope = outboxStoreRuntime.resolveStoredChatOutboxScope(outboxScopeHost, sessionKey);
@@ -482,6 +482,7 @@ export function renderApplicationShell(host: ShellViewHost) {
   // Optional tags stay mounted before definition. Lit replays their properties on upgrade,
   // and the upgraded panels catch the first toggle instead of dropping the event.
   return html`
+    ${renderLazyElementModal(host.lazyCustomElements)}
     ${isOptionalElementDefined(host.commandPaletteElement)
       ? html`<openclaw-command-palette
           .onNavigate=${(routeId: RouteId) => host.navigate(routeId)}
@@ -659,7 +660,7 @@ export function renderApplicationShell(host: ShellViewHost) {
         .agentId=${selectedAgentId}
         .sessionKey=${sessionRoute ? host.activeSessionKey : null}
         .suppressed=${settingsTakeover}
-        .themeMode=${resolveTerminalThemeMode()}
+        .themeMode=${context.theme.resolvedMode}
         .basePath=${context.basePath}
       ></openclaw-terminal-panel>
       ${sessionRoute
