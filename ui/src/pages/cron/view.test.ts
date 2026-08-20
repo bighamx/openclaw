@@ -135,6 +135,17 @@ describe("cron view list pane", () => {
     lastStatusFilter.dispatchEvent(new Event("change", { bubbles: true }));
     expect(onJobsFiltersChange).toHaveBeenCalledWith({ cronJobsLastStatusFilter: "unknown" });
 
+    const triggerFilter = getElement(
+      container,
+      '[data-test-id="cron-jobs-trigger-filter"]',
+      HTMLSelectElement,
+    );
+    triggerFilter.value = "conditional";
+    triggerFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(onJobsFiltersChange).toHaveBeenCalledWith({
+      cronJobsTriggerFilter: "conditional",
+    });
+
     const reset = getElement(
       container,
       '[data-test-id="cron-jobs-filters-reset"]',
@@ -158,7 +169,10 @@ describe("cron view list pane", () => {
 
   it("renders table rows with schedule and status cells and selects on click", () => {
     const onSelectJob = vi.fn();
-    const job = createJob("job-1", { state: { nextRunAtMs: Date.now() + 60_000 } });
+    const job = createJob("job-1", {
+      trigger: { script: "json({ fire: true })" },
+      state: { nextRunAtMs: Date.now() + 60_000 },
+    });
     const paused = createJob("job-2", { name: "Paused task", enabled: false });
     const failed = createJob("job-3", {
       name: "Failing task",
@@ -181,6 +195,9 @@ describe("cron view list pane", () => {
     );
     expect(rows[0]?.querySelector(".cron-last-glyph--ok")).toBeNull();
     expect(rows[0]?.textContent).toContain("n/a");
+    expect(rows[0]?.querySelector(".cron-trigger-icon")?.getAttribute("aria-label")).toBe(
+      "Trigger configured",
+    );
 
     (rows[1] as HTMLElement).click();
     expect(onSelectJob).toHaveBeenCalledWith(paused);
@@ -660,6 +677,39 @@ describe("cron view editor", () => {
       form: { ...DEFAULT_CRON_FORM, payloadKind: "systemEvent", sessionTarget: "main" },
     });
     expect(systemEvent.querySelector("#cron-payload-model")).toBeNull();
+
+    const conditional = renderView({
+      createOpen: true,
+      form: {
+        ...DEFAULT_CRON_FORM,
+        triggerEnabled: true,
+        triggerScript: "json({ fire: true })",
+      },
+    });
+    expect(conditional.querySelector("#cron-trigger-script")).toBeInstanceOf(HTMLTextAreaElement);
+    expect(conditional.querySelector(".cron-trigger-summary")?.textContent).toContain(
+      "Trigger configured",
+    );
+  });
+
+  it("hides trigger authoring when the operator disabled triggers but keeps clear available", () => {
+    const onFormChange = vi.fn();
+    const disabled = renderView({ createOpen: true, triggersEnabled: false, onFormChange });
+    expect(disabled.querySelector("#cron-trigger-script")).toBeNull();
+    expect(disabled.textContent).toContain("disabled by cron.triggers.enabled");
+
+    const configured = renderView({
+      createOpen: true,
+      triggersEnabled: false,
+      onFormChange,
+      form: {
+        ...DEFAULT_CRON_FORM,
+        triggerEnabled: true,
+        triggerScript: "json({ fire: true })",
+      },
+    });
+    getButtonByText(configured, "Clear trigger").click();
+    expect(onFormChange).toHaveBeenCalledWith({ triggerEnabled: false });
   });
 
   it("renders script payloads as highlighted read-only code without exposing script authoring", () => {
@@ -691,6 +741,60 @@ describe("cron view editor", () => {
     );
     expect(container.textContent).toContain("contents stay read-only");
     expect(container.querySelector('option[value="script"]')).toBeNull();
+    expect(findToggleByLabel(container, "Condition trigger")).toBeNull();
+    expect(container.textContent).toContain("Script payloads cannot use condition triggers");
+  });
+
+  it("keeps an incompatible existing script condition trigger visible and explicitly clearable", () => {
+    const onFormChange = vi.fn();
+    const job = createJob("job-script-trigger", {
+      payload: { kind: "script", script: "json({ state: {} })" },
+      trigger: { script: "json({ fire: true })" },
+    });
+    const container = renderView({
+      jobs: [job],
+      editingJob: job,
+      onFormChange,
+      form: {
+        ...DEFAULT_CRON_FORM,
+        name: job.name,
+        payloadKind: "script",
+        payloadLocked: true,
+        payloadText: "json({ state: {} })",
+        triggerEnabled: true,
+        triggerScript: "json({ fire: true })",
+      },
+      fieldErrors: { triggerScript: "cron.errors.triggerScriptPayloadUnsupported" },
+      canSubmit: false,
+    });
+
+    expect(findToggleByLabel(container, "Condition trigger")).toBeNull();
+    expect(container.querySelector("#cron-trigger-script")).toBeNull();
+    expect(container.textContent).toContain("Script payloads cannot use condition triggers");
+    getButtonByText(container, "Clear trigger").click();
+    expect(onFormChange).toHaveBeenCalledWith({ triggerEnabled: false });
+  });
+
+  it("attaches the triggered minimum-interval error to the visible recurring interval", () => {
+    const container = renderView({
+      createOpen: true,
+      canSubmit: false,
+      form: {
+        ...DEFAULT_CRON_FORM,
+        everyAmount: "5",
+        everyUnit: "seconds",
+        triggerEnabled: true,
+        triggerScript: "json({ fire: true })",
+      },
+      fieldErrors: { everyAmount: "cron.errors.triggerIntervalTooShort" },
+    });
+
+    const interval = getElement(container, "#cron-every-amount", HTMLInputElement);
+    expect(interval.getAttribute("aria-invalid")).toBe("true");
+    expect(interval.getAttribute("aria-describedby")).toBe("cron-error-everyAmount");
+    expect(container.querySelector("#cron-error-everyAmount")?.textContent).toContain(
+      "at least every 30 seconds",
+    );
   });
 
   it("highlights locked command payloads as shell and keeps heartbeat payloads plain", () => {
@@ -712,6 +816,7 @@ describe("cron view editor", () => {
     const payload = getElement(command, "#cron-payload-text", HTMLPreElement);
     expect(payload.textContent).toBe("echo $HOME");
     expect(payload.querySelector(".hljs-built_in")?.textContent).toBe("echo");
+    expect(findToggleByLabel(command, "Condition trigger")).not.toBeNull();
 
     const heartbeat = renderView({
       jobs: [job],

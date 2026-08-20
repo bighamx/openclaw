@@ -7440,6 +7440,24 @@ public struct SessionPlacementDiskSpace: Codable, Sendable {
     }
 }
 
+public struct SessionPlacementRunner: Codable, Sendable {
+    public let kind: String
+    public let status: AnyCodable
+
+    public init(
+        kind: String,
+        status: AnyCodable)
+    {
+        self.kind = kind
+        self.status = status
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case status
+    }
+}
+
 public struct LocalSessionPlacement: Codable, Sendable {
     public let state: String
     public let generation: Int
@@ -7633,6 +7651,7 @@ public struct ActiveWorkerSessionPlacement: Codable, Sendable {
     public let lastliveeventackcursor: Int?
     public let workspaceresultconflict: [String: AnyCodable]?
     public let diskspace: SessionPlacementDiskSpace?
+    public let runner: SessionPlacementRunner?
 
     public init(
         state: String,
@@ -7648,7 +7667,8 @@ public struct ActiveWorkerSessionPlacement: Codable, Sendable {
         lasttranscriptackcursor: Int? = nil,
         lastliveeventackcursor: Int? = nil,
         workspaceresultconflict: [String: AnyCodable]? = nil,
-        diskspace: SessionPlacementDiskSpace? = nil)
+        diskspace: SessionPlacementDiskSpace? = nil,
+        runner: SessionPlacementRunner? = nil)
     {
         self.state = state
         self.generation = generation
@@ -7664,6 +7684,7 @@ public struct ActiveWorkerSessionPlacement: Codable, Sendable {
         self.lastliveeventackcursor = lastliveeventackcursor
         self.workspaceresultconflict = workspaceresultconflict
         self.diskspace = diskspace
+        self.runner = runner
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -7681,6 +7702,7 @@ public struct ActiveWorkerSessionPlacement: Codable, Sendable {
         case lastliveeventackcursor = "lastLiveEventAckCursor"
         case workspaceresultconflict = "workspaceResultConflict"
         case diskspace = "diskSpace"
+        case runner
     }
 }
 
@@ -8258,17 +8280,20 @@ public struct SessionsMoveParams: Codable, Sendable {
     public let agentid: String?
     public let expected: SessionMoveExpectedSource
     public let target: SessionMoveTarget
+    public let abandonsource: Bool?
 
     public init(
         key: String,
         agentid: String? = nil,
         expected: SessionMoveExpectedSource,
-        target: SessionMoveTarget)
+        target: SessionMoveTarget,
+        abandonsource: Bool? = nil)
     {
         self.key = key
         self.agentid = agentid
         self.expected = expected
         self.target = target
+        self.abandonsource = abandonsource
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -8276,6 +8301,7 @@ public struct SessionsMoveParams: Codable, Sendable {
         case agentid = "agentId"
         case expected
         case target
+        case abandonsource = "abandonSource"
     }
 }
 
@@ -16877,6 +16903,7 @@ public struct CronListParams: Codable, Sendable {
     public let enabled: AnyCodable?
     public let schedulekind: AnyCodable?
     public let lastrunstatus: AnyCodable?
+    public let trigger: AnyCodable?
     public let sortby: AnyCodable?
     public let sortdir: AnyCodable?
     public let agentid: String?
@@ -16891,6 +16918,7 @@ public struct CronListParams: Codable, Sendable {
         enabled: AnyCodable? = nil,
         schedulekind: AnyCodable? = nil,
         lastrunstatus: AnyCodable? = nil,
+        trigger: AnyCodable? = nil,
         sortby: AnyCodable? = nil,
         sortdir: AnyCodable? = nil,
         agentid: String? = nil,
@@ -16904,6 +16932,7 @@ public struct CronListParams: Codable, Sendable {
         self.enabled = enabled
         self.schedulekind = schedulekind
         self.lastrunstatus = lastrunstatus
+        self.trigger = trigger
         self.sortby = sortby
         self.sortdir = sortdir
         self.agentid = agentid
@@ -16919,6 +16948,7 @@ public struct CronListParams: Codable, Sendable {
         case enabled
         case schedulekind = "scheduleKind"
         case lastrunstatus = "lastRunStatus"
+        case trigger
         case sortby = "sortBy"
         case sortdir = "sortDir"
         case agentid = "agentId"
