@@ -931,8 +931,11 @@ function runOpenClawNpmTrustedRefGuard(overrides: Record<string, string>) {
     throw new Error("Expected OpenClaw npm trusted ref guard");
   }
   const binDir = tempDirs.make("openclaw-npm-trusted-ref-");
+  const ghPath = `${binDir}/gh`;
   const gitPath = `${binDir}/git`;
   const timeoutPath = `${binDir}/timeout`;
+  writeFileSync(ghPath, `#!/bin/sh\nprintf '%s\\n' "\${MOCK_REMOTE_TAG_SHA}"\n`);
+  chmodSync(ghPath, 0o755);
   writeFileSync(
     gitPath,
     `#!/bin/sh\nif [ "$1" = "fetch" ]; then exit 0; fi\nif [ "$1" = "merge-base" ]; then [ "\${MOCK_WORKFLOW_ANCESTOR}" = "true" ]; exit $?; fi\nexit 2\n`,
@@ -946,6 +949,8 @@ function runOpenClawNpmTrustedRefGuard(overrides: Record<string, string>) {
   return spawnSync("bash", ["-c", script], {
     encoding: "utf8",
     env: {
+      GITHUB_REPOSITORY: "openclaw/openclaw",
+      MOCK_REMOTE_TAG_SHA: "a".repeat(40),
       MOCK_WORKFLOW_ANCESTOR: "true",
       PATH: `${binDir}:${process.env.PATH}`,
       RELEASE_NPM_DIST_TAG: "beta",
@@ -953,6 +958,203 @@ function runOpenClawNpmTrustedRefGuard(overrides: Record<string, string>) {
       WORKFLOW_REF: "refs/heads/release/2026.7.2",
       WORKFLOW_SHA: "a".repeat(40),
       ...overrides,
+    },
+  });
+}
+
+function runPluginNpmPreflightToolingGuard(overrides: Record<string, string>) {
+  const job = workflowJob(PLUGIN_NPM_RELEASE_WORKFLOW, "preview_plugins_npm");
+  const script = workflowStep(job, "Verify trusted preflight tooling identity").run;
+  if (!script) {
+    throw new Error("Expected plugin npm preflight tooling identity guard");
+  }
+  const workdir = tempDirs.make("plugin-npm-preflight-tooling-");
+  const binDir = resolve(workdir, "bin");
+  const toolingDir = resolve(workdir, ".release-tooling/scripts");
+  const toolingLibDir = resolve(toolingDir, "lib");
+  mkdirSync(binDir, { recursive: true });
+  mkdirSync(toolingLibDir, { recursive: true });
+  writeFileSync(
+    resolve(toolingDir, "release-tooling-identity.mjs"),
+    readFileSync(resolve(REPO_ROOT, "scripts/release-tooling-identity.mjs")),
+  );
+  writeFileSync(
+    resolve(toolingLibDir, "record-shared.mjs"),
+    readFileSync(resolve(REPO_ROOT, "scripts/lib/record-shared.mjs")),
+  );
+  writeFileSync(
+    resolve(binDir, "gh"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+[[ "$1" == "api" ]] || exit 64
+case "$2" in
+  */git/ref/tags/*)
+    [[ "$MOCK_TAG_MISSING" != "true" ]] || exit 1
+    jq -cn \
+      --arg ref "$MOCK_TAG_FULL_REF" \
+      --arg sha "$MOCK_TAG_SHA" \
+      --arg type "$MOCK_TAG_TYPE" \
+      '{ref: $ref, object: {sha: $sha, type: $type}}'
+    ;;
+  */compare/*)
+    jq -cn --arg status "$MOCK_COMPARE_STATUS" '{status: $status}'
+    ;;
+  *)
+    exit 64
+    ;;
+esac
+`,
+    { mode: 0o755 },
+  );
+  return spawnSync("bash", ["-c", script], {
+    cwd: workdir,
+    encoding: "utf8",
+    env: {
+      GITHUB_REPOSITORY: "openclaw/openclaw",
+      MOCK_COMPARE_STATUS: "identical",
+      MOCK_TAG_FULL_REF: "",
+      MOCK_TAG_MISSING: "false",
+      MOCK_TAG_SHA: "",
+      MOCK_TAG_TYPE: "commit",
+      PATH: `${binDir}:${process.env.PATH}`,
+      ...overrides,
+    },
+  });
+}
+
+type ProtectedPreflightConsumerParams = {
+  currentRef: string;
+  currentWorkflowSha: string;
+  liveTagSha?: string;
+  preflightHeadBranch: string;
+  preflightHeadSha: string;
+};
+
+function runReleasePublishPreflightConsumerGuard(params: ProtectedPreflightConsumerParams) {
+  const job = workflowJob(RELEASE_PUBLISH_WORKFLOW, "resolve_release_target");
+  const script = workflowStep(job, "Download OpenClaw npm preflight manifest").run;
+  if (!script) {
+    throw new Error("Expected release publish preflight consumer guard");
+  }
+  const workdir = tempDirs.make("release-publish-preflight-consumer-");
+  const binDir = resolve(workdir, "bin");
+  const runnerTemp = resolve(workdir, "runner");
+  mkdirSync(binDir);
+  mkdirSync(runnerTemp);
+  writeFileSync(
+    resolve(binDir, "gh"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "run" && "$2" == "download" ]]; then
+  exit 0
+fi
+if [[ "$1" == "api" ]]; then
+  printf '%s\\n' "$MOCK_PREFLIGHT_RUN"
+  exit 0
+fi
+exit 64
+`,
+    { mode: 0o755 },
+  );
+  return spawnSync("bash", ["-c", script], {
+    cwd: workdir,
+    encoding: "utf8",
+    env: {
+      GITHUB_OUTPUT: resolve(workdir, "github-output"),
+      GITHUB_REF: params.currentRef,
+      GITHUB_REPOSITORY: "openclaw/openclaw",
+      MOCK_PREFLIGHT_RUN: JSON.stringify({
+        conclusion: "success",
+        event: "workflow_dispatch",
+        head_branch: params.preflightHeadBranch,
+        head_sha: params.preflightHeadSha,
+        path: ".github/workflows/openclaw-npm-release.yml",
+        run_attempt: 1,
+      }),
+      PATH: `${binDir}:${process.env.PATH}`,
+      PREFLIGHT_RUN_ID: "111",
+      RELEASE_NPM_DIST_TAG: "beta",
+      RELEASE_TAG: "v2026.8.1-beta.3",
+      RUNNER_TEMP: runnerTemp,
+      WORKFLOW_SHA: params.currentWorkflowSha,
+    },
+  });
+}
+
+function runOpenClawNpmPreflightConsumerGuard(params: ProtectedPreflightConsumerParams) {
+  const job = workflowJob(OPENCLAW_NPM_RELEASE_WORKFLOW, "publish_openclaw_npm");
+  const script = workflowStep(job, "Verify preflight run metadata").run;
+  if (!script) {
+    throw new Error("Expected OpenClaw npm preflight consumer guard");
+  }
+  const workdir = tempDirs.make("openclaw-npm-preflight-consumer-");
+  const binDir = resolve(workdir, "bin");
+  mkdirSync(binDir);
+  writeFileSync(
+    resolve(binDir, "gh"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "run" && "$2" == "view" ]]; then
+  printf '%s\\n' "$MOCK_PREFLIGHT_RUN"
+  exit 0
+fi
+if [[ "$1" == "api" ]]; then
+  if [[ "$2" == *"/git/ref/tags/"* ]]; then
+    printf '%s\\n' "$MOCK_REMOTE_TAG_SHA"
+    exit 0
+  fi
+  printf '1\\n'
+  exit 0
+fi
+exit 64
+`,
+    { mode: 0o755 },
+  );
+  writeFileSync(
+    resolve(binDir, "git"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == "rev-parse HEAD" ]]; then
+  printf '%s\\n' "$MOCK_RELEASE_SHA"
+  exit 0
+fi
+if [[ "$*" == *"cat-file -e"* || "$*" == *"merge-base --is-ancestor"* || "$*" == *" fetch "* ]]; then
+  exit 0
+fi
+exit 64
+`,
+    { mode: 0o755 },
+  );
+  writeFileSync(
+    resolve(binDir, "node"),
+    `#!/usr/bin/env bash
+cat >/dev/null
+`,
+    { mode: 0o755 },
+  );
+  return spawnSync("bash", ["-c", script], {
+    cwd: workdir,
+    encoding: "utf8",
+    env: {
+      EXPECTED_EXTENDED_STABLE_BRANCH: "",
+      GITHUB_OUTPUT: resolve(workdir, "github-output"),
+      GITHUB_REPOSITORY: "openclaw/openclaw",
+      MOCK_PREFLIGHT_RUN: JSON.stringify({
+        conclusion: "success",
+        event: "workflow_dispatch",
+        headBranch: params.preflightHeadBranch,
+        headSha: params.preflightHeadSha,
+        url: "https://github.com/openclaw/openclaw/actions/runs/111",
+        workflowName: "OpenClaw NPM Release",
+      }),
+      MOCK_RELEASE_SHA: "d".repeat(40),
+      MOCK_REMOTE_TAG_SHA: params.liveTagSha ?? params.currentWorkflowSha,
+      PATH: `${binDir}:${process.env.PATH}`,
+      PREFLIGHT_RUN_ID: "111",
+      RELEASE_NPM_DIST_TAG: "beta",
+      RUN_KIND: "preflight",
+      WORKFLOW_REF: params.currentRef,
+      WORKFLOW_SHA: params.currentWorkflowSha,
     },
   });
 }
@@ -1224,6 +1426,8 @@ describe("package acceptance workflow", () => {
     expect(dispatch.run).toContain(
       '-f plugin_sdk_api_acknowledgement="${PLUGIN_SDK_API_ACKNOWLEDGEMENT}"',
     );
+    expect(dispatch.run).toContain('--trusted-workflow-ref "${PARENT_WORKFLOW_BRANCH}"');
+    expect(dispatch.run).toContain('--trusted-workflow-full-ref "${GITHUB_REF}"');
   });
 
   it("requires selected plugin names or complete immutable evidence for broad publication", () => {
@@ -1318,11 +1522,11 @@ describe("package acceptance workflow", () => {
     expect(verifyStep.run).not.toContain("npm view openclaw@extended-stable version");
   });
 
-  it("accepts only main-reachable protected SHA-pinned release publish tags", () => {
+  it("accepts only exact protected SHA-pinned release publish tags", () => {
     const workflowSha = "a".repeat(40);
     const binDir = tempDirs.make("release-publish-gh-");
     const ghPath = `${binDir}/gh`;
-    writeFileSync(ghPath, `#!/bin/sh\nprintf '%s\\n' "\${MOCK_MERGE_BASE_SHA}"\n`);
+    writeFileSync(ghPath, `#!/bin/sh\nprintf '%s\\n' "\${MOCK_REMOTE_TAG_SHA}"\n`);
     chmodSync(ghPath, 0o755);
     const pinnedEnv = {
       GITHUB_REPOSITORY: "openclaw/openclaw",
@@ -1333,7 +1537,7 @@ describe("package acceptance workflow", () => {
 
     const valid = runReleasePublishInputValidation({
       ...pinnedEnv,
-      MOCK_MERGE_BASE_SHA: workflowSha,
+      MOCK_REMOTE_TAG_SHA: workflowSha,
     });
     expect(valid.status, valid.stderr).toBe(0);
 
@@ -1346,13 +1550,13 @@ describe("package acceptance workflow", () => {
       "SHA-pinned release publish tag does not match workflow SHA",
     );
 
-    const unreachable = runReleasePublishInputValidation({
+    const moved = runReleasePublishInputValidation({
       ...pinnedEnv,
-      MOCK_MERGE_BASE_SHA: "c".repeat(40),
+      MOCK_REMOTE_TAG_SHA: "c".repeat(40),
     });
-    expect(unreachable.status).toBe(1);
-    expect(unreachable.stderr).toContain(
-      "SHA-pinned release publish tag revision is not reachable from current main",
+    expect(moved.status).toBe(1);
+    expect(moved.stderr).toContain(
+      "SHA-pinned release publish tag does not resolve to workflow SHA",
     );
   });
 
@@ -1363,6 +1567,7 @@ describe("package acceptance workflow", () => {
     const valid = runOpenClawNpmTrustedRefGuard({
       WORKFLOW_REF: protectedRef,
       WORKFLOW_SHA: workflowSha,
+      MOCK_REMOTE_TAG_SHA: workflowSha,
     });
     expect(valid.status, valid.stderr).toBe(0);
 
@@ -1375,26 +1580,327 @@ describe("package acceptance workflow", () => {
       "SHA-pinned release-publish tag does not match the OpenClaw npm workflow SHA",
     );
 
-    const unreachable = runOpenClawNpmTrustedRefGuard({
-      MOCK_WORKFLOW_ANCESTOR: "false",
+    const moved = runOpenClawNpmTrustedRefGuard({
+      MOCK_REMOTE_TAG_SHA: "c".repeat(40),
       WORKFLOW_REF: protectedRef,
       WORKFLOW_SHA: workflowSha,
     });
-    expect(unreachable.status).toBe(1);
-    expect(unreachable.stderr).toContain(
-      "SHA-pinned OpenClaw npm workflow revision is not reachable from current main",
+    expect(moved.status).toBe(1);
+    expect(moved.stderr).toContain(
+      "SHA-pinned release-publish tag does not resolve to the OpenClaw npm workflow SHA",
     );
   });
 
-  it("allows protected SHA-pinned tooling tags to consume token-bootstrap evidence", () => {
+  it("runs plugin npm preflight trust from the exact workflow tooling checkout", () => {
+    const job = workflowJob(PLUGIN_NPM_RELEASE_WORKFLOW, "preview_plugins_npm");
+    const checkout = workflowStep(job, "Checkout trusted preflight tooling");
+    const identity = workflowStep(job, "Verify trusted preflight tooling identity");
+    const target = workflowStep(job, "Validate ref is on a trusted publish branch");
+
+    expect(checkout.if).toBe("github.event_name == 'workflow_dispatch' && inputs.preflight_only");
+    expect(checkout.with).toMatchObject({
+      "fetch-depth": 1,
+      path: ".release-tooling",
+      "persist-credentials": false,
+      ref: "${{ github.workflow_sha }}",
+      "sparse-checkout": "scripts/lib/record-shared.mjs\nscripts/release-tooling-identity.mjs\n",
+      "sparse-checkout-cone-mode": false,
+    });
+    expect(identity.if).toBe("github.event_name == 'workflow_dispatch' && inputs.preflight_only");
+    expect(identity.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+      WORKFLOW_FULL_REF: "${{ github.ref }}",
+      WORKFLOW_REF: "${{ github.ref_name }}",
+      WORKFLOW_SHA: "${{ github.workflow_sha }}",
+    });
+    expect(identity.run).toContain(
+      "node .release-tooling/scripts/release-tooling-identity.mjs verify",
+    );
+    expect(target.run).not.toContain('WORKFLOW_REF}" != "refs/heads/main');
+    expect(target.run).not.toContain('git merge-base --is-ancestor "${WORKFLOW_SHA}" origin/main');
+  });
+
+  it("accepts only the live exact lightweight protected tag for plugin npm preflight", () => {
+    const workflowSha = "a".repeat(40);
+    const workflowRef = `release-publish/${workflowSha.slice(0, 12)}-123`;
+    const workflowFullRef = `refs/tags/${workflowRef}`;
+    const baseEnv = {
+      MOCK_TAG_FULL_REF: workflowFullRef,
+      MOCK_TAG_SHA: workflowSha,
+      WORKFLOW_FULL_REF: workflowFullRef,
+      WORKFLOW_REF: workflowRef,
+      WORKFLOW_SHA: workflowSha,
+    };
+
+    const valid = runPluginNpmPreflightToolingGuard(baseEnv);
+    expect(valid.status, valid.stderr).toBe(0);
+
+    for (const rejected of [
+      {
+        name: "moved tag",
+        env: { ...baseEnv, MOCK_TAG_SHA: "b".repeat(40) },
+        error: "missing, moved, annotated, or bound to the wrong SHA",
+      },
+      {
+        name: "annotated tag",
+        env: { ...baseEnv, MOCK_TAG_TYPE: "tag" },
+        error: "missing, moved, annotated, or bound to the wrong SHA",
+      },
+      {
+        name: "wrong SHA prefix",
+        env: {
+          ...baseEnv,
+          MOCK_TAG_FULL_REF: `refs/tags/release-publish/${"b".repeat(12)}-123`,
+          WORKFLOW_FULL_REF: `refs/tags/release-publish/${"b".repeat(12)}-123`,
+          WORKFLOW_REF: `release-publish/${"b".repeat(12)}-123`,
+        },
+        error: "SHA prefix does not match",
+      },
+      {
+        name: "same-name branch",
+        env: { ...baseEnv, WORKFLOW_FULL_REF: `refs/heads/${workflowRef}` },
+        error: "exact tag full ref",
+      },
+    ]) {
+      const result = runPluginNpmPreflightToolingGuard(rejected.env);
+      expect(result.status, rejected.name).toBe(1);
+      expect(result.stderr, rejected.name).toContain(rejected.error);
+    }
+  });
+
+  it("binds aggregate preflight consumption to the exact protected tooling tag and SHA", () => {
+    const workflowSha = "a".repeat(40);
+    const workflowTag = `release-publish/${workflowSha.slice(0, 12)}-123`;
+    const valid = runReleasePublishPreflightConsumerGuard({
+      currentRef: `refs/tags/${workflowTag}`,
+      currentWorkflowSha: workflowSha,
+      preflightHeadBranch: workflowTag,
+      preflightHeadSha: workflowSha,
+    });
+    expect(valid.status, valid.stderr).toBe(0);
+
+    for (const rejected of [
+      {
+        currentRef: `refs/tags/${workflowTag}`,
+        preflightHeadBranch: `${workflowTag}-wrong`,
+        preflightHeadSha: workflowSha,
+      },
+      {
+        currentRef: `refs/tags/${workflowTag}`,
+        preflightHeadBranch: workflowTag,
+        preflightHeadSha: "b".repeat(40),
+      },
+      {
+        currentRef: `refs/heads/${workflowTag}`,
+        preflightHeadBranch: workflowTag,
+        preflightHeadSha: workflowSha,
+      },
+    ]) {
+      const result = runReleasePublishPreflightConsumerGuard({
+        ...rejected,
+        currentWorkflowSha: workflowSha,
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("exact protected release-publish tag");
+    }
+  });
+
+  it("binds core npm preflight consumption to the exact protected tooling tag and SHA", () => {
+    const workflowSha = "a".repeat(40);
+    const workflowTag = `release-publish/${workflowSha.slice(0, 12)}-123`;
+    const valid = runOpenClawNpmPreflightConsumerGuard({
+      currentRef: `refs/tags/${workflowTag}`,
+      currentWorkflowSha: workflowSha,
+      preflightHeadBranch: workflowTag,
+      preflightHeadSha: workflowSha,
+    });
+    expect(valid.status, valid.stderr).toBe(0);
+
+    for (const rejected of [
+      {
+        currentRef: `refs/tags/${workflowTag}`,
+        preflightHeadBranch: `${workflowTag}-wrong`,
+        preflightHeadSha: workflowSha,
+      },
+      {
+        currentRef: `refs/tags/${workflowTag}`,
+        preflightHeadBranch: workflowTag,
+        preflightHeadSha: "b".repeat(40),
+      },
+      {
+        currentRef: `refs/heads/${workflowTag}`,
+        preflightHeadBranch: workflowTag,
+        preflightHeadSha: workflowSha,
+      },
+    ]) {
+      const result = runOpenClawNpmPreflightConsumerGuard({
+        ...rejected,
+        currentWorkflowSha: workflowSha,
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("exact protected release-publish tag");
+    }
+  });
+
+  it("rejects a protected tooling tag moved after request validation and environment approval", () => {
+    const workflowSha = "a".repeat(40);
+    const workflowTag = `release-publish/${workflowSha.slice(0, 12)}-123`;
+    const protectedRef = `refs/tags/${workflowTag}`;
+    const predecessor = runOpenClawNpmTrustedRefGuard({
+      MOCK_REMOTE_TAG_SHA: workflowSha,
+      WORKFLOW_REF: protectedRef,
+      WORKFLOW_SHA: workflowSha,
+    });
+    expect(predecessor.status, predecessor.stderr).toBe(0);
+
+    const consumer = runOpenClawNpmPreflightConsumerGuard({
+      currentRef: protectedRef,
+      currentWorkflowSha: workflowSha,
+      liveTagSha: "b".repeat(40),
+      preflightHeadBranch: workflowTag,
+      preflightHeadSha: workflowSha,
+    });
+    expect(consumer.status).toBe(1);
+    expect(consumer.stderr).toContain(
+      "Protected release-publish tag moved after npm-release approval",
+    );
+  });
+
+  it("uses the canonical tooling identity verifier for token-bootstrap evidence", () => {
     const publishJob = workflowJob(PLUGIN_NPM_RELEASE_WORKFLOW, "publish_plugins_npm");
     const evidenceStep = workflowStep(publishJob, "Consume immutable npm publication evidence");
 
-    expect(evidenceStep.run).toContain("^refs/tags/release-publish/([a-f0-9]{12})-[1-9][0-9]*$");
-    expect(evidenceStep.run).toContain(
-      '[[ "$WORKFLOW_REF" == "refs/heads/main" || "$sha_pinned_release_publish" == "true" ]]',
+    expect(evidenceStep.env?.RELEASE_PUBLISH_RUN_ID).toBe("${{ inputs.release_publish_run_id }}");
+    expect(evidenceStep.env?.RELEASE_PUBLISH_RUN_ATTEMPT).toBe(
+      "${{ inputs.release_publish_run_attempt }}",
     );
-    expect(evidenceStep.run).toContain('git merge-base --is-ancestor "$WORKFLOW_SHA" origin/main');
+    expect(evidenceStep.env?.RELEASE_PUBLISH_PARENT_STATE_POLICY).toBe(
+      "${{ inputs.release_publish_run_id != '' && (github.actor == 'github-actions[bot]' && 'active' || 'manual-recovery') || '' }}",
+    );
+    expect(evidenceStep.run).toContain("node scripts/release-tooling-identity.mjs verify");
+    expect(evidenceStep.run).toContain('--workflow-ref "$WORKFLOW_HEAD_BRANCH"');
+    expect(evidenceStep.run).toContain('--workflow-full-ref "$WORKFLOW_REF"');
+    expect(evidenceStep.run).toContain('--workflow-sha "$WORKFLOW_SHA"');
+    expect(evidenceStep.run).toContain('--release-publish-run-id "$RELEASE_PUBLISH_RUN_ID"');
+    expect(evidenceStep.run).toContain(
+      '--release-publish-run-attempt "$RELEASE_PUBLISH_RUN_ATTEMPT"',
+    );
+    expect(evidenceStep.run).toContain(
+      '--release-publish-parent-state-policy "$RELEASE_PUBLISH_PARENT_STATE_POLICY"',
+    );
+    expect(evidenceStep.run).not.toContain("--allow-prevalidated-ref");
+  });
+
+  it("revalidates protected tooling immediately before every core and plugin npm publish", () => {
+    const corePublish = workflowStep(
+      workflowJob(OPENCLAW_NPM_RELEASE_WORKFLOW, "publish_openclaw_npm"),
+      "Publish",
+    );
+    expect(corePublish.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+      RELEASE_PUBLISH_PARENT_STATE_POLICY:
+        "${{ inputs.release_publish_run_id != '' && (github.actor == 'github-actions[bot]' && 'active' || 'manual-recovery') || '' }}",
+      RELEASE_PUBLISH_RUN_ATTEMPT: "${{ inputs.release_publish_run_attempt }}",
+      RELEASE_PUBLISH_RUN_ID: "${{ inputs.release_publish_run_id }}",
+      WORKFLOW_FULL_REF: "${{ github.ref }}",
+      WORKFLOW_REF: "${{ github.ref_name }}",
+      WORKFLOW_SHA: "${{ github.workflow_sha }}",
+    });
+    expect(corePublish.run).toContain(
+      "node trusted-workflow/scripts/release-tooling-identity.mjs verify",
+    );
+    expect(corePublish.run).toContain("--allow-prevalidated-ref");
+    expect(corePublish.run).toContain(
+      '--release-publish-run-attempt "$RELEASE_PUBLISH_RUN_ATTEMPT"',
+    );
+    expect(corePublish.run).toContain(
+      '--release-publish-parent-state-policy "$RELEASE_PUBLISH_PARENT_STATE_POLICY"',
+    );
+    expect(corePublish.run).toMatch(
+      /verify_release_tooling_identity\s+bash scripts\/openclaw-npm-publish\.sh --publish "\.\/\$\{tarball_path\}"/u,
+    );
+    expect(corePublish.run).toMatch(
+      /verify_release_tooling_identity\s+bash scripts\/openclaw-npm-publish\.sh --publish "\$\{publish_target\}"/u,
+    );
+
+    const pluginPublishJob = workflowJob(PLUGIN_NPM_RELEASE_WORKFLOW, "publish_plugins_npm");
+    const oidcPublish = workflowStep(pluginPublishJob, "Publish with trusted publisher");
+    expect(oidcPublish.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+      OPENCLAW_RELEASE_PUBLISH_RUN_ATTEMPT: "${{ inputs.release_publish_run_attempt }}",
+      OPENCLAW_RELEASE_PUBLISH_RUN_ID: "${{ inputs.release_publish_run_id }}",
+      OPENCLAW_RELEASE_PUBLISH_PARENT_STATE_POLICY:
+        "${{ inputs.release_publish_run_id != '' && (github.actor == 'github-actions[bot]' && 'active' || 'manual-recovery') || '' }}",
+      OPENCLAW_RELEASE_TOOLING_ALLOW_PREVALIDATED_REF: "true",
+      OPENCLAW_RELEASE_TOOLING_FULL_REF: "${{ github.ref }}",
+      OPENCLAW_RELEASE_TOOLING_IDENTITY_REQUIRED: "true",
+      OPENCLAW_RELEASE_TOOLING_REF: "${{ github.ref_name }}",
+      OPENCLAW_RELEASE_TOOLING_REPOSITORY: "${{ github.repository }}",
+      OPENCLAW_RELEASE_TOOLING_SHA: "${{ github.workflow_sha }}",
+    });
+
+    const bootstrapPublish = workflowStep(pluginPublishJob, "Publish approved bootstrap tarball");
+    expect(bootstrapPublish.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+      RELEASE_PUBLISH_PARENT_STATE_POLICY:
+        "${{ inputs.release_publish_run_id != '' && (github.actor == 'github-actions[bot]' && 'active' || 'manual-recovery') || '' }}",
+      RELEASE_PUBLISH_RUN_ATTEMPT: "${{ inputs.release_publish_run_attempt }}",
+      RELEASE_PUBLISH_RUN_ID: "${{ inputs.release_publish_run_id }}",
+      WORKFLOW_FULL_REF: "${{ github.ref }}",
+      WORKFLOW_REF: "${{ github.ref_name }}",
+      WORKFLOW_SHA: "${{ github.workflow_sha }}",
+    });
+    const identityIndex =
+      bootstrapPublish.run?.indexOf("node scripts/release-tooling-identity.mjs verify") ?? -1;
+    const publishIndex = bootstrapPublish.run?.indexOf('npm publish "$TARBALL_PATH"') ?? -1;
+    expect(identityIndex).toBeGreaterThan(-1);
+    expect(publishIndex).toBeGreaterThan(identityIndex);
+    expect(bootstrapPublish.run?.slice(identityIndex, publishIndex)).not.toContain("npm view");
+    expect(bootstrapPublish.run).toContain(
+      '--release-publish-parent-state-policy "$RELEASE_PUBLISH_PARENT_STATE_POLICY"',
+    );
+
+    const pluginWrapper = readFileSync("scripts/plugin-npm-publish.sh", "utf8");
+    expect(pluginWrapper).toContain(
+      '--release-publish-parent-state-policy "${OPENCLAW_RELEASE_PUBLISH_PARENT_STATE_POLICY:-}"',
+    );
+    const distTagIndex = pluginWrapper.indexOf(
+      'npm dist-tag add "${package_name}@${package_version}"',
+    );
+    const distTagIdentityIndex = pluginWrapper.lastIndexOf(
+      "verify_release_tooling_identity",
+      distTagIndex,
+    );
+    expect(distTagIdentityIndex).toBeGreaterThan(-1);
+    expect(distTagIndex).toBeGreaterThan(distTagIdentityIndex);
+  });
+
+  it("binds release evidence validation to the exact trusted workflow ref", () => {
+    for (const [workflowPath, jobName, stepName] of [
+      [
+        RELEASE_PUBLISH_WORKFLOW,
+        "resolve_release_target",
+        "Validate full release validation manifest",
+      ],
+      [
+        OPENCLAW_NPM_RELEASE_WORKFLOW,
+        "publish_openclaw_npm",
+        "Verify full release validation evidence",
+      ],
+    ] as const) {
+      const step = workflowStep(workflowJob(workflowPath, jobName), stepName);
+      expect(step.env).toMatchObject({
+        TRUSTED_WORKFLOW_FULL_REF: "${{ github.ref }}",
+        TRUSTED_WORKFLOW_REF: "${{ github.ref_name }}",
+        TRUSTED_WORKFLOW_SHA: "${{ github.workflow_sha }}",
+      });
+      expect(step.run).toContain("^refs/tags/release-publish/[a-f0-9]{12}-[1-9][0-9]*$");
+      expect(step.run).toContain('TRUSTED_MAIN_REF="${trusted_workflow_commit_ref}"');
+      expect(step.run).toContain('--trusted-workflow-ref "$TRUSTED_WORKFLOW_REF"');
+      expect(step.run).toContain('--trusted-workflow-full-ref "$TRUSTED_WORKFLOW_FULL_REF"');
+      expect(step.run).toContain('--trusted-workflow-sha "$TRUSTED_WORKFLOW_SHA"');
+      expect(step.run).toContain('--verifier-source-sha "$');
+    }
   });
 
   it("retries child environment approval when deployment propagation lags", () => {
@@ -1703,7 +2209,7 @@ describe("package acceptance workflow", () => {
     expect(setupPnpmAction).toContain('case "$package_manager" in');
     expect(setupPnpmAction).toContain('corepack prepare "$package_manager" --activate');
     expect(setupPnpmAction).toContain(
-      "if: ${{ inputs.use-actions-cache == 'true' && runner.os != 'Windows' }}",
+      "if: ${{ inputs.cache-mode != 'off' && runner.os != 'Windows' }}",
     );
     expect(setupPnpmAction).toContain(
       "key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}-${{ hashFiles(inputs.package-manager-file) }}-${{ hashFiles(inputs.lockfile-path) }}",
@@ -3928,7 +4434,7 @@ describe("package artifact reuse", () => {
     expect(workflow).not.toContain("PNPM_CONFIG_VIRTUAL_STORE_DIR");
     expect(setupNodeWith).not.toHaveProperty("dependency-cache");
     expect(setupNodeWith).not.toHaveProperty("sticky-disk");
-    expect(setupNodeWith["use-actions-cache"]).toBe("true");
+    expect(setupNodeWith["cache-mode"]).toBe("restore");
     expect(checkTestboxJob["timeout-minutes"]).toBe(
       "${{ fromJSON(inputs.timeout_minutes || '120') }}",
     );
@@ -5011,9 +5517,9 @@ describe("package artifact reuse", () => {
     expect(job["runs-on"]).toBe("blacksmith-32vcpu-ubuntu-2404");
     expect(job.env?.OPENCLAW_DOCKER_ALL_RELEASE_PROFILE).toBe("${{ inputs.release_test_profile }}");
     expect(setupNode.with).toMatchObject({
+      "cache-mode": "off",
       "install-bun": "false",
       "install-deps": "false",
-      "use-actions-cache": "false",
     });
   });
 
@@ -5174,6 +5680,7 @@ describe("package artifact reuse", () => {
       resolveTargetJob,
       "Checkout target package manifest",
     );
+    const toolingIdentity = workflowStep(resolveTargetJob, "Resolve trusted workflow identity");
     const releaseInputValidation = workflowStep(resolveTargetJob, "Validate release inputs");
     const evidenceReuseStep = workflowStep(evidenceReuseJob, "Find reusable validation evidence");
     const releaseChecksDispatchStep = workflowStep(
@@ -5189,6 +5696,14 @@ describe("package artifact reuse", () => {
         default: false,
         type: "boolean",
       },
+      trusted_workflow_json: {
+        default: "",
+        required: false,
+        type: "string",
+      },
+    });
+    expect(readWorkflow(FULL_RELEASE_VALIDATION_WORKFLOW).env).toMatchObject({
+      RELEASE_ISOLATION_TOOLING_CONTRACT: "2",
     });
     expect(workflow).toContain("CHILD_WORKFLOW_REF: ${{ github.ref_name }}");
     expect(workflow).toContain('gh workflow run "$workflow" --ref "$CHILD_WORKFLOW_REF" "$@" 2>&1');
@@ -5202,6 +5717,23 @@ describe("package artifact reuse", () => {
     expect(resolveTargetSteps.indexOf(targetManifestCheckout)).toBeLessThan(
       resolveTargetSteps.indexOf(releaseInputValidation),
     );
+    expect(resolveTargetJob.outputs?.trusted_workflow_json).toBe(
+      "${{ steps.tooling_identity.outputs.json }}",
+    );
+    expect(toolingIdentity.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+      REQUESTED_IDENTITY_JSON: "${{ inputs.trusted_workflow_json }}",
+      WORKFLOW_CONTRACT: "${{ env.RELEASE_ISOLATION_TOOLING_CONTRACT }}",
+      WORKFLOW_FULL_REF: "${{ github.ref }}",
+      WORKFLOW_REF: "${{ github.ref_name }}",
+      WORKFLOW_SHA: "${{ github.sha }}",
+    });
+    expectTextToIncludeAll(toolingIdentity.run, [
+      "node workflow/scripts/release-tooling-identity.mjs resolve",
+      '--workflow-contract "$WORKFLOW_CONTRACT"',
+      '--requested-identity-json "$REQUESTED_IDENTITY_JSON"',
+      'echo "json=${identity}"',
+    ]);
     expectTextToIncludeAll(releaseInputValidation.run, [
       'target_version="$(jq -er',
       "does not belong to release branch",
@@ -5227,6 +5759,7 @@ describe("package artifact reuse", () => {
       NPM_TELEGRAM_PROVIDER_MODE: "${{ inputs.npm_telegram_provider_mode }}",
       NPM_TELEGRAM_SCENARIO: "${{ inputs.npm_telegram_scenario }}",
       SKIP_PACKAGE_TELEGRAM_E2E: "${{ inputs.skip_package_telegram_e2e }}",
+      TRUSTED_WORKFLOW_JSON: "${{ needs.resolve_target.outputs.trusted_workflow_json }}",
     });
     expectTextToIncludeAll(evidenceReuseStep.run, [
       "npmTelegramPackageSpec: $npmTelegramPackageSpec",
@@ -5234,6 +5767,12 @@ describe("package artifact reuse", () => {
       "npmTelegramScenario: $npmTelegramScenario",
       "skipPackageTelegramE2e: $skipPackageTelegramE2e",
       "allowUnreleasedChangelog: $allowUnreleasedChangelog",
+      'trusted_workflow_ref="$(jq -er',
+      'trusted_workflow_full_ref="$(jq -er',
+      'trusted_workflow_sha="$(jq -er',
+      '--trusted-workflow-ref "$trusted_workflow_ref"',
+      '--trusted-workflow-full-ref "$trusted_workflow_full_ref"',
+      '--trusted-workflow-sha "$trusted_workflow_sha"',
     ]);
     expect(targetSummaryStep.env).toMatchObject({
       SKIP_PACKAGE_TELEGRAM_E2E: "${{ inputs.skip_package_telegram_e2e }}",
@@ -6214,14 +6753,14 @@ describe("package artifact reuse", () => {
     expect(trustedTooling.env?.WORKFLOW_SHA).toBe("${{ github.sha }}");
     expect(validateManifest.env).toMatchObject({
       RUN_JSON_FILE: "${{ runner.temp }}/full-release-validation-run.json",
-      TRUSTED_MAIN_REF: "refs/remotes/origin/main",
+      TRUSTED_WORKFLOW_FULL_REF: "${{ github.ref }}",
+      TRUSTED_WORKFLOW_REF: "${{ github.ref_name }}",
       VALIDATOR_FILE:
         "${{ runner.temp }}/release-validation-tooling/validate-full-release-validation-evidence.mjs",
       STRICT_VALIDATOR_FILE: "${{ runner.temp }}/release-validation-tooling/release-ci-summary.mjs",
     });
-    expect(validateManifest.run).toContain(
-      'MANIFEST_FILE="$manifest" node "$VALIDATOR_FILE" < "$RUN_JSON_FILE"',
-    );
+    expect(validateManifest.run).toContain('MANIFEST_FILE="$manifest"');
+    expect(validateManifest.run).toContain('node "$VALIDATOR_FILE" < "$RUN_JSON_FILE"');
     expect(publishDownload.with?.name).toBe(
       "full-release-validation-${{ inputs.full_release_validation_run_id }}-${{ needs.resolve_release_target.outputs.full_release_validation_run_attempt }}",
     );
@@ -6661,6 +7200,28 @@ describe("package artifact reuse", () => {
       contents: "read",
       "id-token": "write",
     });
+    expect(clawHubPublish.with?.trusted_tooling_identity_json).toBeUndefined();
+    const clawHubPreview = workflowJob(PLUGIN_CLAWHUB_RELEASE_WORKFLOW, "preview_plugins_clawhub");
+    expect(
+      readWorkflow(PLUGIN_CLAWHUB_RELEASE_WORKFLOW).on?.workflow_dispatch?.inputs
+        ?.release_publish_run_attempt,
+    ).toBeUndefined();
+    expect(
+      readWorkflow(PLUGIN_CLAWHUB_RELEASE_WORKFLOW).on?.workflow_dispatch?.inputs
+        ?.release_publish_full_ref,
+    ).toBeUndefined();
+    expect(
+      readWorkflow(PLUGIN_CLAWHUB_RELEASE_WORKFLOW).on?.workflow_dispatch?.inputs
+        ?.release_publish_workflow_sha,
+    ).toBeUndefined();
+    expect(clawHubPreview.outputs?.trusted_tooling_identity_json).toBeUndefined();
+    const publishOrchestration = workflowStep(releasePublishJob, "Dispatch publish workflows");
+    expect(publishOrchestration.env?.PARENT_WORKFLOW_FULL_REF).toBeUndefined();
+    expect(publishOrchestration.run).toContain(
+      'wait_for_run_background plugin-clawhub-release.yml "${plugin_clawhub_run_id}" "${TARGET_SHA}"',
+    );
+    expect(publishOrchestration.run).not.toContain("release_publish_full_ref");
+    expect(publishOrchestration.run).not.toContain("release_publish_workflow_sha");
     expect(clawHubBootstrapValidation.environment).toBe("clawhub-plugin-bootstrap");
     expect(clawHubBootstrapPublish.environment).toBe("clawhub-plugin-bootstrap");
 

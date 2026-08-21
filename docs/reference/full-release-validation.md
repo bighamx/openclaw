@@ -14,8 +14,9 @@ whole release. Run release preparation before freezing the Code SHA; it
 refreshes Control UI locale output when the background bot has not landed it
 yet, then enforces the same strict zero-fallback check used by release CI.
 
-Freeze the product-complete pre-changelog commit as the **Code SHA** and select
-one trusted workflow commit as the **Tooling SHA**, then run:
+Freeze the product-complete pre-changelog commit and its target context as the
+**Code SHA/ref**, and select one trusted workflow commit and context as the
+**Tooling SHA/ref**, then run:
 
 ```bash
 TOOLING_SHA="<recorded-full-main-ancestor-sha>"
@@ -25,8 +26,10 @@ pnpm ci:full-release \
   --workflow-sha "$TOOLING_SHA"
 ```
 
-Record the Tooling SHA once for the release and reuse it for later Code-SHA,
-Release-SHA, and focused reruns. Do not refresh it from moving `main`.
+Record the candidate SHA/ref and Tooling SHA/ref once for the release and reuse
+them for later Code-SHA, Release-SHA, and focused reruns. Main lineage
+authorizes the initial Tooling SHA selection; it does not authorize refreshing
+the tooling from moving `main`.
 
 `provider` also accepts `anthropic` or `minimax` for cross-OS onboarding and the
 end-to-end agent turn. Regular `release/*` targets accept only the branch's final
@@ -52,6 +55,17 @@ from current `origin/main`. The helper rejects a pinned Tooling SHA that does
 not declare the current release-isolation contract or the `expected_sha`
 dispatch input; it never silently substitutes newer tooling. The workflow never
 creates or updates repository refs itself.
+
+The main-lineage requirement above applies to the initial validation tooling
+selection. Once release publication binds that Tooling SHA to an exact protected
+lightweight `release-publish/<12sha>-<provenance-run>` tag, the live tag-to-SHA
+mapping remains authoritative even when `main` advances. The suffix records
+tag-creation provenance, not the current parent run id. Publication must re-read
+that exact tag and revalidate the exact parent run tuple immediately before each
+core or plugin npm publish or dist-tag mutation. A missing, moved, annotated, or
+wrong-SHA tag, parent mismatch, or disallowed parent state fails closed. Other
+privileged writers require their dependent enforcement changes before the
+protected-tag publication route is globally complete.
 
 ## Extended-stable exception
 

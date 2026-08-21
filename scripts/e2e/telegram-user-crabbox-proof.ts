@@ -1118,10 +1118,26 @@ async function startLocalSutDaemon(params: {
       throw new Error("Container-isolated fork SUT does not support the MCP App Funnel fixture.");
     }
     const sut = await startMantisSut({
+      configPatch: {
+        ...(params.humanDelayFixedMs === undefined
+          ? {}
+          : {
+              agents: {
+                defaults: {
+                  humanDelay: {
+                    maxMs: params.humanDelayFixedMs,
+                    minMs: params.humanDelayFixedMs,
+                    mode: "custom",
+                  },
+                },
+              },
+            }),
+        ...(params.linkPreview === undefined
+          ? {}
+          : { channels: { telegram: { linkPreview: params.linkPreview } } }),
+      },
       gatewayPort: params.gatewayPort,
       groupId: params.groupId,
-      humanDelayFixedMs: params.humanDelayFixedMs,
-      linkPreview: params.linkPreview,
       mockPort: params.mockPort,
       mockResponseChunkDelayMs: params.mockResponseChunkDelayMs,
       mockResponseText: params.mockResponseText,
@@ -1284,6 +1300,7 @@ async function createCroppedMotionPreview(params: {
   videoPath: string;
 }) {
   return await createSharedCroppedMotionPreview({
+    crabboxBin: params.opts.crabboxBin,
     crop: params.crop,
     croppedGifPath: params.croppedGifPath,
     croppedVideoPath: params.croppedVideoPath,
