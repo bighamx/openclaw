@@ -536,7 +536,12 @@ final class NodeAppModel {
     @ObservationIgnored private var backgroundGraceTaskTimer: Task<Void, Never>?
     var backgroundReconnectSuppressed = false
     private var backgroundReconnectLeaseUntil: Date?
-    @ObservationIgnored private var foregroundGatewayResumeCheckInFlight = false
+    @ObservationIgnored private var foregroundGatewayResumeCheckTask: Task<Void, Never>?
+    @ObservationIgnored private var foregroundGatewayResumeGeneration: UInt64 = 0
+    private var foregroundGatewayResumeCheckInFlight: Bool {
+        self.foregroundGatewayResumeCheckTask != nil
+    }
+
     private var lastSignificantLocationWakeAt: Date?
     @ObservationIgnored let watchMessageOutbox = WatchMessageOutbox()
     @ObservationIgnored private var watchMessageFlushInFlight = false
@@ -1060,6 +1065,13 @@ final class NodeAppModel {
     func setScenePhase(_ phase: ScenePhase) {
         let keepTalkActive = UserDefaults.standard.bool(forKey: "talk.background.enabled")
         GatewayDiagnostics.log("node app model: scene phase=\(String(describing: phase))")
+        if phase != .active {
+            // Foreground probes belong to the active admission that started them;
+            // retire that ownership before inactive/background work can be superseded.
+            self.foregroundGatewayResumeGeneration &+= 1
+            self.foregroundGatewayResumeCheckTask?.cancel()
+            self.foregroundGatewayResumeCheckTask = nil
+        }
         switch phase {
         case .background:
             self.isBackgrounded = true
@@ -1131,28 +1143,36 @@ final class NodeAppModel {
                 // On foreground, force a fresh handshake to avoid "connected but dead" states.
                 if backgroundedFor >= 3.0 {
                     shouldStartGatewayHealthMonitor = false
-                    self.foregroundGatewayResumeCheckInFlight = true
-                    Task { [weak self] in
-                        guard let self else { return }
-                        let operatorWasConnected = await MainActor.run { self.operatorConnected }
-                        if operatorWasConnected {
+                    self.foregroundGatewayResumeGeneration &+= 1
+                    let generation = self.foregroundGatewayResumeGeneration
+                    self.foregroundGatewayResumeCheckTask?.cancel()
+                    self.foregroundGatewayResumeCheckTask = Task { @MainActor [weak self] in
+                        guard let self,
+                              self.foregroundGatewayResumeGeneration == generation,
+                              !self.isBackgrounded,
+                              !Task.isCancelled
+                        else { return }
+                        defer {
+                            if self.foregroundGatewayResumeGeneration == generation {
+                                self.foregroundGatewayResumeCheckTask = nil
+                            }
+                        }
+                        if self.operatorConnected {
                             // Prefer keeping the connection if it's healthy; reconnect only when needed.
                             let healthy = await (try? self.operatorGateway.request(
                                 method: "health",
                                 paramsJSON: nil,
                                 timeoutSeconds: Self.foregroundResumeHealthTimeoutSeconds)) != nil
+                            guard self.foregroundGatewayResumeGeneration == generation,
+                                  !self.isBackgrounded,
+                                  !Task.isCancelled
+                            else { return }
                             if healthy {
-                                await MainActor.run {
-                                    self.foregroundGatewayResumeCheckInFlight = false
-                                    self.startGatewayHealthMonitor()
-                                }
+                                self.startGatewayHealthMonitor()
                                 return
                             }
                         }
 
-                        await MainActor.run {
-                            self.foregroundGatewayResumeCheckInFlight = false
-                        }
                         await self.restartGatewaySessionsAfterForegroundStaleConnection()
                     }
                 }
@@ -3712,10 +3732,18 @@ extension NodeAppModel {
     }
 
     func restartGatewaySessionsAfterForegroundStaleConnection() async {
-        guard self.gatewayAutoReconnectEnabled, let cfg = activeGatewayConnectConfig else { return }
+        guard !self.isBackgrounded,
+              !Task.isCancelled,
+              self.gatewayAutoReconnectEnabled,
+              let cfg = activeGatewayConnectConfig
+        else { return }
         let generation = self.gatewayConnectGeneration
+        let foregroundGeneration = self.foregroundGatewayResumeGeneration
         await self.resetGatewaySessionsForForcedReconnect()
-        guard generation == self.gatewayConnectGeneration,
+        guard foregroundGeneration == self.foregroundGatewayResumeGeneration,
+              !self.isBackgrounded,
+              !Task.isCancelled,
+              generation == self.gatewayConnectGeneration,
               self.gatewayAutoReconnectEnabled,
               self.activeGatewayConnectConfig?.hasSameConnectionInputs(as: cfg) == true,
               self.nodeGatewayTask == nil,
@@ -7797,6 +7825,7 @@ extension NodeAppModel {
     }
 
     func handleBackgroundRefreshWake(trigger: String = "bg_app_refresh") async -> Bool {
+        guard !Task.isCancelled else { return false }
         let wakeId = Self.makePushWakeAttemptID()
         let normalizedTrigger = BackgroundAliveBeacon.normalizeTrigger(trigger)
         let receivedMessage =
@@ -7815,7 +7844,7 @@ extension NodeAppModel {
                 + "reason=\(result.reason) "
                 + "durationMs=\(result.durationMs)"
         self.pushWakeLogger.info("\(outcomeMessage, privacy: .public)")
-        return result.handled
+        return !Task.isCancelled && result.handled
     }
 
     func handleSignificantLocationWakeIfNeeded() async {
@@ -9799,6 +9828,9 @@ extension NodeAppModel {
         }
         let now = Date()
         let gatewayConnected = await isGatewayConnected()
+        guard !Task.isCancelled else {
+            return makeResult(false, .unhandled, "cancelled")
+        }
 
         var appliedReconnect = false
         if !gatewayConnected {
@@ -9811,7 +9843,8 @@ extension NodeAppModel {
                 "Wake reconnect begin wakeId=\(wakeId, privacy: .public) stableID=\(cfg.stableID, privacy: .public)")
             self.grantBackgroundReconnectLease(seconds: 30, reason: "wake_\(wakeId)")
             await self.resetGatewaySessionsForForcedReconnect()
-            guard generation == self.gatewayConnectGeneration,
+            guard !Task.isCancelled,
+                  generation == self.gatewayConnectGeneration,
                   self.gatewayAutoReconnectEnabled,
                   self.activeGatewayConnectConfig?.hasSameConnectionInputs(as: cfg) == true
             else {
@@ -9826,7 +9859,7 @@ extension NodeAppModel {
             self.pushWakeLogger.info("Wake reconnect trigger applied wakeId=\(wakeId, privacy: .public)")
 
             let connected = await waitForGatewayConnection(timeoutMs: 12000, pollMs: 250)
-            guard connected else {
+            guard !Task.isCancelled, connected else {
                 return makeResult(appliedReconnect, .unhandled, "connect_timeout")
             }
             guard generation == self.gatewayConnectGeneration else {
@@ -9841,6 +9874,9 @@ extension NodeAppModel {
         }
 
         let beacon = await publishBackgroundAliveBeacon(trigger: trigger)
+        guard !Task.isCancelled else {
+            return makeResult(appliedReconnect, .unhandled, "cancelled")
+        }
         if beacon.handled {
             let successAtMs = Date().timeIntervalSince1970 * 1000
             UserDefaults.standard.set(successAtMs, forKey: Self.backgroundAliveLastSuccessAtMsKey)
