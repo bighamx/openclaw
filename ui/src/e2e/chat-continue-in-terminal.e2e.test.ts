@@ -173,12 +173,16 @@ suite.define(() => {
         });
         await page.goto(controlUiSessionUrl(suite.server.baseUrl, sessionKey));
         const activePane = page.locator("openclaw-chat-pane.chat-pane-cache__pane--active");
-        await activePane.getByText("Mobile session menu proof.", { exact: true }).waitFor();
+        await activePane
+          .getByRole("paragraph")
+          .filter({ hasText: /^Mobile session menu proof\.$/ })
+          .waitFor();
 
         const menuTrigger = activePane.getByRole("button", {
           name: "Actions for Terminal continuation",
         });
-        await menuTrigger.press("Enter");
+        await menuTrigger.click();
+        await expect.poll(() => menuTrigger.getAttribute("aria-expanded")).toBe("true");
         const dropdown = menuTrigger.locator("xpath=ancestor::wa-dropdown");
         for (const label of compactManagementActions) {
           await dropdown.getByText(label, { exact: true }).waitFor({ state: "visible" });
