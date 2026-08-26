@@ -190,6 +190,7 @@ suite.define(() => {
                 label: "Main",
                 model: "gpt-5.5",
                 modelProvider: "openai",
+                permissionMode: "workspace",
                 status: "done",
                 totalTokens: 46_000,
                 totalTokensFresh: true,
@@ -212,6 +213,8 @@ suite.define(() => {
       const effort = composer.locator('[data-chat-thinking-select="true"]');
       const usage = composer.locator('[data-chat-provider-usage="true"]');
       const contextUsage = composer.locator(".context-ring");
+      const permission = composer.locator('[data-chat-permission-select="true"]');
+      const permissionIcon = permission.locator(".chat-controls__permission-icon svg");
       const textarea = composer.locator("textarea");
       const attach = composer.locator(
         'button.agent-chat__input-btn--attach[aria-label="Add attachment"]',
@@ -232,6 +235,18 @@ suite.define(() => {
           fullPage: true,
           path: `${artifactDir}/${fileName}`,
         });
+      };
+      const permissionIconCenterError = async () => {
+        const [triggerBox, iconBox] = await Promise.all([
+          permission.boundingBox(),
+          permissionIcon.boundingBox(),
+        ]);
+        if (!triggerBox || !iconBox) {
+          return Number.POSITIVE_INFINITY;
+        }
+        const x = iconBox.x + iconBox.width / 2 - (triggerBox.x + triggerBox.width / 2);
+        const y = iconBox.y + iconBox.height / 2 - (triggerBox.y + triggerBox.height / 2);
+        return Math.max(Math.abs(x), Math.abs(y));
       };
 
       await expect.poll(() => model.isVisible()).toBe(true);
@@ -271,6 +286,22 @@ suite.define(() => {
       await expect.poll(pickerWidth).toBe(0);
       await voice.hover();
       await expect.poll(pickerWidth).toBeGreaterThanOrEqual(12);
+      const voiceBeforeHold = await voice.boundingBox();
+      expect(voiceBeforeHold).not.toBeNull();
+      await page.mouse.down();
+      await expect
+        .poll(() =>
+          voice.evaluate((node) => node.classList.contains("chat-send-btn--dictation-arming")),
+        )
+        .toBe(true);
+      await expect.poll(() => microphonePicker.isVisible()).toBe(true);
+      await expect.poll(pickerWidth).toBeGreaterThanOrEqual(12);
+      const voiceDuringHold = await voice.boundingBox();
+      expect(voiceDuringHold).not.toBeNull();
+      expect(Math.abs((voiceDuringHold?.x ?? 0) - (voiceBeforeHold?.x ?? 0))).toBeLessThanOrEqual(
+        1,
+      );
+      await page.mouse.up();
       await page.mouse.move(0, 0);
       await expect.poll(pickerWidth).toBe(0);
       await expect
@@ -589,8 +620,8 @@ suite.define(() => {
       ]);
       expect(activeMobileSettingsBox?.width).toBeGreaterThanOrEqual(44);
       expect(activeMobileSettingsBox?.height).toBeGreaterThanOrEqual(44);
-      expect(activeMobileStopBox?.width).toBeGreaterThanOrEqual(44);
-      expect(activeMobileStopBox?.height).toBeGreaterThanOrEqual(44);
+      expect(activeMobileStopBox?.width).toBeCloseTo(32, 2);
+      expect(activeMobileStopBox?.height).toBeCloseTo(32, 2);
       await captureMobileState("mobile-composer-active-stop.png");
       await textarea.press("Escape");
       const abortRequest = await gateway.waitForRequest("chat.abort");
@@ -635,6 +666,12 @@ suite.define(() => {
         .toBeLessThanOrEqual(393);
       await expect.poll(() => mobileModelSettings.isVisible()).toBe(true);
       await expect.poll(() => effort.isVisible()).toBe(false);
+      await permission.click();
+      await expect
+        .poll(() => composer.locator(".chat-controls__permission-option").first().isVisible())
+        .toBe(true);
+      await captureMobileState("mobile-composer-permissions-open.png");
+      await page.keyboard.press("Escape");
       const [
         mobileAttachBox,
         mobileModelSettingsBox,
@@ -664,6 +701,7 @@ suite.define(() => {
       }
       expect(mobileModelSettingsBox.width).toBeGreaterThanOrEqual(44);
       expect(mobileModelSettingsBox.height).toBeGreaterThanOrEqual(44);
+      await expect.poll(permissionIconCenterError).toBeLessThanOrEqual(1);
       expect(mobileModelSettingsBox.x).toBeGreaterThanOrEqual(
         mobileContextBox.x + mobileContextBox.width - 1,
       );
@@ -679,6 +717,9 @@ suite.define(() => {
       expect(mobileSettingsBox.x).toBeGreaterThanOrEqual(0);
       expect(mobileSettingsBox.x + mobileSettingsBox.width).toBeLessThanOrEqual(393);
       expect(mobileAttachBox.x + mobileAttachBox.width).toBeLessThanOrEqual(mobileVoiceBox.x + 1);
+      await page.setViewportSize({ width: 560, height: 852 });
+      await expect.poll(permissionIconCenterError).toBeLessThanOrEqual(1);
+      await page.setViewportSize({ width: 393, height: 852 });
       await expect
         .poll(async () => {
           const [polledAttachBox, polledVoiceBox] = await Promise.all([
