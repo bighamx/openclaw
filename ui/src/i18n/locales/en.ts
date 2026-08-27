@@ -1769,6 +1769,7 @@ export const en: TranslationMap = {
   },
   configView: {
     adminRequired: "Configuration changes require operator.admin access.",
+    channelSettings: "Channel settings",
     categories: {
       core: "Core",
       ai: "Agent Defaults",
@@ -5195,6 +5196,8 @@ export const en: TranslationMap = {
   },
   chat: {
     cloudWorkerFailed: "Runner failed: {error}",
+    errorDetails: "Error details",
+    copyError: "Copy error",
     diskSpace: {
       warningTitle: "Cloud session disk space is low",
       criticalTitle: "Cloud session disk space is critically low",
@@ -5994,8 +5997,6 @@ export const en: TranslationMap = {
       runInterrupted: "Interrupted",
       runStatus: "Run status: {status}",
       compactingContext: "Compacting context...",
-      compacting: "Compacting",
-      compact: "Compact",
       contextCompacted: "Context compacted",
       fallbackActive: "Fallback active: {model}",
       fallbackCleared: "Fallback cleared: {model}",
@@ -6014,7 +6015,6 @@ export const en: TranslationMap = {
       browserAnnotationRemoved: "Browser annotation removed.",
       browserAnnotationUndoUnavailable:
         "Undo is unavailable because the browser annotation limit has been reached.",
-      compactRecommendedContext: "Compact recommended session context",
       removeAttachment: "Remove attachment",
       removeBrowserAnnotation: "Remove browser annotation: {name}",
       addAttachment: "Add attachment",
