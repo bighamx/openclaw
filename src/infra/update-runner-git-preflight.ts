@@ -347,7 +347,13 @@ async function testPreflightCandidates(params: {
       const installName = preferIgnoreScripts
         ? `preflight deps install (ignore scripts) (${shortSha})`
         : `preflight deps install (${shortSha})`;
-      const installEnv = resolveInstallEnv(manager.manager, manager.env);
+      const installEnv = await resolveInstallEnv(
+        manager.manager,
+        manager.env ?? params.defaultCommandEnv,
+        params.worktreeDir,
+        params.runCommand,
+        params.timeoutMs,
+      );
       const installStep = await runStep(
         params.step(installName, installArgv, params.worktreeDir, installEnv),
       );
@@ -361,7 +367,7 @@ async function testPreflightCandidates(params: {
       };
       const buildArgs = managerScriptArgs(manager.manager, "build");
       const buildEnv = resolveBuildEnv(
-        manager.env,
+        manager.env ?? params.defaultCommandEnv,
         path.join(params.gitRoot, ".artifacts", "build-all-cache"),
       );
       const configCommand = ["config", "validate", "--json"];

@@ -93,6 +93,14 @@ Use `pnpm ci:timings`, `pnpm ci:timings:recent`, or `node scripts/ci-run-timings
 
 Run the timing helper locally; there is no in-workflow timing-summary job (a permanently disabled one was removed once the local helper became the tool everyone actually used). For build timing, check the `build-artifacts` job's `Build dist` step: `pnpm build:ci-artifacts` prints `[build-all] phase timings:` and includes `ui:build`; the job also uploads the `startup-memory` artifact.
 
+Local `pnpm build:ci-artifacts` uses the same memory admission as full and package
+builds. The orchestrator passes the resolved heap budget to every child process,
+including the SDK declaration writer, so local builds do not depend on CI's
+`NODE_OPTIONS` setting. The existing policy accounts for host and cgroup limits
+and reserves native-memory headroom. If the default budget cannot fit the build,
+it stops before build steps or cache restoration; `OPENCLAW_TSDOWN_MAX_OLD_SPACE_MB`
+remains the explicit operator override for attempting a different budget.
+
 ## PR context and evidence
 
 External contributor PRs run a PR context and evidence gate from
@@ -146,7 +154,7 @@ The slowest Node test families are split or balanced so each job stays small wit
 - The build-artifact job also persists content-fingerprinted `build-all` step outputs. CI's self-built plugin SDK declarations hash the complete repository-owned TypeScript/JSON source graph, exclude installed and generated directories, and restore both flat declarations and package bridges after `tsdown` clears `dist`. Documentation, workflow, plugin, and other changes outside that graph can reuse the declaration snapshot; source changes rebuild it before the export gate runs. The built Doctor plugin-index proof reuses that exact `dist/` output instead of invoking the E2E harness's fallback TypeScript build a second time.
 - Full declaration builds split `tsdown` into AI, workspace-package, and unified groups. Each group caches declarations only, then still rebuilds runtime JavaScript before restoring those declarations. Core or plugin changes therefore invalidate only the large unified graph, while workspace-package changes conservatively invalidate every dependent declaration group. Public full builds generally use an immutable Actions cache; coarse restore keys seed partial changes, per-group content fingerprints reject stale data, and GitHub's cache quota evicts old generations. The weekly Node 22 lane instead publishes a 14-day artifact after successful `main` runs and restores only artifacts whose immutable producer identity resolves to that workflow on `main`, avoiding quota churn without allowing PR code to write a shared cache. Private-QA declarations are never persisted in Actions caches because cache namespaces are not confidentiality boundaries.
 - `check-additional-*` stripes the supplemental boundary guard list (`scripts/run-additional-boundary-checks.mts`) into one prompt-heavy shard (`check-additional-boundaries-a`, which includes the Codex prompt snapshot drift check) and one combined shard for the remaining stripes (`check-additional-boundaries-bcd`), each running independent guards concurrently and printing per-check timings. Package-boundary compile/canary work stays together, and runtime topology architecture runs separately from the gateway watch coverage embedded in `build-artifacts`.
-- On the 32-vCPU self-hosted build runner, Gateway watch, channel tests, and the core support-boundary shard start together inside `build-artifacts` after `dist/` and `dist-runtime/` are already built. GitHub-hosted fallback runs keep Gateway watch serial so low-core contention cannot consume its readiness deadline. Both paths then run the two built TUI PTY artifact canaries alone; the pull request fallback plus manual and release full matrices own the dedicated full serial shard.
+- On the 32-vCPU self-hosted build runner, Gateway watch, channel tests, and the core support-boundary shard start together inside `build-artifacts` after `dist/` and `dist-runtime/` are already built. GitHub-hosted fallback runs keep Gateway watch serial so low-core contention cannot consume its readiness deadline. Full Node builds then verify Discord component attachment filenames through a serial public Gateway message action, checking the built revision and retaining the named-test JSON result; frozen targets that predate the case explicitly report unavailable proof. Both paths then run the two built TUI PTY artifact canaries alone; the pull request fallback plus manual and release full matrices own the dedicated full serial shard.
 
 Once admitted, canonical Linux CI permits up to 28 concurrent Node test jobs with
 the all-Blacksmith planner and 96 with the `github` or `hybrid` planner profile. The smaller
@@ -290,7 +298,7 @@ Runner choice follows contributor trust, not whether a pull request came from a 
 
 ### Runner backend modes
 
-The `macos-swift` lane runs its first Blacksmith test attempt in parallel. If that attempt fails, its two in-job retries run serially to escape process and timer contention; manual dispatches, hosted fallbacks, and workflow-level reruns remain serial from their first attempt.
+The `macos-swift` lane runs Swift tests once per job. Automatic first attempts use parallel execution; manual dispatches and rerun attempts use serial execution. A failing test fails the job without an in-job retry.
 
 The repository variable `OPENCLAW_CI_RUNNER_BACKEND` controls the runner backend for `ci.yml`:
 
@@ -778,6 +786,17 @@ profile=all|agent-runtime-boundary|config-boundary|core-auth-secrets|channel-run
 
 The narrow profiles are teaching/iteration hooks for running one quality shard in isolation.
 
+On pull requests, the network runtime shard starts with a fast diff scan. Sensitive
+socket imports/calls and proxy-policy tokens, edits to its queries/config/fixtures, and
+changes to the Codex transport select full CodeQL analysis in the same PR job.
+Absent or null patches for monitored non-test sources also select full analysis;
+metadata fetch or parse failures stop shard selection rather than silently skipping it.
+Known ordinary diffs keep the fast path. The full path runs semantic query tests before
+analysis, including coverage of the configured `packages/net-policy/src` directory
+and preservation of exact owner/function allowances and test-path exclusions.
+Full analysis fails the job on any SARIF finding or missing SARIF output; a
+sensitive diff is a routing signal, not a finding.
+
 | Category                                                | Surface                                                                                                                                                           |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/codeql-critical-quality/core-auth-secrets`            | Auth, secrets, sandbox, cron, and gateway security boundary code                                                                                                  |
@@ -899,10 +918,12 @@ run under the same service token, ordered complete events, canonical command
 and bootstrap upload hash, and
 publishes the distinct `openclaw/crabbox-gate` only for the exact proven
 base/head/plan binding. The publisher also proves that the PR base is the merge
-base of its exact protected-main workflow SHA and adds that workflow SHA to the
-strict check summary. The same workflow SHA must remain live `main` after the
-remote run; any intervening main advance fails closed and requires a fresh
-publisher dispatch.
+base of its immutable protected-main workflow SHA and adds that workflow SHA to
+the strict check summary. Before and after the remote run, it proves that a
+candidate live `main` is identical to or descended from that workflow SHA, then
+rereads the ref and requires the candidate to remain unchanged. A descendant
+advance during the long remote run is allowed; movement inside either
+comparison-and-reread window fails closed.
 Retained broker logs are validated when non-empty but are optional because
 released Crabbox v0.46 can report zero retained log bytes after a successful
 run. Only after the publisher and exact-head check succeed does the local
@@ -913,7 +934,7 @@ The fallback never replaces or republishes `openclaw/ci-gate`. Native merge
 verification still rejects draft PRs and permits the server ruleset bypass only
 when the Crabbox check is
 completed successfully by GitHub Actions on the prepared SHA, its bound workflow
-SHA equals a final live protected-main read, the authenticated
+SHA is an ancestor of a stable final live protected-main snapshot, the authenticated
 actor is still an active organization admin, and the sole unsatisfied required
 check is the normal CI gate with a recognized hosted-runner infrastructure
 failure represented by GitHub-owned job metadata with no executed workflow
@@ -927,10 +948,11 @@ flow repeats the full bypass verification immediately before the admin squash
 request and pins the prepared head with `--match-head-commit`. GitHub exposes
 no expected-base-OID merge precondition, so the final main read minimizes but
 cannot atomically eliminate a base movement race. Landing proof must compare
-the squash parent with that last observed main SHA. The Crabbox merge path
-stores this comparison in `.local/merge-crabbox-parent-audit.json`, includes it
-in the completion comment, and reports any intervening authorized main advance
-after the already-completed merge without claiming atomic prevention.
+the squash parent with that final main snapshot, not the older workflow SHA.
+The Crabbox merge path stores this comparison in
+`.local/merge-crabbox-parent-audit.json`, includes it in the completion comment,
+and reports any intervening main movement after the already-completed merge
+without claiming atomic prevention.
 
 Agents do not pre-warm for anticipated work. Acquire a Testbox lazily when the
 first environment-sensitive command is ready, reuse the returned `tbx_...` id
