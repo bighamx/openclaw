@@ -6175,12 +6175,14 @@ describe("chat model controls", () => {
           name: "GPT-5.6 Sol",
           provider: "openai",
           available: false,
+          unavailableReason: "missing-auth",
         },
         {
           id: "gpt-5.6-luna",
           name: "GPT-5.6 Luna",
           provider: "openai",
           available: false,
+          unavailableReason: "missing-auth",
         },
       ],
     });
@@ -6204,9 +6206,47 @@ describe("chat model controls", () => {
     );
     expect(
       container.querySelector('[data-chat-model-catalog-state="ready"]')?.textContent,
-    ).toContain("Authentication failed. Review the provider credential or sign-in, then retry.");
-    expect(container.textContent).toContain("Review connection");
+    ).toContain("No models available");
+    expect(container.textContent).toContain("Manage models");
     container.querySelector<HTMLButtonElement>('[data-chat-model-setup="true"]')?.click();
+    expect(onModelSetup).toHaveBeenCalledOnce();
+  });
+
+  it("keeps each alias's auth action tied to its own availability reason", () => {
+    const { state } = createChatHeaderState({
+      model: "gpt-5.6-luna",
+      modelProvider: "openai",
+      models: [
+        {
+          id: "gpt-5.6-luna",
+          name: "GPT-5.6 Luna",
+          provider: "openai",
+          available: false,
+          unavailableReason: "missing-auth",
+        },
+        {
+          id: "gpt-5.6-luna",
+          name: "GPT-5.6 Luna",
+          provider: "codex",
+          available: false,
+          unavailableReason: "cooldown",
+        },
+      ],
+    });
+    const onModelSetup = vi.fn();
+    const container = renderModelControls(state, { onModelSetup });
+    const cold = container.querySelector<HTMLButtonElement>(
+      '[data-chat-model-option="openai/gpt-5.6-luna"]',
+    );
+    const recovering = container.querySelector<HTMLButtonElement>(
+      '[data-chat-model-option="codex/gpt-5.6-luna"]',
+    );
+    expect(cold?.dataset.chatModelSetup).toBe("true");
+    expect(recovering?.disabled).toBe(true);
+    expect(recovering?.textContent).not.toContain("Sign-in needed");
+    recovering?.click();
+    expect(onModelSetup).not.toHaveBeenCalled();
+    cold?.click();
     expect(onModelSetup).toHaveBeenCalledOnce();
   });
 
@@ -7182,9 +7222,9 @@ describe("chat model controls", () => {
     ).toBe("32.8k");
     expect(
       container.querySelector(
-        '[data-chat-model-option="lmstudio/qwen3-8b"] .chat-controls__model-chat-only-info',
-      )?.textContent,
-    ).toBe("i");
+        '[data-chat-model-option="lmstudio/qwen3-8b"] .chat-controls__model-chat-only-info svg',
+      ),
+    ).not.toBeNull();
     expect(
       container.querySelector('[data-chat-model-option="openai/gpt-5.5"]')?.textContent,
     ).not.toContain("Chat only");
@@ -7405,6 +7445,10 @@ describe("chat model controls", () => {
     expect(getThinkingSliderValues(container)).toEqual(["adaptive", "low", "medium", "high"]);
     expect(slider?.value).toBe("3");
     expect(slider?.getAttribute("aria-valuetext")).toBe("Default (High)");
+    const effortValue = container.querySelector<HTMLElement>(".chat-controls__effort-value");
+    expect(effortValue).toBeInstanceOf(HTMLElement);
+    expect(effortValue?.classList.contains("sr-only")).toBe(false);
+    expect(getThinkingReasoningValueLabel(container)).toBe("High");
     expect(container.querySelector(".chat-controls__fast-mode-title")?.textContent?.trim()).toBe(
       "Fast mode",
     );
