@@ -270,6 +270,10 @@ A selected session running on a worker shows a quiet **Runs on Cloud** chip in t
 
 Choose **Set icon** from a single session's context menu to give its sidebar row one persistent emoji or monochrome icon. The picker includes common emoji and six named icons: `braces`, `book`, `monitor`, `bot`, `kanban`, and `coins`. Choose **Custom emoji…** to enter any single emoji; on macOS, press Control-Command-Space to open the system emoji picker, or press Windows-period on Windows. The `sessions` agent tool can set the same `icon` field. An empty value removes it. This decoration replaces the owner avatar in the leading glyph slot, but temporary attention state always takes precedence so an operator request cannot be hidden.
 
+## Session colors
+
+Choose **Color** from a session menu to add a narrow color stripe to its sidebar row and a matching dot beside the chat title. Pick one of eight colors, or choose **Default** to clear it. The colors match Claude Code’s `/color` names, so imported Claude Code sessions keep the same color. Imported catalog rows show their color without offering color editing.
+
 ## New session page
 
 New session **+** controls are links: click to open the draft in the current browser tab, Command-click (macOS) or Ctrl-click (Windows/Linux) to open another tab, or right-click for the browser's **Open Link in New Tab/Window** menu. Middle-click works too. The smaller plus controls on group and catalog sections preserve their target in the new tab; your current conversation stays open.
@@ -321,6 +325,7 @@ select it to open the owning Approvals page.
   <Accordion title="Chat and Talk">
     - Chat with the model via Gateway WS (`chat.history`, `chat.send`, `chat.abort`, `chat.inject`). Archived sessions keep the composer disabled and show a banner with an **Unarchive** action before the conversation can continue.
     - Chat history refreshes request a bounded recent window with per-message text caps, so large sessions do not force the browser to render a full transcript payload before chat becomes usable.
+    - A previous run's error banner clears when Chat adopts a new run or history confirms a newer successful run. Retiring the banner does not erase recorded diagnostics. A late error from the same run can remain visible beside its delivered answer; reconnecting or refreshing metadata alone does not establish recovery.
     - A saved assistant answer replaces its live stream without waiting for the run to finish. Remote workspace reconciliation can keep the working indicator and Stop control active after the answer appears; a later reconciliation failure remains visible beside the answer.
     - Scroll up to read earlier messages without following incoming output. Use the down-arrow button to return to the latest message. Scrolling manually interrupts that movement or a restored scroll position; messages continue to reserve their space as full text, images, and tool output load.
     - Links to `github.com` in chat messages — yours and the agent's — carry a small GitHub mark before their text, whether the message wrote a bare URL, a `[#3434](…)` shorthand, or any other label. The mark is drawn from the bundled icon set, never fetched from the network, and is decorative only: it is skipped for image-only links such as badges, never appears inside code spans or code blocks, is not read by screen readers, and is not part of copied text.
