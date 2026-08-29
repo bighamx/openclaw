@@ -58,6 +58,10 @@ Use this with `$release-openclaw-maintainer` and `$openclaw-testing` when a rele
 - Same-parent continuation requires the original root to have been dispatched
   with `fail_fast=false`. The controller verifies that exact logged input
   before any rerun mutation.
+- A parent that produced its own sealed candidate artifacts cannot be continued:
+  GitHub reruns make those prior-attempt artifacts unavailable. Keep the
+  candidate and Tooling SHAs frozen, supersede that parent, and start a fresh
+  all-group Full Release Validation.
 - After dispatch, one immutable execution-plan artifact records the original
   parent attempt, exact child tuples and titles, selected coverage, gates, and
   reuse identity. The same bytes are saved under an exact run-ID cache key.
@@ -166,7 +170,10 @@ until their dependent enforcement changes land.
   adopts any active newer child attempt, reruns failed child jobs in parallel,
   leaves green children untouched, then reruns the parent once to restore the
   immutable plan and seal a trusted all-group manifest. It does not start a
-  second child retry while an attempt is active.
+  second child retry while an attempt is active. Each child or parent rerun
+  mutation is sent exactly once; ambiguous transport failures trigger only
+  bounded read reconciliation. The controller never repeats the mutation, and
+  provenance drift fails closed.
 - Inspect without mutation:
 
   ```bash

@@ -10,7 +10,6 @@ import { sessionHasPendingApproval } from "../app/approval-presentation.ts";
 import type { ApplicationContext, ApplicationNavigationOptions } from "../app/context.ts";
 import { resolveControlUiAuthCandidates } from "../app/control-ui-auth.ts";
 import { t } from "../i18n/index.ts";
-import { sessionHasBoard } from "../lib/board/provider.ts";
 import { formatDurationCompact } from "../lib/format.ts";
 import {
   restartHoverMarqueeIfHovered,
@@ -169,7 +168,7 @@ export function renderRecentSession(params: {
     method: "sessions.patch",
     params: { key: session.key, pinned: !session.pinned },
   });
-  const label = display?.label ?? session.label;
+  const label = session.label;
   const { subtitle, narration } = host.sessionProjection.resolveSubtitle({
     session,
     hasDisplay: display !== undefined,
@@ -363,15 +362,6 @@ export function renderRecentSession(params: {
           <span class="sidebar-recent-session__details">
             ${renderSidebarSessionSubtitle({ subtitle, narration })}
             <span class="sidebar-recent-session__details-endcap">
-              ${!session.isChild && sessionHasBoard(session.key)
-                ? html`<span
-                    class="session-row-badge"
-                    role="img"
-                    aria-label=${t("sessionsView.dashboardAvailable")}
-                    title=${t("sessionsView.dashboardAvailable")}
-                    >${icons.layoutDashboard}</span
-                  >`
-                : nothing}
               <openclaw-viewer-facepile
                 .presencePayload=${host.sessionData.presencePayload}
                 .selfUser=${host.sessionDataContext?.gateway.snapshot.selfUser}
@@ -382,7 +372,14 @@ export function renderRecentSession(params: {
                 variant="session"
               ></openclaw-viewer-facepile>
               ${renderSessionRowBadges({
-                ...session,
+                isChild: session.isChild,
+                incognito: session.incognito,
+                placementState: session.placementState,
+                placementProviderId: session.placementProviderId,
+                placementProfileId: session.placementProfileId,
+                diskSpaceStatus: session.diskSpaceStatus,
+                workspaceConflictCount: session.workspaceConflictCount,
+                outboxAttentionCount: session.outboxAttentionCount,
                 hasComposerDraft: session.hasComposerDraft === true,
                 pullRequest,
                 hasApproval: sessionHasPendingApproval(

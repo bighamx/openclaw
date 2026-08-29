@@ -46,6 +46,10 @@ still-active child that owns the blocking failure.
 Same-parent continuation requires the original root to have been dispatched
 with `fail_fast=false`. The controller verifies that exact logged input before
 any rerun mutation.
+It is also unavailable when that parent produced the sealed candidate
+artifacts, because GitHub reruns make those prior-attempt artifacts unavailable.
+Keep the candidate and Tooling SHAs frozen, supersede the parent, and start a
+fresh all-group Full Release Validation.
 
 After dispatch, the parent writes one immutable
 `full-release-execution-plan-<run-id>` artifact and preserves the same bytes in
@@ -95,6 +99,11 @@ once. The parent restores its immutable execution plan, observes the effective
 child attempts, and writes the final all-group manifest. The manifest records
 the planned and effective attempt, accepted attempt for every logical job, and
 a digest of the composite job evidence.
+
+Each child or parent rerun mutation is sent exactly once. If GitHub returns an
+ambiguous transient error, the controller performs read-only reconciliation
+until the newer attempt becomes visible or the bounded reconciliation deadline
+expires. It never repeats the mutation, and provenance drift fails closed.
 
 The command stores no continuation ledger or local journal. GitHub run
 attempts, the immutable execution plan, Decision/Drain artifacts, and the final

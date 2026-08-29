@@ -136,10 +136,25 @@ only to checks that still have the verified name and queued state. Active
 retries, unrelated checks, and ambiguous or incomplete evidence still block
 completion. This is an observation of CI state, not atomic merge authorization.
 
-`--completion ci-run` waits only for the attached CI workflow. Callers must
-separately verify required checks; CI success does not override another
-required check. The native `scripts/pr` merge flow uses this mode and then
-performs its own required-check verification before merging.
+Both watcher modes attach only to `pull_request` CI runs. `--completion ci-run`
+waits only for that attached workflow. Callers must separately verify required
+checks; CI success does not override another required check.
+
+The native `scripts/pr` merge flow reloads the saved prepare gate mode. Hosted
+mode (`OPENCLAW_TESTBOX=1` during prepare) revalidates the prepared head through
+the same hosted verifier used by prepare, including its 24-hour freshness,
+workflow identity, attempt binding, and existing patch-identical reuse rules.
+Accepted hosted proof proceeds directly
+to required-check verification without waiting on older PR CI. Local and Crabbox
+gate modes retain the `--completion ci-run` wait.
+
+Missing prepare artifacts or rejected hosted evidence stop merge verification;
+a saved mode or JSON report is not proof. Inspect `.local/gates-hosted-checks.log`,
+resolve the reported failure, and rerun prepare when its artifacts need refreshing.
+For missing CI, follow the verifier's `scripts/pr ci-dispatch <pr-number>` recovery
+guidance when available. Malformed required-check evidence and cancelled required
+checks also stop verification. Server-enforced publisher binding and the final
+pinned-head merge request remain intact. Hosted mode adds no bypass.
 
 ## PR context and evidence
 
@@ -220,7 +235,7 @@ Robolectric resolves Android SDK artifacts outside Gradle's dependency cache, so
 
 Remaining Blacksmith sticky-disk keys are deliberately bounded by supported task dimensions, never PR number, commit, run, branch, or dependency hash. Dependency, runtime transform, and compile caches use Actions cache instead because immutable archives expose verifiable restore/save results and avoid mutable snapshot-promotion failures. After a sticky key-version migration, add only the exact obsolete key, architecture, and region identities to `.github/retired-sticky-disks.json`, dispatch `Sticky Disk Cleanup` from `main` with the same dimensions and confirmation, verify deletion, then remove those entries. The workflow routes ARM identities to an ARM runner, rejects runner-region mismatches, uses Blacksmith's exact-key deletion action, and never deletes Docker builder caches or wildcard prefixes. Actions cache archives use normal LRU and inactivity eviction.
 
-The `check-dependencies` shard runs production Knip dependency, unused-file, and unused-export checks. The unused-file guard fails when a PR adds a new unreviewed unused file or leaves a stale allowlist entry, while preserving intentional dynamic plugin, generated, build, live-test, and package bridge surfaces that Knip cannot resolve statically. The unused-export guard excludes test-support files and fails on every unused production export; intentional dynamic consumers must be modeled in `config/knip.config.ts`. Historical targets run the export guard when they provide it and retain their older dead-code fallback otherwise.
+The `check-dependencies` shard runs Knip dependency, unused-file, and unused-export checks. Both guards enforce zero findings across production and full-tree scans, with no unused-file allowlist. The export guard also audits script entry exports. Production excludes test-support consumers; the full-tree and script scans include tests as consumers. Model intentional dynamic consumers in `config/knip.config.ts`, `config/knip.all-exports.config.ts`, or `config/knip.scripts-exports.config.ts` as appropriate. Each guard reports every scan outcome and fails if any scan fails. Historical targets run the export guard when they provide it and retain their older dead-code fallback otherwise.
 
 ## Measured shard weights
 
@@ -347,9 +362,13 @@ Runner choice follows contributor trust, not whether a pull request came from a 
 | `blacksmith-6vcpu-macos-15`     | `macos-node` on `openclaw/openclaw`; untrusted authors fall back to `macos-15`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `blacksmith-12vcpu-macos-26`    | `macos-swift`, `ios-build`, and the two `ios-screenshot-shard` rows on `openclaw/openclaw`; untrusted authors fall back to `macos-26`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
+The Node test planner marks only shards that run the real native grep fixture.
+Those Linux jobs install the `ripgrep` package when the selected runner image
+does not provide it. Other Node shards do not pay that setup cost.
+
 ### Runner backend modes
 
-The `macos-swift` lane runs Swift tests once per job. Automatic first attempts use parallel execution; manual dispatches and rerun attempts use serial execution. A failing test fails the job without an in-job retry.
+The `macos-swift` lane builds Swift tests once and runs each test once per job. The ordinary suite retains default-profile behavior; AppState isolation tests run in a separate named-profile process through the same resource-owning launcher. Each launch owns a private home and disposable, unlocked default Keychain until the test process group and output pipes close. HOME and profile markers do not isolate macOS services; both partitions run only on the disposable credentialless macOS worker. Automatic first attempts use parallel execution; manual dispatches and rerun attempts use serial execution. A failing test fails the job without an in-job retry. See [native test safety](/platforms/mac/dev-setup#run-native-tests-safely).
 
 The repository variable `OPENCLAW_CI_RUNNER_BACKEND` controls the runner backend for `ci.yml`:
 
