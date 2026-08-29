@@ -4110,6 +4110,7 @@ describe("grouped chat rendering", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
     const container = document.createElement("div");
+    const onOpenImage = vi.fn();
     const onOpenSidebar = vi.fn();
     const source = `https://example.com/${label}`;
 
@@ -4118,22 +4119,32 @@ describe("grouped chat rendering", () => {
       createAssistantMessage([createAttachmentBlock(source, kind, label, mimeType)], {
         id: `assistant-${kind}-${label}-player`,
       }),
-      { showToolCalls: false, onOpenSidebar },
+      { showToolCalls: false, onOpenImage, onOpenSidebar },
     );
 
     const player = expectElement(container, tag, HTMLElement) as HTMLElement & {
       label: string;
       mimeType: string;
-      onExpand: () => void;
+      onExpand: (src?: string) => void;
       sourceIdentity: string;
       src: string;
     };
     expect(player).toMatchObject({ label, mimeType, sourceIdentity: source, src: source });
     expect(container.querySelector(".chat-assistant-attachment-card--compact")).toBeNull();
-    player.onExpand();
-    expect(onOpenSidebar).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "attachment", attachmentKind: kind, title: label }),
-    );
+    player.onExpand(kind === "video" ? source : undefined);
+    if (kind === "video") {
+      expect(onOpenImage).toHaveBeenCalledWith({
+        kind: "video",
+        originalSrc: source,
+        src: source,
+        title: label,
+      });
+      expect(onOpenSidebar).not.toHaveBeenCalled();
+    } else {
+      expect(onOpenSidebar).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "attachment", attachmentKind: kind, title: label }),
+      );
+    }
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -4226,9 +4237,22 @@ describe("grouped chat rendering", () => {
       );
 
     renderMessage();
-    expect(
-      container.querySelector(".chat-assistant-attachment-card__status-meta")?.textContent?.trim(),
-    ).toBe("Checking...");
+    const checkingCard = container.querySelector(
+      '.chat-assistant-attachment-card--checking[aria-busy="true"]',
+    );
+    const skeleton = checkingCard?.querySelector(
+      ".chat-assistant-attachment-card__status-meta.skeleton",
+    );
+    const actionSkeleton = checkingCard?.querySelector(
+      ".chat-assistant-attachment-card__action-skeleton.skeleton",
+    );
+    const actionReservation = checkingCard?.querySelector(
+      ".chat-assistant-attachment-card__actions--loading",
+    );
+    expect(skeleton?.getAttribute("aria-hidden")).toBe("true");
+    expect(skeleton?.textContent?.trim()).toBe("");
+    expect(actionSkeleton?.getAttribute("aria-hidden")).toBe("true");
+    expect(actionReservation?.getAttribute("aria-hidden")).toBe("true");
     await flushAssistantAttachmentAvailabilityChecks();
 
     const expectedMetaUrl = `/openclaw/__openclaw__/assistant-media?source=${encodeURIComponent(source).replaceAll("%20", "+")}&meta=1`;
@@ -4237,6 +4261,7 @@ describe("grouped chat rendering", () => {
     expect(
       container.querySelector<HTMLImageElement>(".chat-message-image")?.getAttribute("src"),
     ).toBe(expectedMetaUrl.replace("&meta=1", "&mediaTicket=ticket-local"));
+    expect(container.querySelector(".chat-assistant-attachment-card__action-skeleton")).toBeNull();
   });
 
   it("stops checking when local assistant attachment metadata fetch stalls", async () => {
@@ -4275,9 +4300,18 @@ describe("grouped chat rendering", () => {
       );
 
     rerender();
-    expect(
-      container.querySelector(".chat-assistant-attachment-card__status-meta")?.textContent?.trim(),
-    ).toBe("Checking...");
+    const checkingCard = container.querySelector(
+      '.chat-assistant-attachment-card--checking[aria-busy="true"]',
+    );
+    const skeleton = checkingCard?.querySelector(
+      ".chat-assistant-attachment-card__status-meta.skeleton",
+    );
+    const actionSkeleton = checkingCard?.querySelector(
+      ".chat-assistant-attachment-card__action-skeleton.skeleton",
+    );
+    expect(skeleton?.getAttribute("aria-hidden")).toBe("true");
+    expect(skeleton?.textContent?.trim()).toBe("");
+    expect(actionSkeleton?.getAttribute("aria-hidden")).toBe("true");
 
     const expectedMetaUrl = `/openclaw/__openclaw__/assistant-media?source=${encodeURIComponent(source)}&meta=1`;
     const [, fetchInit] = requireFetchCallForUrl(fetchMock, expectedMetaUrl);
@@ -4289,6 +4323,7 @@ describe("grouped chat rendering", () => {
     expect(
       container.querySelector(".chat-assistant-attachment-card__status-meta")?.textContent,
     ).toContain("Unavailable");
+    expect(container.querySelector(".chat-assistant-attachment-card__action-skeleton")).toBeNull();
   });
 
   it("refreshes local assistant media tickets before expiry without another render", async () => {
@@ -4969,7 +5004,7 @@ describe("grouped chat rendering", () => {
     vi.setSystemTime(new Date("2026-08-24T00:00:00.000Z"));
     const attachmentId = crypto.randomUUID();
     const source = `/api/chat/media/outgoing/agent%3Amain%3Amain/${attachmentId}/full`;
-    const artifactId = `artifact_managed_video_${attachmentId}`;
+    const artifactId = `artifact_managed_audio_${attachmentId}`;
     const firstTicket = `${source}?mediaTicket=first`;
     const refreshedTicket = `${source}?mediaTicket=refreshed`;
     const resolveArtifactDownload = vi
@@ -4988,7 +5023,7 @@ describe("grouped chat rendering", () => {
       renderAssistantMessage(
         container,
         createAssistantMessage([
-          createAttachmentBlock(source, "video", "clip.mp4", "video/mp4", { artifactId }),
+          createAttachmentBlock(source, "audio", "clip.mp3", "audio/mpeg", { artifactId }),
         ]),
         {
           showToolCalls: false,
@@ -5016,14 +5051,14 @@ describe("grouped chat rendering", () => {
     };
     document.body.append(panel);
     await panel.updateComplete;
-    expect(panel.querySelector("video")?.getAttribute("src")).toBe(firstTicket);
+    expect(panel.querySelector("audio")?.getAttribute("src")).toBe(firstTicket);
 
     await vi.advanceTimersByTimeAsync(1_000);
     await flushAssistantAttachmentAvailabilityChecks();
     await panel.updateComplete;
 
     expect(resolveArtifactDownload).toHaveBeenCalledTimes(2);
-    expect(panel.querySelector("video")?.getAttribute("src")).toBe(refreshedTicket);
+    expect(panel.querySelector("audio")?.getAttribute("src")).toBe(refreshedTicket);
     panel.remove();
     container.remove();
   });

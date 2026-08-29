@@ -382,7 +382,6 @@ export function renderAssistantAttachments(
     if (item.type === "attachment_error") {
       const { attachment } = item;
       return renderAssistantAttachmentStatusCard({
-        kind: attachment.kind,
         label: attachment.label,
         mimeType: attachment.mimeType,
         badge: t("chat.attachments.notSent"),
@@ -450,8 +449,25 @@ export function renderAssistantAttachments(
     const playbackAuthToken = localSource ? (authToken ?? null) : null;
     const safeAttachmentUrl =
       attachment.kind === "audio" || attachment.kind === "video"
-        ? safeMediaAttachmentHref(attachmentUrl ?? "")
+        ? safeMediaAttachmentHref(attachmentUrl ?? "", attachment.kind)
         : safeAttachmentHref(attachmentUrl ?? "");
+    const openVideoOverlay =
+      attachment.kind === "video" && onOpenImage && safeAttachmentUrl
+        ? (src: string) => {
+            const requestVersion = onRequestOpenImage?.();
+            const overlayItem = {
+              kind: "video" as const,
+              src,
+              originalSrc: safeAttachmentUrl,
+              title: attachment.label,
+            };
+            if (requestVersion === undefined) {
+              onOpenImage(overlayItem);
+            } else {
+              onOpenImage(overlayItem, requestVersion);
+            }
+          }
+        : undefined;
     const hasLiveSidebarSource =
       localSource ||
       (isManagedOutgoingMediaSource(attachment.url) &&
@@ -555,13 +571,9 @@ export function renderAssistantAttachments(
     ) {
       if (!attachmentUrl) {
         return renderAssistantAttachmentStatusCard({
-          kind: "image",
           label: attachment.label,
           mimeType: attachment.mimeType,
-          badge:
-            availability.status === "checking"
-              ? t("chat.attachments.checking")
-              : t("chat.attachments.unavailable"),
+          badge: availability.status === "unavailable" ? t("chat.attachments.unavailable") : "",
           reason: availability.status === "unavailable" ? availability.reason : undefined,
           onRetry: retryUnavailableAttachment,
         });
@@ -595,20 +607,15 @@ export function renderAssistantAttachments(
     }
     if (!attachmentUrl) {
       return renderAssistantAttachmentStatusCard({
-        kind: attachment.kind,
         label: attachment.label,
         mimeType: attachment.mimeType,
-        badge:
-          availability.status === "checking"
-            ? t("chat.attachments.checking")
-            : t("chat.attachments.unavailable"),
+        badge: availability.status === "unavailable" ? t("chat.attachments.unavailable") : "",
         reason: availability.status === "unavailable" ? availability.reason : undefined,
         onRetry: retryUnavailableAttachment,
       });
     }
     if ((attachment.kind === "audio" || attachment.kind === "video") && !safeAttachmentUrl) {
       return renderAssistantAttachmentStatusCard({
-        kind: attachment.kind,
         label: attachment.label,
         mimeType: attachment.mimeType,
         badge: t("chat.attachments.unavailable"),
@@ -641,7 +648,8 @@ export function renderAssistantAttachments(
         .sizeBytes=${sizeBytes}
         .mediaWidth=${mediaWidth}
         .mediaHeight=${mediaHeight}
-        .onExpand=${openAttachmentSidebar}
+        .onExpand=${openVideoOverlay}
+        .onFallbackExpand=${openAttachmentSidebar}
         .onMediaLoaded=${onAssistantAttachmentLoaded}
       ></openclaw-chat-video-player>`;
     }

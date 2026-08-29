@@ -77,7 +77,10 @@ beforeEach(() => {
   sidecars = [];
 });
 
-function configureAuthFixture(kind: "secret-ref" | "external-oauth" | "unresolved-secret-ref") {
+function configureAuthFixture(
+  kind: "secret-ref" | "external-oauth" | "unresolved-secret-ref",
+  catalogAuthRejected = false,
+) {
   if (kind === "external-oauth") {
     return;
   }
@@ -85,6 +88,18 @@ function configureAuthFixture(kind: "secret-ref" | "external-oauth" | "unresolve
   mocks.buildPreparedModelCatalogSnapshot.mockResolvedValue({
     entries: [apiKeyModel],
     routeVariants: [apiKeyModel],
+    ...(catalogAuthRejected
+      ? {
+          providerOutcomes: [
+            {
+              provider: "openai",
+              profileId: "openai:default",
+              rejectionScope: "catalog",
+              status: "auth-rejected",
+            },
+          ],
+        }
+      : {}),
   });
   mocks.authStorage.getAll.mockReturnValue({
     openai: { type: "api_key", key: "openclaw-secret-ref-configured" },
@@ -513,17 +528,21 @@ describe("gateway chat metadata lifecycle composition", () => {
   );
 
   it.each([
-    ["SecretRef-only runtime auth", "secret-ref", true],
-    ["external CLI OAuth bootstrap", "external-oauth", true],
-    ["unresolved SecretRef", "unresolved-secret-ref", false],
-  ] as const)("converges chat metadata and models.list for %s", async (_, kind, available) => {
-    configureAuthFixture(kind);
-    await publishOwner();
-    const lifecycle = await createLifecycle();
-    await lifecycle.attachContext(context, sidecars);
+    ["SecretRef-only runtime auth", "secret-ref", true, false],
+    ["SecretRef auth after profile-scoped catalog rejection", "secret-ref", true, true],
+    ["external CLI OAuth bootstrap", "external-oauth", true, false],
+    ["unresolved SecretRef", "unresolved-secret-ref", false, false],
+  ] as const)(
+    "converges chat metadata and models.list for %s",
+    async (_, kind, available, rejected) => {
+      configureAuthFixture(kind, rejected);
+      await publishOwner();
+      const lifecycle = await createLifecycle();
+      await lifecycle.attachContext(context, sidecars);
 
-    await expectAvailable(lifecycle, available);
-  });
+      await expectAvailable(lifecycle, available);
+    },
+  );
 
   it("catches up when the prepared owner publishes before attachment", async () => {
     await publishOwner();
