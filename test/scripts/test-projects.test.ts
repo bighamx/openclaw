@@ -904,7 +904,18 @@ describe("scripts/test-projects changed-target routing", () => {
       ".github/actions/create-generated-pr-tokens/action.yml",
       ".github/actions/publish-generated-pr/action.yml",
     ]) {
-      expectChangedTargets([actionPath], ["test/scripts/ci-workflow-guards.test.ts"]);
+      expectChangedTargets(
+        [actionPath],
+        actionPath.includes("/publish-generated-pr/")
+          ? [
+              "test/scripts/ci-git-owner.test.ts",
+              "test/scripts/ci-linux-git.test.ts",
+              "test/scripts/ci-platform-checkout.test.ts",
+              "test/scripts/ci-workflow-guards.test.ts",
+              "src/scripts/ci-changed-scope.test.ts",
+            ]
+          : ["test/scripts/ci-workflow-guards.test.ts"],
+      );
     }
     expectChangedTargets(
       ["scripts/native-app-i18n.ts"],
@@ -1021,6 +1032,25 @@ describe("scripts/test-projects changed-target routing", () => {
         targets,
       });
     }
+  });
+
+  it.each([
+    ["docs-sync-publish", "docs-sync-publish"],
+    ["docs-agent", "docs-agent-workflow"],
+  ])("routes %s edits through docs, workflow, and native Git owner proof", (workflow, test) => {
+    expectChangedTargets(
+      [`.github/workflows/${workflow}.yml`],
+      [
+        `test/scripts/${test}.test.ts`,
+        "test/scripts/ci-git-owner.test.ts",
+        "test/scripts/ci-linux-git.test.ts",
+        "test/scripts/ci-platform-checkout.test.ts",
+        "src/scripts/ci-changed-scope.test.ts",
+        "test/scripts/ci-workflow-guards.test.ts",
+      ],
+    );
+    const plans = buildVitestRunPlans(["test/scripts/ci-linux-git.test.ts"]);
+    expect(plans.map(({ config }) => config)).toEqual(["test/vitest/vitest.tooling.config.ts"]);
   });
 
   it("keeps Mantis proof workflow edits on workflow evidence regression tests", () => {
@@ -4406,4 +4436,31 @@ describe("scripts/test-projects channel contract lane patterns", () => {
       "test/vitest/vitest.contracts-channel-session.config.ts": channelSessionContractPatterns,
     });
   });
+});
+
+it.each([
+  ".github/actions/publish-generated-pr/action.yml",
+  ".github/actions/publish-generated-pr/policy.py",
+  ".github/workflows/maturity-scorecard.yml",
+  "test/scripts/generated-publisher.test-support.ts",
+  "test/scripts/ci-git-owner.test-support.ts",
+  "test/scripts/ci-checkout.test-support.ts",
+  "test/scripts/ci-git-owner.test.ts",
+  "test/scripts/ci-linux-git.test.ts",
+  "test/scripts/ci-platform-checkout.test.ts",
+  "test/scripts/fixtures/ci-platform-checkout.mjs",
+])("routes generated publisher ownership through all shared tooling lanes: %s", (changedPath) => {
+  const plan = resolveChangedTestTargetPlan([changedPath]);
+  expect(plan.mode).toBe("targets");
+  expect(plan.targets).toEqual(
+    expect.arrayContaining([
+      "test/scripts/ci-git-owner.test.ts",
+      "test/scripts/ci-linux-git.test.ts",
+      "test/scripts/ci-platform-checkout.test.ts",
+      "test/scripts/ci-workflow-guards.test.ts",
+    ]),
+  );
+  expect(
+    buildVitestRunPlans(["test/scripts/ci-git-owner.test.ts"]).map(({ config }) => config),
+  ).toEqual(["test/vitest/vitest.tooling.config.ts"]);
 });

@@ -27,6 +27,10 @@ import { mintSecretSentinel } from "../../secrets/sentinel.js";
 import type { UserTurnTranscriptRecorder } from "../../sessions/user-turn-transcript.types.js";
 import { closeOpenClawAgentDatabasesForTest } from "../../state/openclaw-agent-db.js";
 import { closeOpenClawStateDatabaseForTest } from "../../state/openclaw-state-db.js";
+import {
+  createOpenClawTestState,
+  type OpenClawTestState,
+} from "../../test-utils/openclaw-test-state.js";
 import { loadSqliteTrajectoryRuntimeEvents } from "../../trajectory/runtime-store.sqlite.js";
 import { createTrajectoryRuntimeRecorder } from "../../trajectory/runtime.js";
 import {
@@ -177,10 +181,15 @@ const mockCallGatewayTool = vi.mocked(callGatewayTool);
 
 const originalRuntime = process.env.OPENCLAW_AGENT_RUNTIME;
 const trajectoryTempDirs = createTempDirTracker();
+let generationState: OpenClawTestState;
 let selectionAdmission: PreparedAgentRunAdmission;
 let selectionAdmittedRunContext: AdmittedRunContext;
 
 beforeEach(async () => {
+  generationState = await createOpenClawTestState({
+    label: "harness-model-generation",
+    applyEnv: false,
+  });
   resetAgentRunRegistryForTest();
   resetModelGenerationFixtureState();
   selectionAdmission = prepareAgentRunAdmission({
@@ -237,7 +246,7 @@ beforeEach(async () => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.unstubAllEnvs();
   clearRuntimeConfigSnapshot();
   closeOpenClawAgentDatabasesForTest();
@@ -261,6 +270,7 @@ afterEach(() => {
   } else {
     process.env.OPENCLAW_AGENT_RUNTIME = originalRuntime;
   }
+  await generationState.cleanup();
 });
 
 function createAttemptParams(config?: OpenClawConfig): EmbeddedRunAttemptParams {
@@ -475,6 +485,8 @@ function maybeCompactAgentHarnessSession(
   const preparedModelRuntime =
     options.preparedModelRuntime ??
     createModelGenerationFixture({
+      agentDir: generationState.agentDir(),
+      workspaceDir: generationState.workspaceDir,
       config: params.config ?? {},
       createStores: () => ({ authStorage: {} as never, modelRegistry: {} as never }),
       label: "harness-test",
@@ -1373,22 +1385,29 @@ describe("runAgentHarnessAttempt", () => {
 
   it("annotates non-ok harness result classifications for outer model fallback", async () => {
     const classify = vi.fn<NonNullable<AgentHarness["classify"]>>(() => "empty" as const);
+    const runAttempt = vi.fn<AgentHarness["runAttempt"]>(async () => createAttemptResult("codex"));
     registerAgentHarness(
       {
         id: "codex",
         label: "Classifying Codex",
         supports: (ctx) =>
           ctx.provider === "codex" ? { supported: true, priority: 100 } : { supported: false },
-        runAttempt: vi.fn(async () => createAttemptResult("codex")),
+        runAttempt,
         classify,
       },
       { ownerPluginId: "codex" },
     );
 
     const params = createAttemptParams();
+    params.codeModeRecovery = {
+      kind: "resume",
+      blockedActionKeys: new Set(),
+      mutationAttempt: "available",
+    };
     const result = await runAgentHarnessAttempt(params);
 
     const classifyCall = classify.mock.calls.at(0);
+    expect(runAttempt.mock.calls[0]?.[0]).not.toHaveProperty("codeModeRecovery");
     expect(classifyCall?.[0].sessionIdUsed).toBe("codex");
     expect(classifyCall?.[1]).toEqual(
       expect.objectContaining({
@@ -1399,6 +1418,7 @@ describe("runAgentHarnessAttempt", () => {
       }),
     );
     expect(classifyCall?.[1]).not.toHaveProperty("admittedRunContext");
+    expect(classifyCall?.[1]).not.toHaveProperty("codeModeRecovery");
     expect(classifyCall?.[1]).not.toHaveProperty("operationalRunInstance");
     expect(result.agentHarnessId).toBe("codex");
     expect(result.agentHarnessResultClassification).toBe("empty");
@@ -3744,6 +3764,8 @@ describe("selectAgentHarness", () => {
     const cfg = {} as OpenClawConfig;
     const createStores = () => ({ authStorage: {} as never, modelRegistry: {} as never });
     const generationA = createModelGenerationFixture({
+      agentDir: generationState.agentDir(),
+      workspaceDir: generationState.workspaceDir,
       config: cfg,
       createStores,
       label: "compact-a",
@@ -3753,6 +3775,8 @@ describe("selectAgentHarness", () => {
       runtimeApi: "openai-responses",
     });
     const generationB = createModelGenerationFixture({
+      agentDir: generationState.agentDir(),
+      workspaceDir: generationState.workspaceDir,
       config: cfg,
       createStores,
       label: "compact-b",
