@@ -60,6 +60,7 @@ import {
 import { isVoiceCallExtensionRoot } from "../test/vitest/vitest.extension-voice-call-paths.mjs";
 import { isWhatsAppExtensionRoot } from "../test/vitest/vitest.extension-whatsapp-paths.mjs";
 import { isZaloExtensionRoot } from "../test/vitest/vitest.extension-zalo-paths.mjs";
+import { resolveVitestFsModuleCacheRoot } from "../test/vitest/vitest.performance-config.ts";
 import {
   isPluginSdkLightTarget,
   pluginSdkLightTestFiles,
@@ -2389,12 +2390,12 @@ const SEMANTIC_TOOLING_TARGET_PATTERNS: Array<[RegExp, string[]]> = [
     [packageAcceptance, workflowGuards],
   ],
   [
-    /^\.github\/workflows\/mantis-web-ui-chat-proof\.yml$/u,
+    /^\.github\/(?:workflows\/mantis-web-ui-chat-proof\.yml|actions\/mantis-validate-trusted-ref\/action\.yml)$/u,
     ["mantis-web-ui-chat-proof-workflow", packageAcceptance, workflowGuards],
   ],
   [/^\.github\/workflows\/android-release\.yml$/u, [packageAcceptance, workflowGuards]],
   [
-    /^\.github\/actions\/(?:ensure-base-commit|git-owner)\//u,
+    /^\.github\/(?:actions\/(?:ensure-base-commit|git-owner|mantis-validate-trusted-ref)\/|workflows\/(?:workflow-sanity|qa-profile-evidence|mantis-(?:discord-(?:smoke|status-reactions|thread-attachment)|slack-desktop-smoke|web-ui-chat-proof))\.yml$)/u,
     ["ci-git-owner", "ci-linux-git", "ci-platform-checkout"],
   ],
   [/^tsconfig\.scripts\.json$/u, ["changed-lanes", "test-projects"]],
@@ -4146,8 +4147,7 @@ export function applyParallelVitestCachePaths<T extends VitestSpecShape>(
   const configuredCacheRoot = baseEnv[FS_MODULE_CACHE_PATH_ENV_KEY]?.trim() || undefined;
   // CI publishes a persistent cache root, not a writer-safe leaf. Every
   // concurrent Vitest process still needs its own live directory below it.
-  const cacheRoot =
-    configuredCacheRoot ?? path.join(cwd, "node_modules", ".experimental-vitest-cache");
+  const cacheRoot = configuredCacheRoot ?? resolveVitestFsModuleCacheRoot(cwd);
   return specs.map((spec, index) => {
     const specCachePath = spec.env?.[FS_MODULE_CACHE_PATH_ENV_KEY]?.trim();
     if (specCachePath && specCachePath !== configuredCacheRoot) {

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { getProcessStartTime } from "../../../src/shared/pid-alive.ts";
+import { getFileLockProcessStartTime } from "../../../src/shared/pid-alive.ts";
 
 const [mode, root, policyScenario, ...args] = process.argv.slice(2);
 const linux = policyScenario.startsWith("linux:");
@@ -12,6 +12,7 @@ const scenario = linux ? policyScenario.slice("linux:".length) : policyScenario;
 const fixture = fileURLToPath(import.meta.url);
 const instance = randomUUID();
 const workspace = path.join(root, "workspace");
+const runnerTemp = path.join(root, "temp");
 const lease = path.join(root, "lease");
 const recordsDir = path.join(root, "pids");
 const eventsFile = path.join(root, "events.jsonl");
@@ -111,7 +112,9 @@ function liveRecords() {
       }
       const row = /^(\d+)\s+([RSDTtXZxKWPIU][<+NLlsEVWX]*)$/u.exec(result.stdout.trim());
       if (result.status !== 0 || !row || Number(row[1]) !== pid) {
-        throw new Error("Fixture process census returned an invalid row");
+        throw new Error(
+          `Fixture process census returned an invalid row (exit ${result.status}, pid ${pid}, stdout ${JSON.stringify(result.stdout)})`,
+        );
       }
       if (!row[2].startsWith("Z")) {
         alive.add(pid);
@@ -188,12 +191,26 @@ function holdLease() {
   }
 }
 
-function insideWorkspace(target) {
+function insideOwnedPath(target) {
   const resolved = path.resolve(target);
-  if (resolved !== workspace && !resolved.startsWith(`${workspace}${path.sep}`)) {
-    throw new Error(`Fixture command escaped workspace: ${target}`);
+  if (
+    ![workspace, runnerTemp].some(
+      (base) => resolved === base || resolved.startsWith(`${base}${path.sep}`),
+    )
+  ) {
+    throw new Error(`Fixture command escaped owned paths: ${target}`);
   }
   return resolved;
+}
+
+const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+const shellPath = (value) => value.replaceAll("\\", "/");
+
+function writeConsumer(target, tool) {
+  const argv = [process.execPath, fixture, tool, root, policyScenario].map((value) =>
+    quote(shellPath(value)),
+  );
+  fs.writeFileSync(target, `#!/bin/bash\nexec ${argv.join(" ")} "$@"\n`, { mode: 0o755 });
 }
 
 async function command() {
@@ -203,7 +220,7 @@ async function command() {
     return;
   }
   if (mode === "find") {
-    insideWorkspace(args[0]);
+    insideOwnedPath(args[0]);
     // Observe before the real deletion, while prior Git children can still write.
     boundary("delete");
     const result = spawnSync("/usr/bin/find", args, { stdio: "inherit" });
@@ -214,6 +231,9 @@ async function command() {
     process.on("SIGTERM", () => {
       if (options.cancelDuringCleanup) {
         publish("cleanup-started.json", attempt);
+      }
+      if (options.cooperativeTrees) {
+        process.exit(0);
       }
     });
     record(process.pid, mode, attempt);
@@ -229,14 +249,39 @@ async function command() {
     }
     return;
   }
-  if (["gh", "node", "pnpm"].includes(mode)) {
-    const cwd = insideWorkspace(process.cwd());
+  if (["gh", "node", "pnpm", "go", "crabbox"].includes(mode)) {
+    const cwd = insideOwnedPath(process.cwd());
     recordCommand(mode, cwd, args);
     if (mode === "node" && args[0] === "-e") {
       // The workflow's package-script capability probe; never evaluate candidate code.
       process.exit(0);
     }
     boundary(`consumer:${mode}`);
+    if (mode === "go") {
+      const [build, changeDirectory, source, outputFlag, output, target] = args;
+      if (
+        build !== "build" ||
+        changeDirectory !== "-C" ||
+        outputFlag !== "-o" ||
+        target !== "./cmd/crabbox" ||
+        args.length !== 6
+      ) {
+        throw new Error("Unexpected fixture Go build arguments");
+      }
+      if (!fs.statSync(path.join(insideOwnedPath(source), ".git")).isDirectory()) {
+        throw new Error("Go build source is not a checkout");
+      }
+      writeConsumer(insideOwnedPath(output), "crabbox");
+    }
+    if (mode === "crabbox") {
+      if (args.join(" ") === "--version") {
+        fs.writeSync(1, "crabbox fixture\n");
+      } else if (args.join(" ") === "warmup --help") {
+        fs.writeSync(1, "-desktop\n");
+      } else if (args.join(" ") !== "media preview --help") {
+        throw new Error("Unexpected fixture Crabbox probe");
+      }
+    }
     if (mode === "gh") {
       fs.writeSync(
         1,
@@ -256,13 +301,13 @@ async function command() {
   if (mode !== "git") {
     throw new Error(`Unexpected fixture mode: ${mode}`);
   }
-  let cwd = insideWorkspace(process.cwd());
+  let cwd = insideOwnedPath(process.cwd());
   const configuration = [];
   while (args[0] === "-C" || args[0] === "-c") {
     const flag = args.shift();
     const value = args.shift();
     if (flag === "-C") {
-      cwd = insideWorkspace(value);
+      cwd = insideOwnedPath(value);
     } else {
       configuration.push(value);
     }
@@ -275,7 +320,7 @@ async function command() {
     if (fs.existsSync(config)) {
       await delay(JSON.parse(fs.readFileSync(config, "utf8")).initDelayMs);
     }
-    const directory = insideWorkspace(args[0] ?? cwd);
+    const directory = insideOwnedPath(args[0] ?? cwd);
     fs.mkdirSync(directory, { recursive: true });
     const kind = options.env?.CHECKOUT_KIND ?? "linux-node";
     if (
@@ -288,15 +333,60 @@ async function command() {
       }
       fs.writeFileSync(path.join(directory, ".previous-checkout"), "owned\n");
     }
-  } else if (operation === "fetch" || operation === "ls-remote") {
+    const gitDir = path.join(directory, ".git");
+    fs.mkdirSync(gitDir, { recursive: true });
+    fs.writeFileSync(path.join(gitDir, "preexisting.lock"), "not invocation-owned\n", {
+      flag: "wx",
+    });
+    if (scenario === "pre-existing-lock") {
+      fs.writeFileSync(path.join(gitDir, "shallow.lock"), "not invocation-owned\n", { flag: "wx" });
+    }
+    if (scenario === "recovery") {
+      const sharedCache = path.join(root, "shared-git-cache");
+      fs.mkdirSync(sharedCache, { recursive: true });
+      fs.symlinkSync(sharedCache, path.join(gitDir, "shared-cache"), "junction");
+    }
+  } else if (
+    ["fetch", "ls-remote", "clone"].includes(operation) ||
+    (operation === "worktree" && args[0] === "add")
+  ) {
     const counter = path.join(root, "attempt.json");
     const attempt = fs.existsSync(counter) ? JSON.parse(fs.readFileSync(counter, "utf8")) + 1 : 1;
     boundary(`${operation}:${attempt}`);
     publish("attempt.json", attempt);
     record(process.pid, "parent", attempt);
+    if (operation === "clone" || operation === "worktree") {
+      const directory = insideOwnedPath(operation === "clone" ? args.at(-1) : args.at(-2));
+      fs.mkdirSync(path.join(directory, ".git"), { recursive: true });
+      fs.writeFileSync(path.join(directory, ".git/preexisting.lock"), "not invocation-owned\n", {
+        flag: "wx",
+      });
+    }
+    if (operation === "fetch") {
+      const lock = path.join(cwd, ".git/shallow.lock");
+      fs.mkdirSync(path.dirname(lock), { recursive: true });
+      try {
+        fs.writeFileSync(lock, "fetch-owned\n", { flag: "wx" });
+      } catch (error) {
+        if (error.code !== "EEXIST") {
+          throw error;
+        }
+        fs.writeSync(2, "fixture Git lock exists\n");
+        process.exit(128);
+      }
+      // Normal Git exit rolls back locks; forced termination cannot run that cleanup.
+      process.on("SIGTERM", () => {});
+      process.once("exit", () => fs.unlinkSync(lock));
+      if (scenario === "recovery") {
+        fs.writeFileSync(
+          path.join(cwd, ".git/shared-cache", `${attempt}.lock`),
+          "outside Git ownership\n",
+        );
+      }
+    }
     if (options.cancelDuringCleanup) {
       const pid = process.ppid;
-      publish("owner.json", { pid, startTime: getProcessStartTime(pid) });
+      publish("owner.json", { pid, startTime: getFileLockProcessStartTime(pid) });
       record(pid, "owner");
     }
     const child = launch("child", attempt);
@@ -327,10 +417,21 @@ async function command() {
       fs.writeSync(1, `cancellation: ${JSON.stringify({ signal, owner: owner.pid, alive })}\n`);
       process.kill(owner.pid, signal);
     }
-    if (options.fetchResults || options.lsRemoteResults) {
+    if (
+      options.fetchResults ||
+      options.lsRemoteResults ||
+      options.cloneResults ||
+      options.worktreeResults
+    ) {
       const remoteResult =
         operation === "ls-remote" ? options.lsRemoteResults?.[attempt - 1] : undefined;
-      const result = remoteResult?.code ?? options.fetchResults?.[attempt - 1] ?? 0;
+      const operationResults =
+        operation === "clone"
+          ? options.cloneResults
+          : operation === "worktree"
+            ? options.worktreeResults
+            : options.fetchResults;
+      const result = remoteResult?.code ?? operationResults?.[attempt - 1] ?? 0;
       if (remoteResult) {
         fs.writeSync(1, remoteResult.output);
       }
@@ -397,6 +498,17 @@ async function command() {
       fs.mkdirSync(path.dirname(gradlew), { recursive: true });
       fs.writeFileSync(gradlew, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
     }
+  } else if (operation === "cat-file" || (operation === "show" && options.objects)) {
+    boundary(`${operation}:${args.at(-1)}`);
+    const spec = args.at(-1);
+    if (spec.endsWith("^{commit}")) {
+      process.exit(options.baseAvailableAfter === 0 ? 0 : 1);
+    }
+    const object = options.objects?.[spec];
+    if (operation === "show" && object) {
+      fs.writeSync(1, object.text);
+    }
+    process.exit(object ? ((operation === "cat-file" ? object.probe : object.code) ?? 0) : 1);
   } else if (operation === "rev-parse") {
     boundary("rev-parse");
     if (args[0] === "--verify") {
@@ -409,6 +521,14 @@ async function command() {
       );
     }
     fs.writeSync(1, `${args.map((ref) => resolveRef(cwd, ref)).join("\n")}\n`);
+  } else if (operation === "tag" && args[0] === "--points-at") {
+    boundary("tag");
+  } else if (operation === "merge-base" && options.mergeBase) {
+    boundary("merge-base");
+    if (args[0] === "--is-ancestor") {
+      process.exit(options.mergeBase.ancestor ? 0 : 1);
+    }
+    fs.writeSync(1, `${options.mergeBase.revision}\n`);
   } else if (operation === "check-ref-format") {
     boundary("check-ref-format");
     fs.writeSync(1, "fixture quiet probe stdout\n");
@@ -434,14 +554,11 @@ async function supervise() {
   fs.writeFileSync(lease, "owned\n");
   const bin = path.join(root, "bin");
   const commandPath = `${bin}${path.delimiter}${process.env.PATH}`;
-  const home = path.join(root, "home");
-  const runnerTemp = path.join(root, "temp");
+  const home = path.join(runnerTemp, "home");
   fs.mkdirSync(bin);
-  fs.mkdirSync(home);
   fs.mkdirSync(runnerTemp);
-  const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+  fs.mkdirSync(home);
   // Git Bash accepts forward-slash native paths; native Node records native Windows PIDs.
-  const shellPath = (value) => value.replaceAll("\\", "/");
   const gitArgs = [process.execPath, fixture, "git", root, policyScenario];
   // Python's native Windows Popen needs a batch/executable entrypoint, not a
   // Bash shebang. Do not shadow it with an extensionless script on Windows.
@@ -456,13 +573,10 @@ async function supervise() {
   }
   const extraTools = [
     ...(linux ? ["find"] : []),
-    ...(options.consumers ? ["gh", "node", "pnpm"] : []),
+    ...(options.consumers ? ["gh", "node", "pnpm", "go"] : []),
   ];
   for (const tool of extraTools) {
-    const argv = [process.execPath, fixture, tool, root, policyScenario].map(quote);
-    fs.writeFileSync(path.join(bin, tool), `#!/bin/bash\nexec ${argv.join(" ")} "$@"\n`, {
-      mode: 0o755,
-    });
+    writeConsumer(path.join(bin, tool), tool);
   }
   if (scenario === "cleanup-failure") {
     // Fail the real POSIX inspection boundary, without a production injection hook.
@@ -606,6 +720,13 @@ async function supervise() {
         throw new Error(`Fixture setup: mock command resolution failed: ${detail}`);
       }
     }
+    if (["git", "python"].includes(options.setupFailure)) {
+      fs.writeFileSync(
+        path.join(bin, options.setupFailure === "git" ? "git" : "python3"),
+        "#!/fixture-missing-interpreter\n",
+        { mode: 0o755 },
+      );
+    }
     sentinel = spawn(process.execPath, [fixture, "sentinel", root, policyScenario], {
       // Parent teardown owns this group even before sentinel self-registration.
       stdio: "ignore",
@@ -639,7 +760,7 @@ async function supervise() {
           ]
         : [checkoutScript];
     shell = spawn("bash", ["--noprofile", "--norc", "-eo", "pipefail", ...shellArgs], {
-      cwd: workspace,
+      cwd: path.join(workspace, options.workingDirectory ?? ""),
       detached: true,
       stdio: ["ignore", output, output],
       env: {
@@ -653,6 +774,8 @@ async function supervise() {
         RUNNER_TEMP: shellPath(runnerTemp),
         GITHUB_OUTPUT: path.join(root, "github-output"),
         GITHUB_ENV: path.join(root, "github-env"),
+        GITHUB_STEP_SUMMARY: path.join(root, "github-summary"),
+        GITHUB_PATH: path.join(root, "github-path"),
         RUNNER_OS: linux ? "Linux" : process.platform === "win32" ? "Windows" : "macOS",
         PATHEXT: process.env.PATHEXT,
         CHECKOUT_REPO: "fixture/checkout",
@@ -674,14 +797,15 @@ async function supervise() {
       );
     if (options.cancelDuringCleanup && (await ready("cleanup-started.json"))) {
       const owner = JSON.parse(fs.readFileSync(path.join(root, "owner.json"), "utf8"));
-      const ownerStatus = fs.readFileSync(`/proc/${owner.pid}/status`, "utf8");
-      const parentPid = Number(ownerStatus.match(/^PPid:\s+(\d+)$/mu)?.[1]);
       // File policies exec into Bash's PID; raw Git owners are its direct children.
       // Revalidate the observed birth and exact placement after awaited readiness.
       if (
-        (owner.pid !== shell.pid && parentPid !== shell.pid) ||
+        (owner.pid !== shell.pid &&
+          Number(
+            fs.readFileSync(`/proc/${owner.pid}/status`, "utf8").match(/^PPid:\s+(\d+)$/mu)?.[1],
+          ) !== shell.pid) ||
         owner.startTime === null ||
-        getProcessStartTime(owner.pid) !== owner.startTime ||
+        getFileLockProcessStartTime(owner.pid) !== owner.startTime ||
         stopping ||
         shell.exitCode !== null ||
         shell.signalCode !== null
@@ -691,11 +815,29 @@ async function supervise() {
       process.kill(owner.pid, "SIGTERM");
       report.cancelledDuringCleanup = true;
     }
+    if (
+      options.cancelDuringBackoff &&
+      (await waitForReady(
+        () => fs.readFileSync(path.join(root, "workflow.log"), "utf8").includes("; retrying"),
+        shell,
+        () => Boolean(stopping),
+      ))
+    ) {
+      boundary("backoff-cancel");
+      shell.kill("SIGTERM");
+    }
     const code = await closed;
     if (stopping) {
       return;
     }
     report.code = code;
+    if (
+      options.objects &&
+      fs.existsSync(path.join(root, "github-env")) &&
+      fs.readFileSync(path.join(root, "github-env"), "utf8").includes("PRE_COMMIT_CONFIG_PATH=")
+    ) {
+      boundary("config-publication");
+    }
     boundary("exit");
     await stop();
   } catch (error) {

@@ -667,11 +667,32 @@ describe("scripts/test-projects changed-target routing", () => {
     ".github/actions/ensure-base-commit/policy.py",
     ".github/actions/ensure-base-commit/action.yml",
     "scripts/generate-ci-git-owner.mts",
+    ".github/workflows/workflow-sanity.yml",
   ])("selects executable Git boundary proof for %s", (source) => {
     expect(resolveChangedTestTargetPlan([source])).toEqual({
       mode: "targets",
       targets: expect.arrayContaining(["test/scripts/ci-git-owner.test.ts"]),
     });
+  });
+
+  it("routes QA Profile Evidence through Git lifecycle and existing workflow owners", () => {
+    const plan = resolveChangedTestTargetPlan([".github/workflows/qa-profile-evidence.yml"]);
+    expect(plan).toEqual({
+      mode: "targets",
+      targets: [
+        "test/scripts/ci-git-owner.test.ts",
+        "test/scripts/ci-linux-git.test.ts",
+        "test/scripts/ci-platform-checkout.test.ts",
+        "src/scripts/ci-changed-scope.test.ts",
+        "test/scripts/ci-workflow-guards.test.ts",
+      ],
+    });
+    for (const target of ["ci-git-owner", "ci-linux-git", "ci-platform-checkout"]) {
+      expectSingleVitestRunPlan(buildVitestRunPlans([`test/scripts/${target}.test.ts`]), {
+        config: "test/vitest/vitest.tooling.config.ts",
+        includePatterns: [`test/scripts/${target}.test.ts`],
+      });
+    }
   });
 
   it("keeps CI workflow edits on workflow guard tests", () => {
@@ -1006,19 +1027,23 @@ describe("scripts/test-projects changed-target routing", () => {
     const packageAcceptanceTargets = [
       "test/scripts/package-acceptance-workflow.test.ts",
       "test/scripts/ci-workflow-guards.test.ts",
+      "test/scripts/ci-git-owner.test.ts",
+      "test/scripts/ci-linux-git.test.ts",
+      "test/scripts/ci-platform-checkout.test.ts",
+      "src/scripts/ci-changed-scope.test.ts",
     ];
     const workflowTargets = new Map([
-      [".github/workflows/mantis-discord-smoke.yml", packageAcceptanceTargets],
+      [".github/workflows/mantis-discord-smoke.yml", [...packageAcceptanceTargets]],
+      [
+        ".github/actions/mantis-validate-trusted-ref/action.yml",
+        ["test/scripts/mantis-web-ui-chat-proof-workflow.test.ts", ...packageAcceptanceTargets],
+      ],
       [".github/workflows/mantis-discord-status-reactions.yml", packageAcceptanceTargets],
       [".github/workflows/mantis-discord-thread-attachment.yml", packageAcceptanceTargets],
       [".github/workflows/mantis-slack-desktop-smoke.yml", packageAcceptanceTargets],
       [
         ".github/workflows/mantis-web-ui-chat-proof.yml",
-        [
-          "test/scripts/mantis-web-ui-chat-proof-workflow.test.ts",
-          "test/scripts/package-acceptance-workflow.test.ts",
-          "test/scripts/ci-workflow-guards.test.ts",
-        ],
+        ["test/scripts/mantis-web-ui-chat-proof-workflow.test.ts", ...packageAcceptanceTargets],
       ],
     ]);
 
@@ -4329,18 +4354,8 @@ describe("scripts/test-projects Vitest cache isolation", () => {
     );
 
     expect(specs.map((spec) => spec.env.OPENCLAW_VITEST_FS_MODULE_CACHE_PATH)).toEqual([
-      path.join(
-        "/repo",
-        "node_modules",
-        ".experimental-vitest-cache",
-        "0-test-vitest-vitest.unit-fast.config.ts",
-      ),
-      path.join(
-        "/repo",
-        "node_modules",
-        ".experimental-vitest-cache",
-        "1-test-vitest-vitest.extension-memory.config.ts",
-      ),
+      path.join("/repo", ".cache", "vitest", "0-test-vitest-vitest.unit-fast.config.ts"),
+      path.join("/repo", ".cache", "vitest", "1-test-vitest-vitest.extension-memory.config.ts"),
     ]);
   });
 
