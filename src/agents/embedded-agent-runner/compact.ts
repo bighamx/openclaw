@@ -258,7 +258,16 @@ export async function compactEmbeddedAgentSessionDirect(
     agentId: runSessionTarget.agentId,
     sessionId: runSessionTarget.sessionId,
     sessionKey: runSessionTarget.sessionKey,
-    sessionTarget: runSessionTarget,
+    // SQLite resolves storage identity; the request still owns thread routing.
+    sessionTarget: {
+      agentId: runSessionTarget.agentId,
+      sessionId: runSessionTarget.sessionId,
+      sessionKey: runSessionTarget.sessionKey,
+      storePath: runSessionTarget.storePath,
+      ...(paramsBase.sessionTarget?.threadId !== undefined
+        ? { threadId: paramsBase.sessionTarget.threadId }
+        : {}),
+    },
     sessionFile: runSessionTarget.sessionKey,
   };
   const requestedAgentIds = resolveSessionAgentIds({
@@ -418,7 +427,7 @@ export async function compactEmbeddedAgentSessionDirect(
       const fallbackAgentId = resolveSessionAgentIds({
         sessionKey: params.sandboxSessionKey ?? params.sessionKey,
         config: params.config,
-        agentId: params.agentId,
+        agentId: params.sandboxAgentId ?? params.agentId,
       }).sessionAgentId;
       const resolvedPrimaryCandidate = resolveModelCandidateChain({
         cfg: params.config,

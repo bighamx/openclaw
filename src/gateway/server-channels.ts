@@ -2,6 +2,7 @@
 // Starts, stops, restarts, and snapshots plugin channel account runtimes.
 import { RetrySupervisor } from "../../packages/retry/src/index.js";
 import { getCredentialUnavailableDiagnostics } from "../channels/account-snapshot-fields.js";
+import { buildChannelAccountSnapshotFromInspection } from "../channels/account-summary.js";
 import { isChannelIngressUnavailableError } from "../channels/message/ingress-unavailable.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import {
@@ -14,6 +15,7 @@ import type { ChannelAccountSnapshot } from "../channels/plugins/types.public.js
 import {
   applyChannelAccountState,
   resolveChannelAccountState,
+  resolveUnavailableChannelAccountSnapshot,
 } from "../channels/status/account-state.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { withGatewayNativeApprovalRuntime } from "../infra/approval-gateway-runtime-context.js";
@@ -53,6 +55,7 @@ import {
 import { isAccountEnabled } from "../shared/account-enabled.js";
 import { runTasksWithConcurrency } from "../utils/run-with-concurrency.js";
 import type {
+  ChannelAccountStartOutcome,
   ChannelRuntimeSnapshot,
   StartChannelOptions,
 } from "./server-channel-runtime.types.js";
@@ -245,22 +248,6 @@ type ChannelAccountStopState =
   | { status: "stopping"; attempt: Promise<ChannelAccountStopOutcome> }
   | Extract<ChannelAccountStopOutcome, { status: "rejected" }>;
 
-export type ChannelAccountStartOutcome =
-  | { status: "handed-off" }
-  | { status: "retry"; reason: "stop-in-flight" | "task-owned" | "start-in-flight" }
-  | {
-      status: "skipped";
-      reason:
-        | "unsupported"
-        | "autostart-suppressed"
-        | "ambient-suppressed"
-        | "disabled"
-        | "unconfigured"
-        | "secret-unavailable"
-        | "unlinked"
-        | "manual-stop";
-    };
-
 async function waitForDeferredAccountStart(
   deferred: Promise<void>,
   abortSignal: AbortSignal,
@@ -284,7 +271,7 @@ export type ChannelManager = {
     channel: ChannelId,
     accountId?: string,
     opts?: StartChannelOptions,
-  ) => Promise<void>;
+  ) => Promise<ReadonlyMap<string, ChannelAccountStartOutcome>>;
   stopChannel: (channel: ChannelId, accountId?: string, opts?: StopChannelOptions) => Promise<void>;
   setAutostartSuppression: (suppression: ChannelAutostartSuppression | null) => void;
   getAutostartSuppression: () => ChannelAutostartSuppression | null;
@@ -302,11 +289,6 @@ export type ChannelManager = {
 export function createChannelManager(opts: ChannelManagerOptions): ChannelManager & {
   pruneInactiveChannelAccountState: (activeChannelIds: ReadonlySet<ChannelId>) => void;
   resolveRuntimeAccountId: (channelId: ChannelId, accountId: string) => string | undefined;
-  startChannelAccountForRecovery: (
-    channelId: ChannelId,
-    accountId: string,
-    opts?: StartChannelOptions,
-  ) => Promise<ChannelAccountStartOutcome>;
 } {
   const {
     getRuntimeConfig,
@@ -1142,23 +1124,6 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
   const startChannelInternal = (...args: Parameters<typeof startChannelProcessOwned>) =>
     runOutsideGatewayRootWorkAdmission(() => startChannelProcessOwned(...args));
 
-  const startChannel = async (
-    channelId: ChannelId,
-    accountId?: string,
-    optsValue: StartChannelOptions = {},
-  ) => {
-    await startChannelInternal(channelId, accountId, optsValue);
-  };
-
-  const startChannelAccountForRecovery = async (
-    channelId: ChannelId,
-    accountId: string,
-    optsValue: StartChannelOptions = {},
-  ): Promise<ChannelAccountStartOutcome> => {
-    const outcomes = await startChannelInternal(channelId, accountId, optsValue);
-    return outcomes.get(accountId) ?? { status: "skipped", reason: "unsupported" };
-  };
-
   const stopChannel = async (
     channelId: ChannelId,
     accountId?: string,
@@ -1429,12 +1394,30 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
       });
       const accounts: Record<string, ChannelAccountSnapshot> = {};
       for (const id of accountIds) {
+        const current = store.runtimes.get(id) ?? cloneDefaultRuntime(plugin.id, id);
+        const unavailable = resolveUnavailableChannelAccountSnapshot({
+          channelId: plugin.id,
+          accountId: id,
+          runtime: current,
+        });
+        if (unavailable) {
+          accounts[id] = unavailable;
+          continue;
+        }
+        const inspected = plugin.config.inspectAccount?.(cfg, id);
+        if (inspected) {
+          accounts[id] = buildChannelAccountSnapshotFromInspection({
+            account: inspected,
+            accountId: id,
+            runtime: current,
+          });
+          continue;
+        }
         const account = plugin.config.resolveAccount(cfg, id);
         const enabled = plugin.config.isEnabled
           ? plugin.config.isEnabled(account, cfg)
           : isAccountEnabled(account);
         const described = plugin.config.describeAccount?.(account, cfg);
-        const current = store.runtimes.get(id) ?? cloneDefaultRuntime(plugin.id, id);
         const configured = described?.configured ?? current.configured ?? true;
         const state = resolveChannelAccountState({
           enabled,
@@ -1487,8 +1470,7 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
     getRuntimeSnapshot,
     getPluginCommandCatalogAccounts,
     startChannels,
-    startChannel,
-    startChannelAccountForRecovery,
+    startChannel: startChannelInternal,
     stopChannel,
     pruneInactiveChannelAccountState,
     setAutostartSuppression: (suppression) => {

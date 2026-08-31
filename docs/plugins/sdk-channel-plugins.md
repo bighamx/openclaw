@@ -459,6 +459,10 @@ Plugin-owned targets do not require an OpenClaw agent id; use
 `openclaw/plugin-sdk/conversation-binding-runtime` to distinguish them from
 agent-owned targets before resolving an agent.
 
+For agent-owned targets with an unscoped session key such as `global`, preserve
+`metadata.agentId` so routing keeps the binding's owner. An agent-scoped target
+key remains authoritative over conflicting metadata.
+
 ## Approvals and channel capabilities
 
 Most channel plugins do not need approval-specific code. Core owns same-chat
@@ -912,6 +916,18 @@ unrelated inbound runtime helpers.
     The `ChannelPlugin` interface has many optional adapter surfaces. Start with
     the minimum - `id`, `config`, and `setup` - and add adapters as you need
     them.
+
+    `config.inspectAccount` is synchronous and returns metadata
+    for read-only diagnostics, including disabled or configured-but-unavailable
+    accounts. Return `enabled`, `configured`, and applicable credential status
+    fields without requiring secret resolution. Its result is not a resolved
+    account: operational hooks such as probes and account status builders receive
+    `config.resolveAccount` results instead.
+    Diagnostics expose only status-safe fields from the inspection result.
+    Include the same account enablement and configuration decisions used by the
+    runtime, including duplicate-account suppression. If `configured` is omitted,
+    diagnostics use a recorded Gateway value when available; otherwise they report
+    that configuration status is unavailable.
 
     Create `src/channel.ts`:
 
