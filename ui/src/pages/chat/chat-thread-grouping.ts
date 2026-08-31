@@ -9,7 +9,7 @@ import { extractTextCached } from "../../lib/chat/message-extract.ts";
 import { normalizeMessage, normalizeRoleForGrouping } from "../../lib/chat/message-normalizer.ts";
 import { senderIdentityKey } from "../../lib/chat/sender-label.ts";
 import { isContextCompactionActivity } from "./chat-progress.ts";
-import { userTurnSendIdentity } from "./chat-thread-items.ts";
+import { userTurnRunId } from "./chat-thread-items.ts";
 import {
   isKeyedAssistantStreamFallbackMessage,
   streamPartBoundaryId,
@@ -19,6 +19,7 @@ import {
 import {
   assistantGroupIsForwardedBoundary,
   chatItemStartsUserTurn,
+  hasForwardedSource,
   safeNormalizeMessage,
 } from "./chat-turn-boundary.ts";
 import { indexTurnContinuations, persistedSteerTargetRunId } from "./stream-causal-boundary.ts";
@@ -49,10 +50,7 @@ function stampReplyAttribution(
       // A sender-less user group clears attribution: no chip is safer than
       // mislabeling the reply as addressed to the previous participant.
       latestUserSender = item.sender;
-    } else if (
-      item.role === "assistant" &&
-      (item.senderSession || assistantGroupIsForwardedBoundary(item))
-    ) {
+    } else if (item.role === "assistant" && hasForwardedSource(item)) {
       // Forwarded input starts a turn without a local human reply recipient.
       latestUserSender = undefined;
     } else if (item.role === "assistant" && latestUserSender) {
@@ -88,12 +86,7 @@ export function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup>
     // before any output keep their target run's original start. Do not stamp
     // user runIds onto groups: reply-less activity pooling uses that field.
     const steerTarget = role === "user" ? persistedSteerTargetRunId(item.message) : null;
-    const userTurnIdentity =
-      role === "user"
-        ? steerTarget
-          ? `send:${steerTarget}`
-          : userTurnSendIdentity(item.message)
-        : null;
+    const userTurnIdentity = role === "user" ? (steerTarget ?? userTurnRunId(item.message)) : null;
     const shouldSplitBySender = role === "user" || role === "assistant";
     const startsProjectedTurn =
       asRecord(asRecord(item.message)?.["__openclaw"])?.turnBoundary === true;
