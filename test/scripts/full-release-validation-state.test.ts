@@ -2,13 +2,15 @@ import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, assert, describe, expect, it } from "vitest";
 import { buildFullReleaseCandidateBinding } from "../../scripts/full-release-candidate-contract.mjs";
 import {
   composeReleaseAttemptJobs,
   isReleaseGhArtifactMissingError,
   MAX_RELEASE_ARTIFACT_BYTES,
   releaseExecutionPlanSha256,
+  validateReleaseChildDispatchBinding,
+  validateReleaseCoveragePolicyBinding,
 } from "../../scripts/full-release-validation-policy.mjs";
 import {
   affectedActiveRunIds,
@@ -18,12 +20,12 @@ import {
   classifyReleaseGhTransportError,
   classifyReleaseSnapshot,
   formatReleaseStateOutcome,
+  hydrateReusedPlan,
   readChild,
   releaseGhRetryDelayMs,
   releaseStateChildEvidence,
   serializeReleaseArtifact,
   selectReleaseStateArtifacts,
-  validateChildBinding,
   validateReleaseExecutionPlanArtifact,
   validateReleaseStateArtifact,
   verifyReleaseStateArtifacts,
@@ -248,6 +250,132 @@ function runPlanSubprocess(overrides: Record<string, unknown>) {
 }
 
 describe("full release execution plan", () => {
+  const betaCoverage = {
+    coveragePolicy: "npm-beta-v1",
+    releaseProfile: "beta",
+    rerunGroup: "all",
+    runReleaseSoak: false,
+    targetVersion: "2026.8.28-beta.1",
+  };
+
+  function betaPlan() {
+    const candidate = candidateBinding({ releaseProfile: "beta", releaseSoak: false });
+    return executionPlan(
+      { ...betaCoverage, childPhaseVersion: 3, children: {} },
+      {
+        ...betaCoverage,
+        attemptEvidenceVersion: 3,
+        candidate,
+        candidateRequest: candidate.request,
+      },
+    );
+  }
+
+  it("defers only confidence children under explicit npm beta coverage", () => {
+    const input = {
+      ...betaCoverage,
+      childPhaseVersion: 3,
+      children: {},
+      releasePackageSpec: "openclaw@2026.8.28-beta.1",
+    };
+    const historical = plan({ ...input, coveragePolicy: undefined });
+    const bounded = plan(input);
+    expect(bounded.children.filter((entry) => entry.selected).map((entry) => entry.key)).toEqual(
+      historical.children
+        .filter(
+          (entry) => entry.selected && !["productPerformance", "npmTelegram"].includes(entry.key),
+        )
+        .map((entry) => entry.key),
+    );
+    expect(bounded.gates).toEqual(historical.gates);
+    for (const key of ["productPerformance", "npmTelegram"]) {
+      expect(historical.children.find((entry) => entry.key === key)?.selected).toBe(true);
+      expect(bounded.children.find((entry) => entry.key === key)).toMatchObject({
+        required: false,
+        selected: false,
+        result: "skipped",
+        runId: "",
+        runAttempt: null,
+        url: "",
+      });
+    }
+  });
+
+  it.each([
+    { coveragePolicy: "unknown" },
+    { releaseProfile: "stable" },
+    { releaseProfile: "full" },
+    { runReleaseSoak: true },
+    { rerunGroup: "performance" },
+    { rerunGroup: "npm-telegram" },
+    { rerunGroup: "ci" },
+    { targetVersion: "2026.8.28" },
+    { targetVersion: "2026.8.28-alpha.1" },
+  ])("rejects npm beta coverage outside its qualification scope: %j", (override) => {
+    expect(() =>
+      plan({ ...betaCoverage, childPhaseVersion: 3, children: {}, ...override }),
+    ).toThrow(/coverage policy/u);
+  });
+
+  it("binds npm beta coverage to the immutable plan, version, and manifest", () => {
+    const artifact = betaPlan();
+    expect(validateReleaseExecutionPlanArtifact(artifact)).toMatchObject({
+      coveragePolicy: "npm-beta-v1",
+      targetVersion: betaCoverage.targetVersion,
+    });
+    expect(() => validateReleaseCoveragePolicyBinding(artifact, betaCoverage)).not.toThrow();
+    expect(() => validateReleaseCoveragePolicyBinding(artifact, {})).toThrow(/coverage policy/u);
+    expect(() =>
+      validateReleaseCoveragePolicyBinding(artifact, {
+        ...betaCoverage,
+        targetVersion: "2026.8.28-beta.2",
+      }),
+    ).toThrow(/coverage policy/u);
+    expect(() =>
+      validateReleaseExecutionPlanArtifact({ ...artifact, coveragePolicy: "unknown" }),
+    ).toThrow(/digest/u);
+    const changed = { ...artifact, targetVersion: "2026.8.28-beta.2" };
+    expect(() =>
+      validateReleaseExecutionPlanArtifact({
+        ...changed,
+        sha256: releaseExecutionPlanSha256(changed),
+      }),
+    ).toThrow(/coverage policy/u);
+    for (const key of ["productPerformance", "npmTelegram"]) {
+      const forged = structuredClone(artifact);
+      Object.assign(
+        forged.children.find((entry) => entry.key === key)!,
+        { selected: true, required: true, runId: "900", runAttempt: 1, result: "success" },
+      );
+      forged.sha256 = releaseExecutionPlanSha256(forged);
+      expect(() => validateReleaseExecutionPlanArtifact(forged)).toThrow(/coverage policy/u);
+    }
+  });
+
+  it.each([
+    ["npm-beta-v1", "npm-beta", true],
+    ["npm-beta-v1", "full", false],
+    ["npm-beta-v1", "", false],
+    [undefined, "npm-beta", false],
+    [undefined, "full", true],
+    [undefined, "", true],
+  ])(
+    "binds normal CI dispatch scope to npm beta coverage %s/%s",
+    (coveragePolicy, scope, accepted) => {
+      const verify = () =>
+        validateReleaseChildDispatchBinding({
+          child: { key: "normalCi", runId: "101" },
+          plannedRunAttempt: 1,
+          repository: "openclaw/openclaw",
+          targetSha: TARGET_SHA,
+          coveragePolicy,
+          log: `TARGET_SHA: ${TARGET_SHA}\n${scope ? `CI_RELEASE_SCOPE: ${scope}\n` : ""}Dispatched ci.yml: https://github.com/openclaw/openclaw/actions/runs/101 (attempt 1)`,
+        });
+      if (accepted) expect(verify).not.toThrow();
+      else expect(verify).toThrow(/scope/u);
+    },
+  );
+
   it("omits only the owner-waived Telegram child from stable package validation", () => {
     const input = {
       releaseProfile: "stable",
@@ -916,35 +1044,61 @@ describe("release decision policy", () => {
     });
   });
 
-  it("accepts a monotonically newer attempt for the exact child tuple", () => {
-    const result = validateChildBinding(
-      child("normalCi"),
-      {
-        actor: { login: "github-actions[bot]" },
-        conclusion: "",
-        created_at: "2026-08-21T00:00:00Z",
-        display_title: "normalCi",
-        event: "workflow_dispatch",
-        head_branch: "release-ci/tooling",
-        head_sha: SHA,
-        html_url: "https://example.invalid/runs/101",
-        id: 101,
-        path: ".github/workflows/ci.yml@refs/heads/release-ci/tooling",
-        repository: { full_name: "openclaw/openclaw" },
-        run_attempt: 2,
-        status: "in_progress",
-        updated_at: "2026-08-21T00:01:00Z",
-        triggering_actor: { login: "release-operator" },
-      },
-      {
-        jobs: [],
+  it.each(["fresh", "reused"] as const)(
+    "accepts a human child rerun with retained earlier jobs in a %s plan",
+    async (source) => {
+      const original = child("normalCi");
+      const planned =
+        source === "reused"
+          ? hydrateReusedPlan([original], {
+              children: [
+                {
+                  ...reusedEvidenceChildren()[0],
+                  displayTitle: original.displayTitle,
+                  runAttempt: 2,
+                },
+              ],
+              manifest: { childEvidence: { normalCi: { plannedRunAttempt: 1 } } },
+            })[0]
+          : original;
+      assert(planned, "selected child remains present in the reused plan");
+      const result = await readChild(planned, undefined, undefined, {
+        readRun: async () => ({
+          actor: { login: "github-actions[bot]" },
+          conclusion: "success",
+          display_title: original.displayTitle,
+          event: "workflow_dispatch",
+          head_branch: original.workflowRef,
+          head_sha: SHA,
+          html_url: original.url,
+          id: 101,
+          path: ".github/workflows/ci.yml@refs/heads/release-ci/tooling",
+          repository: { full_name: "openclaw/openclaw" },
+          run_attempt: 2,
+          status: "completed",
+          triggering_actor: { login: "release-operator" },
+        }),
+        readAttemptJobs: async (_runId, attempt) =>
+          attempt === 1
+            ? [
+                { name: "lint", status: "completed", conclusion: "success" },
+                { name: "test", status: "completed", conclusion: "failure" },
+              ]
+            : [{ name: "test", status: "completed", conclusion: "success" }],
+      });
+      expect(result.errors).toEqual([]);
+      expect(result).toMatchObject({
         observedRunAttempts: [1, 2],
-        sha256: "c".repeat(64),
-      },
-    );
-    expect(result.errors).toEqual([]);
-    expect(result).toMatchObject({ plannedRunAttempt: 1, runAttempt: 2 });
-  });
+        plannedRunAttempt: 1,
+        runAttempt: 2,
+        triggeringActor: "release-operator",
+      });
+      expect(result.jobs).toEqual([
+        expect.objectContaining({ name: "lint", acceptedRunAttempt: 1, conclusion: "success" }),
+        expect.objectContaining({ name: "test", acceptedRunAttempt: 2, conclusion: "success" }),
+      ]);
+    },
+  );
 
   it.each([
     "HTTP 503: Server Error",
