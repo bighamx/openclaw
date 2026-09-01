@@ -557,6 +557,8 @@ export const en: TranslationMap = {
       policyTitle: "Update policy",
       channel: "Release channel",
       channelDescription: "Choose which OpenClaw release track this Gateway follows.",
+      checkForUpdates: "Check for updates",
+      checkForUpdatesDescription: "Periodically check for new versions and show update notices.",
       automaticUpdates: "Automatic updates",
       automaticUpdatesDescription:
         "Schedule available updates automatically. Dev auto-updates apply to git checkouts.",
@@ -564,6 +566,7 @@ export const en: TranslationMap = {
         "Automatic dev updates require a source (git) install. This install is a package install — use stable or beta for automatic updates.",
       extendedStableAutomaticHint:
         "Extended stable reports available releases but never installs them automatically.",
+      checksDisabledAutomaticHint: "Turn on Check for updates to resume automatic updates.",
       statusTitle: "Update status",
       scheduleStatus: "Status",
       commits: "Commits",
@@ -580,8 +583,8 @@ export const en: TranslationMap = {
       updateNowDescription: "Install the available update and restart the Gateway.",
       latestAttempt: "Latest update attempt",
       attemptedAt: "Attempted",
-      attemptTarget: "Target",
-      installedIdentity: "Installed",
+      beforeUpdate: "Before update",
+      afterAttempt: "After attempt",
       attemptInstallKind: "Attempt install type",
       attemptReason: "Reason code",
       failedStep: "Failure details",
@@ -604,9 +607,9 @@ export const en: TranslationMap = {
     verificationFailedWithIdentity:
       "Update finished, but the running install does not match the expected revision. Expected {expected}, running {actual}.",
     handoffTimeout:
-      "Update handoff started, but completion was not reported after reconnect. Run `openclaw update status` for the final result.",
+      "Update completion was not confirmed. Check `openclaw gateway status` and `openclaw update status` before retrying.",
     outcomeUnknown:
-      "The update request may have been accepted, but the Gateway did not report a final result after reconnect. Run `openclaw update status` before retrying.",
+      "The update outcome is unknown. Check `openclaw gateway status` and `openclaw update status` before retrying.",
     failureReasons: {
       dirty: "Commit or stash changes, then retry.",
       noUpstream: "Set an upstream branch, then retry.",
@@ -634,6 +637,8 @@ export const en: TranslationMap = {
       alreadyCurrent: "This checkout is already at its tracked upstream revision.",
       managedServiceHandoffAlreadyRunning:
         "Another managed update is already running. Wait for it to complete, then refresh update status.",
+      managedServiceHandoffUnavailable:
+        "Stop the foreground Gateway, run `openclaw update`, then launch it again. For automatic updates, install a managed Gateway service.",
       doctorFailed: "Doctor repair failed. Run `openclaw doctor --non-interactive` and retry.",
       managedServiceHandoffFailed:
         "The update helper stopped before finishing. Run `openclaw update` in the terminal to see why.",
@@ -6019,7 +6024,6 @@ export const en: TranslationMap = {
       currentMessage: "current message",
       actions: "Message actions",
       selectionActions: "Selection actions",
-      moreDetails: "More details",
       askInSideChat: "Ask in side chat",
       rewind: "Rewind",
       rewindConfirm: "Rewind to before this message?",
@@ -6222,14 +6226,13 @@ export const en: TranslationMap = {
       noMatches: "No matching messages",
     },
     pendingInputs: {
-      count: "Retained accepted inputs: {count}",
-      queued: "Accepted by the Gateway. Waiting for its turn.",
+      queued: "Message received. Waiting for the agent to start it.",
       cancelled:
-        "Cancelled before its turn. This input will not run automatically; copy it to send a new message.",
+        "Cancelled before the agent started it. It will not run automatically; copy it and send again.",
       interrupted:
-        "Interrupted before its turn. This input will not run automatically; copy it to send a new message.",
-      earlier: "Earlier accepted inputs",
-      latest: "Latest accepted inputs",
+        "Interrupted before the agent started it. It will not run automatically; copy it and send again.",
+      earlier: "Show earlier messages",
+      latest: "Show latest messages",
     },
     pairingQrExpired: {
       title: "Pairing QR expired",
@@ -6821,15 +6824,16 @@ export const en: TranslationMap = {
     },
     actions: {
       runNow: "Run now",
+      runNowJob: "Run now: {name}",
       runIfDue: "Run if due",
-      pause: "Pause",
-      resume: "Resume",
+      pauseJob: "Pause: {name}",
+      resumeJob: "Resume: {name}",
       clone: "Clone",
       remove: "Remove",
       removeConfirmTitle: 'Remove "{name}"?',
       removeConfirmMessage:
         "This permanently deletes the automation and stops all future runs. This action cannot be undone.",
-      more: "More actions",
+      moreJob: "More actions for {name}",
     },
     runNotStarted: {
       notDue: "This automation is not due yet.",
