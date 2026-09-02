@@ -67,7 +67,9 @@ starting more work. This uses Codex's terminal ownership; it does not guarantee
 cleanup of commands that deliberately detach from that ownership.
 
 With the default `tools.exec.host: "auto"` and no active OpenClaw sandbox,
-Codex also receives `node_exec` for commands on paired nodes. Native shell
+Codex also receives `node_exec` when a connected node supports `system.run`.
+Offline paired devices and devices without shell support do not expose this tool.
+When a node is configured, that binding must resolve to an eligible node. Native shell
 remains on the Codex app-server host and workspace
 (Gateway-local for the default stdio deployment); `node_exec` selects the sole
 connected node that supports `system.run`, or requires a name or id when several
@@ -78,9 +80,10 @@ an execution environment, OpenClaw keeps its policy-filtered `exec` and
 `process` tools available instead for direct, unsandboxed execution.
 
 When `tools.exec.host: "node"` or `/exec host=node` makes the node the session
-default, OpenClaw hides the Codex-native shell and exposes `node_exec` as the
-shell path. This keeps the configured execution host from silently falling
-back to the app-server or Gateway machine.
+default, OpenClaw hides the Codex-native shell and exposes `node_exec` only while
+the node target is eligible. If it is unavailable, reconnect the configured node
+or explicitly change the exec host. OpenClaw does not silently fall back to the
+app-server or Gateway machine.
 
 `gateway_exec` is not exposed when an active OpenClaw sandbox, a node-default
 execution policy, memory-flush restrictions, tool allow/deny policy, or
@@ -1175,6 +1178,31 @@ OpenClaw does not install unknown apps or let the model authorize new plugin
 installs. Owner-approved plugin installation refreshes the target runtime
 inventory. Missing inventory methods, authentication errors, transport
 failures, and connector refresh failures fail closed.
+
+### Scheduled app authority
+
+Automations inherit the creator turn's callable tools and app policy without an
+explicit `toolsAllow` list. With a prepared ChatGPT profile, scheduled app access
+remains bound to that exact profile and account. Without a prepared profile, an
+agent-scoped configured WebSocket app-server owns the schedule through its
+connection fingerprint. Reauthenticating that same endpoint to another account
+does not revoke the schedule: subsequent runs use the endpoint's current account,
+subject to the captured app ceiling and current app/tool policy. Scheduled
+authority does not store or replay authentication credentials.
+
+Removing or un-configuring the endpoint, changing its connection fingerprint, or
+changing its captured managed requirements rejects the run before app execution.
+The job remains inspectable, with an error in automation run history and its
+last-run state; normal failure backoff still applies. Restore the authorized
+connection or recreate the automation from a fresh authenticated owner turn.
+Account changes that remove access to a captured app also fail visibly.
+
+Before rolling back to a build without configured-endpoint authority and cron
+authority hydration, disable these jobs with `openclaw automations disable <id>`
+and verify them with `openclaw automations list --all`. Do not rely on an older
+binary to enforce the new authority envelope. Keep the jobs disabled until you
+return to a supporting build or recreate them under that build's supported auth
+path. See [Automations](/automation/cron-jobs) for run history and failure handling.
 
 ### Environment isolation
 
