@@ -695,8 +695,35 @@ const CODEX_VERSION_CONTRACT_TEST_TARGETS = [
   "extensions/openai/openai-provider.test.ts",
   "test/scripts/codex-client-version-contract.test.ts",
 ];
+// The iframe script and native document load as assets outside the import graph.
+const MERMAID_RENDERER_TEST_TARGETS = [
+  "ui/src/components/markdown-mermaid.runtime.browser.test.ts",
+  "ui/src/components/markdown-mermaid-native.browser.test.ts",
+];
 const SOURCE_TEST_TARGETS = new Map([
   ...PRECISE_SOURCE_TEST_TARGETS,
+  [
+    "scripts/prepare-apple-mermaid.mjs",
+    [
+      "test/scripts/build-and-run-mac.test.ts",
+      "test/scripts/package-mac-app.test.ts",
+      "test/scripts/ci-workflow-guards.test.ts",
+    ],
+  ],
+  ["packages/mermaid-renderer/package.json", MERMAID_RENDERER_TEST_TARGETS],
+  ["packages/mermaid-renderer/vite.config.ts", MERMAID_RENDERER_TEST_TARGETS],
+  ["packages/mermaid-renderer/native/index.html", MERMAID_RENDERER_TEST_TARGETS],
+  ["packages/mermaid-renderer/src/renderer.ts", MERMAID_RENDERER_TEST_TARGETS],
+  ["packages/mermaid-renderer/src/frame.js", MERMAID_RENDERER_TEST_TARGETS],
+  ["packages/mermaid-renderer/src/native.ts", MERMAID_RENDERER_TEST_TARGETS],
+  [
+    "packages/normalization-core/src/record-coerce.ts",
+    ["packages/normalization-core/src/record-coerce.test.ts", ...MERMAID_RENDERER_TEST_TARGETS],
+  ],
+  [
+    "packages/normalization-core/package.json",
+    ["packages/normalization-core/src/package-exports.test.ts", ...MERMAID_RENDERER_TEST_TARGETS],
+  ],
   ["extensions/codex/package.json", CODEX_VERSION_CONTRACT_TEST_TARGETS],
   ["extensions/codex/src/app-server/version.ts", CODEX_VERSION_CONTRACT_TEST_TARGETS],
   ["src/test-utils/openclaw-test-state.ts", ["src/test-utils/openclaw-test-state.test.ts"]],
@@ -2201,9 +2228,12 @@ const EXACT_TOOLING_TARGETS = new Map<string, string[]>([
       "android-version",
       "android-pin-version",
       "docker-release-policy",
+      "docker-release-artifacts",
+      "full-release-validation-at-sha",
       "ios-version",
       "openclaw-npm-extended-stable-release",
       "openclaw-npm-publish",
+      "npm-prepared-bundle",
       "release-preflight",
       "release-prepare",
       "release-upgrade-baseline",
@@ -2211,6 +2241,10 @@ const EXACT_TOOLING_TARGETS = new Map<string, string[]>([
       "upgrade-survivor-baselines",
       "upgrade-survivor-config-recipe",
     ],
+  ],
+  [
+    "scripts/lib/release-context.mjs",
+    ["full-release-validation-at-sha", "release-candidate-checklist", packageAcceptance],
   ],
   [
     "scripts/lib/clawhub-bootstrap-artifact.mjs",
@@ -2399,8 +2433,13 @@ const SEMANTIC_TOOLING_TARGET_PATTERNS: Array<[RegExp, string[]]> = [
     [packageAcceptance, crossOsReleaseChecks, pluginPrerelease, installDocker],
   ],
   [
-    /^\.github\/workflows\/docker-release\.yml$/u,
-    ["src/dockerfile.test.ts", "docker-channel-promote", "vercel-container-registry-publish"],
+    /^\.github\/workflows\/docker-release(?:-prepare)?\.yml$/u,
+    [
+      "src/dockerfile.test.ts",
+      "docker-channel-promote",
+      "docker-release-artifacts",
+      "vercel-container-registry-publish",
+    ],
   ],
   [/^\.github\/workflows\/install-smoke\.yml$/u, ["install-smoke-no-push-workflow", installDocker]],
   [
@@ -2424,7 +2463,7 @@ const SEMANTIC_TOOLING_TARGET_PATTERNS: Array<[RegExp, string[]]> = [
   ],
   [
     /^\.github\/workflows\/openclaw-release-publish\.yml$/u,
-    [packageAcceptance, "vercel-container-registry-publish"],
+    [packageAcceptance, "docker-release-artifacts", "vercel-container-registry-publish"],
   ],
   [/^\.github\/workflows\/package-acceptance\.yml$/u, [packageAcceptance]],
   [
@@ -2873,11 +2912,9 @@ const SEMANTIC_TOOLING_TARGET_PATTERNS: Array<[RegExp, string[]]> = [
       "src/agents/agent-bundle-mcp-tools.materialize.test.ts",
     ],
   ],
-  [/^scripts\/e2e\/system-agent-(?:first-run|rescue)-docker\.sh$/u, ["docker-e2e-system-agent"]],
   [
     /^test\/e2e\/qa-lab\/runtime\/system-agent-first-run-docker-client\.ts$/u,
     [
-      "docker-e2e-system-agent",
       "src/cli/program/register.onboard.test.ts",
       "src/cli/run-main.test.ts",
       "src/cli/run-main.exit.test.ts",
@@ -2893,16 +2930,11 @@ const SEMANTIC_TOOLING_TARGET_PATTERNS: Array<[RegExp, string[]]> = [
   ],
   [
     /^scripts\/e2e\/system-agent-first-run-spec\.json$/u,
-    [
-      "docker-e2e-system-agent",
-      "src/system-agent/operations.test.ts",
-      "src/system-agent/audit.test.ts",
-    ],
+    ["src/system-agent/operations.test.ts", "src/system-agent/audit.test.ts"],
   ],
   [
     /^scripts\/e2e\/system-agent-rescue-docker-client\.ts$/u,
     [
-      "docker-e2e-system-agent",
       "src/system-agent/rescue-policy.test.ts",
       "src/system-agent/rescue-message.test.ts",
       "src/system-agent/operations.test.ts",
@@ -3182,6 +3214,8 @@ function resolveToolingTestTargets(changedPath: string, cwd = process.cwd()) {
     ...importGraphTargets,
     ...referenceTargets,
     ...(githubYamlGuardTargets ?? []),
+    // Root aliases also control native bundling; keep the existing tooling owners.
+    ...(changedPath === "tsconfig.json" ? MERMAID_RENDERER_TEST_TARGETS : []),
   ];
   if (targets.length > 0) {
     return uniqueOrdered(targets);

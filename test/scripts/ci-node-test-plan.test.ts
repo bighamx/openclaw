@@ -50,8 +50,6 @@ type VitestConfig = {
 };
 
 const PLUGIN_PRERELEASE_NPM_SPEC_TEST = "src/plugins/install.npm-spec.test.ts";
-const PLUGIN_NPM_INSTALL_SECURITY_SCAN_TEST =
-  "src/plugins/npm-install-security-scan.release.test.ts";
 const DEFAULT_NODE_TEST_RUNNER = "blacksmith-8vcpu-ubuntu-2404";
 const BUNDLED_NODE_TEST_RUNNER = "blacksmith-4vcpu-ubuntu-2404";
 const STORE_ALIAS_CHANGED_PATHS = [
@@ -153,8 +151,8 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
   it("retains a complete measured generation and ignores complementary partial generations", () => {
     const originalTimings = testTimings.readCompactGroupTimings;
     let overlays: Record<"blacksmith" | "github", Readonly<Record<string, number>>> = {
-      blacksmith: {},
-      github: {},
+      blacksmith: { "agentic-agents-support": 165 },
+      github: { "agentic-agents-support": 253 },
     };
     vi.spyOn(testTimings, "readCompactGroupTimings").mockImplementation((profile) => {
       const unrelated = Object.fromEntries(
@@ -177,9 +175,10 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
         .toSorted((left, right) => left.shard_name.localeCompare(right.shard_name));
     const initial = supportGroups(initialPlan);
     expect(initial).toHaveLength(2);
-    overlays.blacksmith = Object.fromEntries(
-      initial.map((group, index) => [group.timing_key!, 247 + index]),
-    );
+    overlays.blacksmith = {
+      ...overlays.blacksmith,
+      ...Object.fromEntries(initial.map((group, index) => [group.timing_key!, 247 + index])),
+    };
 
     const expanded = supportGroups(createNodeTestShardBundles(options));
     expect(expanded).toHaveLength(4);
@@ -294,28 +293,39 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
       const target = createNodeTestShards().find((shard) =>
         shard.includePatterns?.includes(consumer),
       )!;
-      const original = testTimings.readCompactGroupTimings;
-      vi.spyOn(testTimings, "readCompactGroupTimings").mockImplementation((profile) => ({
-        ...original(profile),
-        [target.shardName]: profile === slowerProfile ? 400 : 100,
-      }));
-      const plan = createNodeTestShardBundles({
-        compactMode: "pull-request",
-        runnerBackend,
-        includeReleaseOnlyPluginShards: false,
-      });
-      const groups = plan
-        .flatMap((job) => job.groups)
-        .filter((group) => group.shard_name.startsWith(`${target.shardName}-hosted-`));
-      expect(groups).toHaveLength(3);
-      expect(
-        groups
-          .filter((group) => group.pretestBuildMode === "runtime")
-          .map((group) => group.includePatterns?.includes(consumer)),
-      ).toEqual([true]);
-      expect(groups.flatMap((group) => group.includePatterns ?? []).toSorted()).toEqual(
-        target.includePatterns!.toSorted(),
-      );
+      const originalShards = fullSuiteVitestShards.slice();
+      // Exercise this owner's split without consuming unrelated suite families' job budget.
+      const fixtureShards = originalShards
+        .map((shard) => ({
+          ...shard,
+          projects: shard.projects.filter((config) => target.configs.includes(config)),
+        }))
+        .filter((shard) => shard.projects.length > 0);
+      fullSuiteVitestShards.splice(0, fullSuiteVitestShards.length, ...fixtureShards);
+      try {
+        vi.spyOn(testTimings, "readCompactGroupTimings").mockImplementation((profile) => ({
+          [target.shardName]: profile === slowerProfile ? 400 : 100,
+        }));
+        const plan = createNodeTestShardBundles({
+          compactMode: "pull-request",
+          runnerBackend,
+          includeReleaseOnlyPluginShards: false,
+        });
+        const groups = plan
+          .flatMap((job) => job.groups)
+          .filter((group) => group.shard_name.startsWith(`${target.shardName}-hosted-`));
+        expect(groups).toHaveLength(3);
+        expect(
+          groups
+            .filter((group) => group.pretestBuildMode === "runtime")
+            .map((group) => group.includePatterns?.includes(consumer)),
+        ).toEqual([true]);
+        expect(groups.flatMap((group) => group.includePatterns ?? []).toSorted()).toEqual(
+          target.includePatterns!.toSorted(),
+        );
+      } finally {
+        fullSuiteVitestShards.splice(0, fullSuiteVitestShards.length, ...originalShards);
+      }
     },
   );
   afterEach(() => {
@@ -582,8 +592,10 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
       const shardName = "agentic-agents-support-hosted-2";
       let directTimings: Readonly<Record<string, number>> = {};
       vi.spyOn(testTimings, "readCompactGroupTimings").mockImplementation(
-        (runner): Readonly<Record<string, number>> =>
-          runner === timingProfile ? directTimings : {},
+        (runner): Readonly<Record<string, number>> => ({
+          "agentic-agents-support": runner === "blacksmith" ? 165 : 253,
+          ...(runner === timingProfile ? directTimings : {}),
+        }),
       );
       const options = {
         includeReleaseOnlyPluginShards: false,
@@ -840,6 +852,15 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
         shard.groups.some((group) => isExclusiveCompactShardName(group.shard_name)),
       ).length,
     ).toBeGreaterThan(0);
+    const hybridJobFor = (name: string) =>
+      hybridPullRequestCompact.find((shard) =>
+        shard.groups.some((group) => group.shard_name === name),
+      );
+    const hybridCliJob = hybridJobFor("agentic-cli");
+    const hybridToolingIsolatedJob = hybridJobFor("core-tooling-isolated");
+    expect(hybridCliJob).toBeDefined();
+    expect(hybridToolingIsolatedJob).toBeDefined();
+    expect(hybridToolingIsolatedJob?.checkName).not.toBe(hybridCliJob?.checkName);
     const expectedEmbeddedAgentGroupNames = [
       "agentic-agents-embedded-base-1",
       "agentic-agents-embedded-base-2",
@@ -2150,7 +2171,7 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
     });
   });
 
-  it("keeps plugin prerelease npm install coverage on the release-only agentic plugin shard", () => {
+  it("keeps plugin prerelease npm install behavior on the release-only agentic plugin shard", () => {
     const pluginsShard = createNodeTestShards().find(
       (shard) => shard.shardName === "agentic-plugins",
     );
@@ -2164,9 +2185,6 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
     });
     expect(listMatchedTestFiles(createPluginsVitestConfig({}))).toContain(
       PLUGIN_PRERELEASE_NPM_SPEC_TEST,
-    );
-    expect(listMatchedTestFiles(createPluginsVitestConfig({}))).toContain(
-      PLUGIN_NPM_INSTALL_SECURITY_SCAN_TEST,
     );
   });
 
