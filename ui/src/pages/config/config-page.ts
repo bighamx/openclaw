@@ -808,7 +808,7 @@ export class ConfigPage extends OpenClawLightDomElement {
       this.systemInfoGatewaySource === gatewaySource &&
       this.context.gateway.snapshot.client === client &&
       this.context.agentSelection.state.selectedId === agentId;
-    const promise = loadModelCatalog(client, { agentId, preparedOnly: true })
+    const promise = loadModelCatalog(client, { agentId, preparedOnly: true, rejectOnFailure: true })
       .then(({ models }) => {
         if (isCurrent()) {
           this.sessionObserverModels = models;
@@ -1204,8 +1204,8 @@ export class ConfigPage extends OpenClawLightDomElement {
       themeModeProvenance: themeModePref.provenance,
       themeModeResetValue: themeModePref.resetValue ?? UI_APPEARANCE_DEFAULTS.themeMode,
       accent: this.settings.accent,
-      accentOverridden: accentPref.overridden,
       accentProvenance: accentPref.provenance,
+      accentResetValue: accentPref.resetValue,
       fontUi: this.settings.fontUi,
       fontChat: this.settings.fontChat,
       fontUiProvenance: this.currentSyncedPref("fontUi").provenance,

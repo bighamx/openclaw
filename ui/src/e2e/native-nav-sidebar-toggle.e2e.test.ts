@@ -452,10 +452,10 @@ suite.define(() => {
       .poll(() =>
         sidebarNewThread.evaluate((element) => {
           const style = getComputedStyle(element);
-          return { borderColor: style.borderTopColor, boxShadow: style.boxShadow };
+          return { borderStyle: style.borderTopStyle, boxShadow: style.boxShadow };
         }),
       )
-      .toEqual({ borderColor: "rgba(0, 0, 0, 0)", boxShadow: "none" });
+      .toEqual({ borderStyle: "none", boxShadow: "none" });
     await page.keyboard.press("Tab");
     await sidebarNewThread.focus();
     await expect
@@ -607,7 +607,7 @@ suite.define(() => {
     await openChatSidePanelType(page, "Side chat");
     const panel = page.getByRole("region", { name: "Side panel" });
     await panel.getByRole("button", { name: "Expand side panel" }).click();
-    await panel.getByRole("button", { name: "Restore side panel" }).waitFor();
+    await panel.getByRole("button", { name: "Collapse" }).waitFor();
 
     const shellControls = page.locator(
       ".macos-titlebar-controls button:visible, .sidebar-attention--floating button:visible",
