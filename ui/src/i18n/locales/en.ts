@@ -838,7 +838,6 @@ export const en: TranslationMap & {
     cloudWorker: "Cloud · {profile}",
     cloudWorkerMachine: "{profile} · {machine}",
     cloudWorkerProvider: "Cloud worker provider: {provider}",
-    cloudRequiresWorktree: "Cloud needs a Git checkout",
     cloudRuntimeUnsupported: "The {runtime} runtime does not support cloud workers.",
     cloudProfileRuntimeUnsupported:
       "The {runtime} runtime cannot use this cloud worker. Choose a compatible cloud worker or run locally.",
@@ -853,16 +852,9 @@ export const en: TranslationMap & {
     autoDevice: "Auto",
     autoDeviceSub: "Least-busy device",
     autoDeviceSubEligible: "First eligible device",
-    noSessionHosts: "No session hosts are paired. Connect a machine with session hosting enabled.",
     neverConnected: "Never connected",
     offlineFor: "Offline for {duration}",
     lastSeen: "Last seen {time}",
-    deviceUnavailable: "Device unavailable. Reconnect it and try again.",
-    sessionHostingDisabled:
-      "Session hosting is disabled. Run openclaw connect --service --session-host on the device.",
-    deviceCapacityUnavailable:
-      "Worker capacity is unavailable. Restart the device session host and try again.",
-    deviceNoSlots: "No worker slots are available. Wait for a slot or pick another device.",
     nodeUpdateRequired:
       "Update required: run {updateCommand}, then reconnect. For a headless node, run {restartCommand}.",
     capabilityCamera: "Camera",
@@ -893,18 +885,6 @@ export const en: TranslationMap & {
     browseRequiresAdmin:
       "To browse outside agent workspaces, open Inbox, select Limited access, request admin, then approve in Devices.",
     connectMachine: "Connect a machine…",
-    connectMachineTitle: "Connect a machine",
-    connectMachineDescription: "Run this command on the machine you want to connect.",
-    connectMachineGenerating: "Creating a secure connection link…",
-    connectMachineFailed: "Couldn't create a connection link.",
-    connectMachineMissingUrl: "The Gateway did not return a join URL. Update it and try again.",
-    connectMachineUnavailable: "Reconnect to the Gateway and try again.",
-    connectMachineTeamHint: "Running it pairs that machine as a device for your team.",
-    connectMachineSingleUse: "This link is single-use and expires soon.",
-    connectMachineSingleUseExpires: "This link is single-use and expires at {time}.",
-    connectMachineFreshCode: "Mint fresh code",
-    connectMachineRefreshing: "Minting…",
-    connectMachineManageDevices: "Manage devices",
     browserUp: "Parent folder",
     browserUse: "Use this folder",
     browserEmpty: "No subfolders",
@@ -925,9 +905,6 @@ export const en: TranslationMap & {
     draft: "Draft",
     draftDescription: "Keep this session to yourself until you publish it",
     messagePlaceholder: "What should this session work on?",
-    titlePreparationDisclosure:
-      "When you pause, draft text is sent to your title provider to prepare a session name. Not used in incognito.",
-    preparedTitle: "Session name: {title}",
     dictate: "Dictate",
     readingAttachment: "Reading attachment",
     start: "Start session",
@@ -937,13 +914,8 @@ export const en: TranslationMap & {
     chooseNativeHost: "Choose a native CLI host",
     nativeTerminalPrompt: "Optional initial prompt for the native CLI",
     terminalNodeFolder: "Existing absolute folder on this node",
-    terminalHostUnavailable:
-      "Native CLI host unavailable. Check that the CLI is installed and the node is connected with its fresh-start command approved, then retry the catalog.",
-    terminalDisabled: "Enable CLI agents and terminals in Gateway settings to start a native CLI.",
     terminalAttachmentsUnsupported:
       "Remove attachments before starting a native CLI. Add files from the terminal after it opens.",
-    terminalPlacementUnsupported:
-      "Native CLI sessions use a specific host, not OpenClaw worker placement. Reset this draft and choose a native host.",
     starting: "Starting…",
     createFailed: "Couldn't create the session.",
     createOutcomeUnknown:
@@ -953,12 +925,8 @@ export const en: TranslationMap & {
     placementSetupInterrupted:
       "This session's runner setup was interrupted. Check recent sessions before starting this task again.",
     catalogUnavailable: "This session target is unavailable.",
-    restoringPreferences: "Restoring your last session setup…",
-    checkingPlace: "Checking the selected place…",
     placementNotReady: "The selected runner isn't ready yet. Try again in a moment.",
-    agentsUnavailable: "No agents are available on this Gateway yet.",
     nodeUnavailable: "The selected device is unavailable. Pick another place.",
-    terminalNeedsFolder: "Pick a folder before starting in a terminal.",
     terminalCapabilityOverridesUnsupported:
       "Clear session capability overrides before starting in a terminal.",
     what: "What",
