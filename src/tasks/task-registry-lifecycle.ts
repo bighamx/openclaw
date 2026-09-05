@@ -1,6 +1,7 @@
 import { buildAgentRunTerminalOutcomeFromLifecycleEvent } from "../agents/agent-run-terminal-outcome.js";
+import { subagentRuns } from "../agents/subagents/registry/subagent-registry-memory.js";
 import { onAgentEvent } from "../infra/agent-events.js";
-import { hasAuthoritativeTaskBacking } from "./task-backing-authority.js";
+import { hasAuthoritativeTaskBacking, readTaskBackingInstance } from "./task-backing-authority.js";
 import { isTerminalTaskStatus } from "./task-executor-policy.js";
 import { recordTaskActivityEvent } from "./task-registry-activity.js";
 import {
@@ -35,12 +36,34 @@ function ensureListener() {
       runId: evt.runId,
       sessionKey: evt.sessionKey,
     });
+    const subagent = subagentRuns.get(evt.runId);
+    const canonicalRunId = subagent?.taskRunId;
+    // Replacement runs retain the original task identity. Follow the live
+    // registry owner without changing event routing for other task runtimes.
+    if (canonicalRunId && canonicalRunId !== evt.runId) {
+      scopedTasks.push(
+        ...getTasksByRunScope({
+          runId: canonicalRunId,
+          runtime: "subagent",
+          sessionKey: evt.sessionKey,
+        }).filter((task) => readTaskBackingInstance(task.detail)?.runtime === "subagent"),
+      );
+    }
     if (scopedTasks.length === 0) {
       return;
     }
     const now = evt.ts || Date.now();
     for (const current of scopedTasks) {
-      if (isTerminalTaskStatus(current.status) || !hasAuthoritativeTaskBacking(current)) {
+      const backing = readTaskBackingInstance(current.detail);
+      const registryBackedSubagent =
+        current.runtime === "subagent" && backing?.runtime === "subagent";
+      if (
+        isTerminalTaskStatus(current.status) ||
+        !hasAuthoritativeTaskBacking(current) ||
+        (registryBackedSubagent &&
+          (subagent?.generation !== backing.generation ||
+            subagent?.childSessionKey !== current.childSessionKey))
+      ) {
         continue;
       }
       recordTaskActivityEvent(current, evt);
@@ -58,7 +81,12 @@ function ensureListener() {
         }
         if (phase === "start") {
           patch.status = "running";
-        } else if (phase === "end") {
+        } else if (phase === "end" || phase === "error") {
+          // Registry-backed subagents keep task.runId across replacement runs.
+          // Their registry owns terminal projection; predecessor events do not.
+          if (registryBackedSubagent) {
+            continue;
+          }
           const terminal = buildAgentRunTerminalOutcomeFromLifecycleEvent({
             phase,
             data: evt.data,
@@ -73,25 +101,9 @@ function ensureListener() {
             terminalReason: terminal.reason,
             error: terminal.error,
           });
-          if (error) {
-            patch.error = error;
+          if (error || phase === "error") {
+            patch.error = error ?? current.error;
           }
-        } else if (phase === "error") {
-          const terminal = buildAgentRunTerminalOutcomeFromLifecycleEvent({
-            phase,
-            data: evt.data,
-            startedAt,
-            endedAt: endedAt ?? now,
-          });
-          patch.status = mapAgentRunTerminalOutcomeToTaskStatus(terminal);
-          patch.endedAt = terminal.endedAt ?? now;
-          patch.error =
-            resolveTaskLifecycleTerminalError({
-              runtime: current.runtime,
-              status: patch.status,
-              terminalReason: terminal.reason,
-              error: terminal.error,
-            }) ?? current.error;
         }
       } else if (evt.stream === "error") {
         patch.error = typeof evt.data?.error === "string" ? evt.data.error : current.error;

@@ -1464,7 +1464,7 @@ describe("gateway session utils", () => {
     expect(nativeUltra.thinkingLevels).toContainEqual({ id: "ultra", label: "ultra" });
   });
 
-  test("strips retired thinking provenance from Gateway patch results", async () => {
+  test("strips retired thinking provenance from Gateway patch results", () => {
     const entry = {
       sessionId: "private-fallback",
       updatedAt: 1,
@@ -1477,25 +1477,20 @@ describe("gateway session utils", () => {
         ts: 1,
       },
     } as unknown as InternalSessionEntry;
-    const result = await projectSessionPatchResult({
+    const result = projectSessionPatchResult({
       canonicalKey: "agent:main:main",
       cfg: {
         agents: { defaults: { model: { primary: "openai/gpt-5.6-sol" } } },
       } as OpenClawConfig,
       entry,
-      modelCatalogByAgent: new Map([
-        [
-          "main",
-          Promise.resolve([
-            {
-              provider: "openai",
-              id: "gpt-5.6-sol",
-              name: "GPT 5.6 Sol",
-              reasoning: true,
-            },
-          ]),
-        ],
-      ]),
+      modelCatalog: [
+        {
+          provider: "openai",
+          id: "gpt-5.6-sol",
+          name: "GPT 5.6 Sol",
+          reasoning: true,
+        },
+      ],
       storePath: "/tmp/openclaw-sessions.json",
       targetAgentId: "main",
     });
@@ -3929,6 +3924,24 @@ describe("gateway session utils", () => {
     expect(result.agents[0]?.identity?.avatarUrl).toBe(
       `data:image/png;base64,${Buffer.from("avatar").toString("base64")}`,
     );
+  });
+
+  test.each(["local", "data"])("keeps %s avatar bytes out of browser agent rows", (kind) => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "session-utils-browser-avatar-"));
+    onTestFinished(() => fs.rmSync(workspace, { recursive: true, force: true }));
+    const dataUrl = `data:image/png;base64,${Buffer.from("avatar").toString("base64")}`;
+    fs.writeFileSync(path.join(workspace, "avatar-link.png"), "avatar");
+    const cfg = createSingleAgentAvatarConfig(workspace);
+    if (kind === "data") {
+      cfg.agents!.list![0]!.identity!.avatar = dataUrl;
+    }
+    const browser = listAgentsForGateway(cfg, undefined, { httpAvatarBasePath: "/control" });
+    expect(browser.agents[0]?.identity?.avatarUrl).toMatch(
+      /^\/control\/avatar\/main\?v=[a-f0-9]+$/,
+    );
+    expect(browser.agents[0]?.identity?.avatar).toBe(browser.agents[0]?.identity?.avatarUrl);
+    expect(JSON.stringify(browser)).not.toContain(dataUrl);
+    expect(listAgentsForGateway(cfg).agents[0]?.identity?.avatarUrl).toBe(dataUrl);
   });
 
   test("listAgentsForGateway falls back to identity.name when name is unset", () => {
