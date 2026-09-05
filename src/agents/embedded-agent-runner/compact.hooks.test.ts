@@ -14,9 +14,17 @@ import {
   patchSessionEntryCore,
   upsertSessionEntryCore,
 } from "../../config/sessions/session-accessor.js";
+import { delegateCompactionToRuntime } from "../../context-engine/delegate.js";
 import type { ContextEngine } from "../../context-engine/types.js";
 import { createPluginMetadataSnapshotFixture } from "../../plugins/plugin-metadata.test-support.js";
+import {
+  requireActivePluginRegistry,
+  withPluginRegistrationContext,
+} from "../../plugins/runtime.js";
 import { closeOpenClawAgentDatabasesForTest } from "../../state/openclaw-agent-db.js";
+import { getRegisteredAgentHarness, registerAgentHarness } from "../harness/registry.js";
+import type { AgentHarness } from "../harness/types.js";
+import { getModelProviderLocalServiceReconciler } from "../provider-local-service-reconcile.js";
 import {
   createAssistant,
   createAssistantResultStream,
@@ -1568,6 +1576,16 @@ describe("compactEmbeddedAgentSessionDirect hooks", () => {
       sessionPermissionPolicy: { mode: "workspace", root: canonicalWorkspace },
     });
     expect(toolOptions.exec).toEqual(expect.objectContaining({ mode: "auto" }));
+  });
+
+  it("retains a host-required file boundary while rebuilding compaction tools", async () => {
+    await compactEmbeddedAgentSessionDirect(
+      wrappedCompactionArgs({
+        workspaceDir: join(TEST_WORKSPACE_DIR, "workspace"),
+        requireWorkspaceOnly: true,
+      }),
+    );
+    expectRecordFields(mockCallArg(createOpenClawCodingToolsMock), { requireWorkspaceOnly: true });
   });
 
   it("keeps manifest-profiled plugin tools executable during compaction", async () => {
@@ -3304,6 +3322,34 @@ describe("compactEmbeddedAgentSessionDirect hooks", () => {
     });
   });
 
+  it("carries the prepared provider reconciler into direct compaction", async () => {
+    mockResolvedModel();
+    const reconcile = vi.fn(async () => undefined);
+    const buildDefaultPlan = buildAgentRuntimePlanMock.getMockImplementation();
+    if (!buildDefaultPlan) {
+      throw new Error("Compaction runtime plan fixture is not configured");
+    }
+    buildAgentRuntimePlanMock.mockImplementation((params) => ({
+      ...buildDefaultPlan(params),
+      providerRuntimeHandle: {
+        provider: params.provider,
+        modelId: params.modelId,
+        workspaceDir: params.workspaceDir,
+        prepared: true,
+        plugin: { reconcileLocalService: reconcile },
+      },
+    }));
+
+    await expect(compactEmbeddedAgentSessionDirect(wrappedCompactionArgs())).resolves.toMatchObject(
+      { ok: true },
+    );
+
+    const streamRegistration = mockCallArg(registerProviderStreamForModelMock) as {
+      model: object;
+    };
+    expect(getModelProviderLocalServiceReconciler(streamRegistration.model)).toBe(reconcile);
+  });
+
   it("aborts in-flight compaction when the caller abort signal fires", async () => {
     const { compactWithSafetyTimeout } = await vi.importActual<
       typeof import("./compaction-safety-timeout.js")
@@ -4357,6 +4403,105 @@ describe("compactEmbeddedAgentSession hooks (ownsCompaction engine)", () => {
       runtimeProvider: undefined,
       model: "gpt-5.5",
     });
+  });
+
+  it("keeps authorized host byte compaction successful when secondary Codex sync fails", async () => {
+    const order: string[] = [];
+    const registry = requireActivePluginRegistry();
+    const harness: AgentHarness = {
+      id: "codex",
+      label: "Codex",
+      supports: () => ({ supported: true }),
+      runAttempt: async () => {
+        throw new Error("not used");
+      },
+    };
+    withPluginRegistrationContext(registry, "codex", () => {
+      registerAgentHarness(harness, {
+        nativeCompaction: vi.fn(async () => ({ ok: true, compacted: true })),
+      });
+    });
+    const registeredHarness = expectDefined(
+      getRegisteredAgentHarness("codex")?.harness,
+      "registered Codex harness",
+    );
+    const acquirePreparedRuntime = expectDefined(
+      acquireAgentRunPreparedModelRuntimeMock.getMockImplementation(),
+      "prepared runtime acquisition",
+    );
+    acquireAgentRunPreparedModelRuntimeMock.mockImplementationOnce(async (input) => {
+      const lease = await acquirePreparedRuntime(input);
+      return {
+        ...lease,
+        snapshot: { ...lease.snapshot, pluginRegistry: registry },
+      };
+    });
+    selectAgentHarnessMock.mockReturnValue(registeredHarness);
+    selectAgentHarnessForPreparedModelProvidersMock.mockReturnValue(registeredHarness);
+    resolveContextEngineMock.mockResolvedValue({
+      info: { id: "legacy", name: "Legacy", version: "1.0.0" },
+      compact: (params: Parameters<NonNullable<ContextEngine["compact"]>>[0]) =>
+        delegateCompactionToRuntime(params),
+    } as never);
+    sessionCompactImpl.mockImplementationOnce(async () => {
+      order.push("host");
+      return {
+        summary: "host-summary",
+        firstKeptEntryId: "entry-1",
+        tokensBefore: 120,
+        tokensAfter: 50,
+        details: { ok: true },
+      };
+    });
+    maybeCompactAgentHarnessSessionMock.mockImplementationOnce(async () => {
+      order.push("native");
+      return {
+        ok: false,
+        compacted: false,
+        reason: "provider_error_4xx",
+        failure: {
+          reason: "provider_error_4xx",
+          status: 400,
+          rawError: "provider_error_4xx",
+        },
+      };
+    });
+
+    const result = await compactEmbeddedAgentSession(
+      await nativeCompactionArgs({
+        provider: "openai",
+        model: "gpt-5.5",
+        agentHarnessId: "codex",
+        trigger: "budget",
+        forcePreflight: true,
+        preflightRequired: true,
+        preflightCompactionTrigger: "transcript_bytes",
+      }),
+      { transcriptBytePreflightHarness: "codex" },
+    );
+
+    expect(result.reason).toBeUndefined();
+    expect(result).toMatchObject({
+      ok: true,
+      compacted: true,
+      result: {
+        summary: "host-summary",
+        details: {
+          codexNativeCompaction: {
+            ok: false,
+            compacted: false,
+            reason: "provider_error_4xx",
+            failure: { reason: "provider_error_4xx", status: 400 },
+          },
+        },
+      },
+    });
+    expect(order).toEqual(["host", "native"]);
+    expect(attemptServerEndpointCompactionMock).not.toHaveBeenCalled();
+    expect(maybeCompactAgentHarnessSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ agentHarnessId: "codex" }),
+      expectedNativeCompactionOptions("after_context_engine"),
+    );
   });
 
   it("falls back to the context engine when required-preflight native compaction reports a binding change", async () => {
