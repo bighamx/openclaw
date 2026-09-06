@@ -62,6 +62,11 @@ const repositoryScriptEntries = [
   "scripts/e2e/lib/fixtures/config.mjs!",
   "scripts/e2e/lib/fixtures/plugins.mjs!",
   "scripts/e2e/lib/fixtures/workspace.mjs!",
+  "scripts/e2e/lib/fleet-cache/assert-cell.mjs!",
+  "scripts/e2e/lib/fleet-cache/assert-podman-cell.mjs!",
+  "scripts/e2e/lib/fleet-cache/prepare-podman-storage.mjs!",
+  "scripts/e2e/lib/fleet-cache/probe-podman-cell.mjs!",
+  "scripts/e2e/lib/fleet-cache/runtime-preflight.mjs!",
   "scripts/e2e/lib/npm-telegram-live/prepare-package.mts!",
   "scripts/e2e/lib/onboard/assert-config.mjs!",
   "scripts/e2e/lib/onboard/write-config.mjs!",
@@ -236,6 +241,8 @@ const rootEntries = [
   "src/mcp/plugin-tools-serve.ts!",
   // Dedicated tsdown entry exercised against built plugin singletons.
   "src/plugins/build-smoke-entry.ts!",
+  // Required metadata readers load this tsdown entry by computed source/dist path.
+  "src/plugins/plugin-metadata-readers.runtime.ts!",
   // Released Gateways still import this stable entry after an on-disk update.
   "src/gateway/plugin-channel-reload-targets.ts!",
   // Package-script owners invoke these generated-artifact modules directly.
