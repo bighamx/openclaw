@@ -122,9 +122,11 @@ class SettingsScreensContrastTest {
       }
     }
     composeRule.runOnIdle { model.connect(gateway.endpoint) }
+    // Both screens retain visible data during refresh; wait for completion before measuring.
     try {
       composeRule.waitUntil(10_000) {
-        composeRule.onAllNodesWithText("Enabled").fetchSemanticsNodes().isNotEmpty()
+        composeRule.onAllNodesWithText("Enabled").fetchSemanticsNodes().isNotEmpty() &&
+          model.isConnected.value && !model.cronRefreshing.value && model.cronStatus.value.enabled
       }
     } finally {
       File(evidence, "cron-readiness.json").writeText(
@@ -140,7 +142,6 @@ class SettingsScreensContrastTest {
           .toString(2),
       )
     }
-    assertTrue(model.isConnected.value && !model.cronRefreshing.value && model.cronStatus.value.enabled)
     assertTrue(gateway.methods.containsAll(listOf("cron.status", "cron.list")))
 
     fun observe(
@@ -187,14 +188,13 @@ class SettingsScreensContrastTest {
       observe("cron-help", "Open an automation to inspect its configuration and run history.", substring = true)
     }
     composeRule.runOnIdle { route.value = SettingsRoute.Approvals }
+    // Rows can render before the independently propagated refreshing flag settles.
     composeRule.waitUntil(10_000) {
-      composeRule.onAllNodesWithText("echo ok").fetchSemanticsNodes().isNotEmpty()
+      composeRule.onAllNodesWithText("echo ok").fetchSemanticsNodes().isNotEmpty() &&
+        !model.execApprovalsRefreshing.value && model.execApprovals.value
+          .singleOrNull()
+          ?.commandPreview == "echo"
     }
-    assertTrue(
-      !model.execApprovalsRefreshing.value && model.execApprovals.value
-        .singleOrNull()
-        ?.commandPreview == "echo",
-    )
     composeRule
       .onNodeWithText("Deny")
       .performScrollTo()
@@ -210,7 +210,8 @@ class SettingsScreensContrastTest {
     gateway.terminal = true
     composeRule.onNodeWithText("Refresh").performScrollTo().performClick()
     composeRule.waitUntil(10_000) {
-      composeRule.onAllNodesWithText("Approval approval-1").fetchSemanticsNodes().isNotEmpty()
+      composeRule.onAllNodesWithText("Approval approval-1").fetchSemanticsNodes().isNotEmpty() &&
+        model.execApprovals.value.isEmpty() && model.execApprovalsNotice.value?.approvalId == "approval-1"
     }
     assertTrue(model.execApprovals.value.isEmpty() && model.execApprovalsNotice.value?.approvalId == "approval-1")
     assertTrue(gateway.methods.count { it == "approval.get" } > readsBeforeRefresh)
