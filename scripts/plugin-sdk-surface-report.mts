@@ -360,6 +360,8 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       // +1: shared static UI guidance, separate from per-turn harness delivery policy.
       // +1: shared root/account DM policy refinement for channel schemas.
       // -1: add one tool policy object and retire two unused deprecated mode exports.
+      // -1: one exec policy object replaces two deprecated comparator exports.
+      // +1: approved bounded TAR inspection through the archive admission owner.
       4446,
       env,
     ),
@@ -489,7 +491,9 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       // +1: shared static UI guidance, separate from per-turn harness delivery policy.
       // +1: shared root/account DM policy refinement for channel schemas.
       // -2: retire the deprecated mode projection callables.
-      2629,
+      // -2: exec comparators are members of the shared policy object.
+      // +1: approved bounded TAR inspection through the archive admission owner.
+      2628,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(
