@@ -358,6 +358,8 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       // +7: card projection plus three rendering helpers on channel-outbound and its shipped barrel.
       // +2: shared diff-stat rendering on channel-outbound and its shipped barrel.
       // +1: shared static UI guidance, separate from per-turn harness delivery policy.
+      // +1: shared root/account DM policy refinement for channel schemas.
+      // -1: add one tool policy object and retire two unused deprecated mode exports.
       4446,
       env,
     ),
@@ -485,7 +487,9 @@ export function readPluginSdkSurfaceBudgets(env: NodeJS.ProcessEnv = process.env
       // +7: card projection plus three rendering helpers on channel-outbound and its shipped barrel.
       // +2: shared diff-stat rendering on channel-outbound and its shipped barrel.
       // +1: shared static UI guidance, separate from per-turn harness delivery policy.
-      2630,
+      // +1: shared root/account DM policy refinement for channel schemas.
+      // -2: retire the deprecated mode projection callables.
+      2629,
       env,
     ),
     publicDeprecatedExports: readPluginSdkSurfaceBudgetEnv(
