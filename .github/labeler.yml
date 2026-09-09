@@ -141,6 +141,7 @@
       - any-glob-to-any-file:
           - "extensions/imessage/**"
           - "docs/channels/imessage.md"
+          - "docs/channels/imessage/**"
 "channel: line":
   - changed-files:
       - any-glob-to-any-file:
@@ -151,6 +152,7 @@
       - any-glob-to-any-file:
           - "extensions/matrix/**"
           - "docs/channels/matrix.md"
+          - "docs/channels/matrix/**"
 "channel: mattermost":
   - changed-files:
       - any-glob-to-any-file:
@@ -161,6 +163,7 @@
       - any-glob-to-any-file:
           - "extensions/msteams/**"
           - "docs/channels/msteams.md"
+          - "docs/channels/msteams/**"
 "channel: nextcloud-talk":
   - changed-files:
       - any-glob-to-any-file:
@@ -226,6 +229,7 @@
       - any-glob-to-any-file:
           - "extensions/telegram/**"
           - "docs/channels/telegram.md"
+          - "docs/channels/telegram/**"
 "channel: tlon":
   - changed-files:
       - any-glob-to-any-file:

@@ -1961,7 +1961,7 @@ src/agents/thinking-block.ts	1
 src/agents/thinking-signatures.ts	2
 src/agents/tool-call-id.ts	8
 src/agents/tool-catalog.ts	1
-src/agents/tool-display-common.ts	2
+src/agents/tool-display-common.ts	1
 src/agents/tool-images.ts	3
 src/agents/tool-mutation-names.ts	2
 src/agents/tool-policy-shared.ts	1
@@ -2578,7 +2578,7 @@ src/config/sessions/session-accessor.sqlite-title-probes.ts	1
 src/config/sessions/session-accessor.sqlite-transcript-message-append.ts	1
 src/config/sessions/session-accessor.sqlite-transcript-mirror.ts	1
 src/config/sessions/session-accessor.sqlite-transcript-store.ts	2
-src/config/sessions/session-accessor.sqlite-transcript-write.ts	5
+src/config/sessions/session-accessor.sqlite-transcript-write.ts	4
 src/config/sessions/session-accessor.sqlite-visible-cursor.ts	1
 src/config/sessions/session-accessor.transcript-range.ts	3
 src/config/sessions/session-accessor.transcript-turn.ts	1
@@ -3527,7 +3527,6 @@ src/skills/runtime/refresh.ts	3
 src/skills/runtime/remote-probe-utils.ts	2
 src/skills/runtime/remote-skills.ts	1
 src/skills/security/clawhub-verdicts.ts	2
-src/skills/workshop/history-scan.ts	2
 src/skills/workshop/policy.ts	1
 src/skills/workshop/store-record.ts	3
 src/skills/workshop/store-sqlite-event.ts	1
